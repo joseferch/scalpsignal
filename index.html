@@ -1416,15 +1416,12 @@ if (typeof module !== "undefined") module.exports = SSP;
     set(k, v) { try { localStorage.setItem("ssp:" + k, JSON.stringify(v)); } catch { /* almacenamiento no disponible */ } },
   };
   const CFG = Object.assign({ rest: "https://api.bybit.com", ws: "wss://stream.bybit.com/v5/public/linear", history: 1000, maxDelayS: 20, tgToken: "", tgChat: "", topN: 40, minTurnoverM: 50, adxKey: 23 }, LS.get("cfg", {}));
-  // Migración v3: la lista por defecto pasa a ser el top 40 por volumen de Bybit
+  // Lista inicial = top por volumen de Bybit. La marca "topDone" se guarda SOLO cuando la carga termina,
+  // así una carga interrumpida (cerrar la app a medias) se reintenta en la próxima apertura.
   const OLD_DEFAULT = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"];
-  let AUTO_TOP = false;
-  if (LS.get("ver", 0) < 3) {
-    if (CFG.topN === 20) CFG.topN = 40;
-    const w = LS.get("watch", null);
-    AUTO_TOP = !w || (w.length === OLD_DEFAULT.length && w.every((x) => OLD_DEFAULT.includes(x)));
-    LS.set("cfg", CFG); LS.set("ver", 3);
-  }
+  if (LS.get("ver", 0) < 4) { if (CFG.topN === 20) CFG.topN = 40; LS.set("cfg", CFG); LS.set("ver", 4); }
+  const savedWatch = LS.get("watch", null);
+  const AUTO_TOP = !LS.get("topDone", false) && (!savedWatch || savedWatch.length <= OLD_DEFAULT.length);
   const RISK = Object.assign({}, SSP.DEFAULT_RISK, LS.get("risk", {}));
   const TC = Object.assign({}, SSP.DEFAULT_TC, LS.get("tc", {}));
   const FIBP = Object.assign({}, SSP.DEFAULT_FIB, LS.get("fib", {}));
@@ -2194,14 +2191,14 @@ if (typeof module !== "undefined") module.exports = SSP;
       const top = (tick.list || []).filter((t) => perps.has(t.symbol) && +t.turnover24h >= CFG.minTurnoverM * 1e6)
         .sort((a, b) => +b.turnover24h - +a.turnover24h).slice(0, CFG.topN).map((t) => t.symbol);
       const nuevos = top.filter((s) => !S.symbols.includes(s));
-      if (!nuevos.length) { toast(`Ya sigues todos los pares con más de ${CFG.minTurnoverM} M USDT de volumen (máx. ${CFG.topN})`, "info"); return; }
+      if (!nuevos.length) { LS.set("topDone", true); toast(`Ya sigues todos los pares con más de ${CFG.minTurnoverM} M USDT de volumen (máx. ${CFG.topN})`, "info"); return; }
       let ok = 0;
       for (const [i, s] of nuevos.entries()) {
         $("topBtn").textContent = `Cargando ${i + 1}/${nuevos.length}…`;
         await bootstrap(s);
-        if (S.closed[k2(s, "1m")]?.length) { S.symbols.push(s); ok++; renderWatch(); }
+        if (S.closed[k2(s, "1m")]?.length) { S.symbols.push(s); ok++; LS.set("watch", S.symbols); renderWatch(); }   // se guarda par por par
       }
-      LS.set("watch", S.symbols); connectWS();
+      LS.set("watch", S.symbols); LS.set("topDone", true); connectWS();
       toast(`${ok} pares agregados por volumen (≥ ${CFG.minTurnoverM} M USDT en 24 h)`, "info");
     } catch (e) { showErr(e.message); }
     finally { $("topBtn").textContent = "Top por volumen"; }
