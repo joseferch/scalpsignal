@@ -168,6 +168,25 @@ label.f{font-size:12px;color:var(--ink2);display:block}
 .srow select{width:auto;padding:4px 6px}
 label.chk{display:flex;gap:6px;align-items:center;margin-top:18px}
 .resetbtn{margin-top:10px;font-size:12.5px}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap}
+.resetbtn.danger{color:var(--sell);border-color:rgba(255,97,112,.4)}
+.ind-name .sw{width:12px;height:4px;border-radius:2px;display:inline-block;flex:none}
+.addbig{width:100%;margin:12px 0 4px;padding:11px;border:1px dashed var(--info);background:rgba(98,168,255,.08);color:var(--info);border-radius:10px;font-weight:600;font-size:14px}
+.addbig:hover{background:rgba(98,168,255,.15)}
+.lib{margin:12px 0 6px;border:1px solid var(--rule);border-radius:12px;padding:10px;background:var(--night)}
+.libtop{display:flex;gap:8px;align-items:center}
+.libtop input{flex:1}
+.libtop .resetbtn{margin:0}
+#libList{max-height:46vh;overflow:auto;margin-top:6px}
+.libh{margin:14px 0 4px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.lib .libh{margin-top:10px}
+.libitem{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--rule);border-radius:0;padding:8px 4px;color:var(--ink)}
+.libitem b{font-weight:600;font-size:13.5px}
+.libitem span{grid-column:1;color:var(--ink3);font-size:12px}
+.libitem i{grid-row:1/3;grid-column:2;align-self:center;font-style:normal;color:var(--info);font-size:18px}
+.libitem:hover{background:rgba(98,168,255,.07)}
+.legend .addind{border:1px dashed var(--rule2);background:rgba(14,21,34,.8);border-radius:999px;padding:2px 9px;color:var(--info)}
+.tchip.sess b{color:var(--info)}
 @keyframes flash{0%{background:var(--info-bg)}100%{background:transparent}}
 .switch{position:relative;width:38px;height:22px;flex:none}
 .switch input{opacity:0;width:0;height:0;position:absolute}
@@ -1397,8 +1416,204 @@ const SSP = (() => {
     }
   }
 
+  // ------------------------------------------------------------ biblioteca de indicadores (estilo TradingView)
+  /* Fórmulas estándar (las mismas que usa TradingView en sus indicadores integrados):
+     RSI  = 100 − 100/(1 + RMA(subidas)/RMA(bajadas))                 (Wilder)
+     MACD = EMA(rápida) − EMA(lenta); señal = EMA(MACD); histograma = MACD − señal
+     Estocástico %K = SMA(100·(C − mín(L,n))/(máx(H,n) − mín(L,n)), suavizado); %D = SMA(%K)
+     CCI  = (TP − SMA(TP)) / (0.015 · desviación media), TP = (H+L+C)/3
+     %R   = −100 · (máx(H,n) − C)/(máx(H,n) − mín(L,n))
+     MFI  = 100 − 100/(1 + flujo positivo/flujo negativo) en n velas
+     Supertrend: bandas hl2 ± factor·ATR que solo se mueven a favor; cambia de lado al cerrar más allá
+     SAR parabólico: Wilder (inicio, incremento, máximo) */
+  const srcOf = (d, s) => s === "open" ? d.open : s === "high" ? d.high : s === "low" ? d.low :
+    s === "hl2" ? d.high.map((h, i) => (h + d.low[i]) / 2) : s === "hlc3" ? d.high.map((h, i) => (h + d.low[i] + d.close[i]) / 3) :
+    s === "ohlc4" ? d.open.map((o, i) => (o + d.high[i] + d.low[i] + d.close[i]) / 4) : d.close;
+  const highest = (a, n) => rollExt(a, n, true), lowest = (a, n) => rollExt(a, n, false);
+  function wma(a, n) {
+    const out = new Array(a.length).fill(NaNv), den = (n * (n + 1)) / 2;
+    for (let i = n - 1; i < a.length; i++) {
+      let s = 0, ok = true;
+      for (let k = 0; k < n; k++) { const v = a[i - n + 1 + k]; if (!isNum(v)) { ok = false; break; } s += v * (k + 1); }
+      if (ok) out[i] = s / den;
+    }
+    return out;
+  }
+  function rsi(a, n) {
+    const up = a.map((v, i) => (i === 0 || !isNum(v) || !isNum(a[i - 1]) ? NaNv : Math.max(v - a[i - 1], 0)));
+    const dn = a.map((v, i) => (i === 0 || !isNum(v) || !isNum(a[i - 1]) ? NaNv : Math.max(a[i - 1] - v, 0)));
+    const au = rma(up, n), ad = rma(dn, n);
+    return au.map((u, i) => (!isNum(u) || !isNum(ad[i]) ? NaNv : ad[i] === 0 ? 100 : u === 0 ? 0 : 100 - 100 / (1 + u / ad[i])));
+  }
+  function stochOf(src, hi, lo, n) {
+    const hh = highest(hi, n), ll = lowest(lo, n);
+    return src.map((c, i) => (isNum(hh[i]) && isNum(ll[i]) ? (hh[i] - ll[i] === 0 ? 0 : (100 * (c - ll[i])) / (hh[i] - ll[i])) : NaNv));
+  }
+  function supertrend(d, n, f) {
+    const a = atr(d, n), hl2 = d.high.map((h, i) => (h + d.low[i]) / 2), N = d.n;
+    const up = new Array(N).fill(NaNv), dn = new Array(N).fill(NaNv), dir = new Array(N).fill(0);
+    for (let i = 0; i < N; i++) {
+      if (!isNum(a[i])) continue;
+      let u = hl2[i] - f * a[i], l = hl2[i] + f * a[i];
+      if (i > 0 && isNum(up[i - 1])) {
+        if (d.close[i - 1] > up[i - 1]) u = Math.max(u, up[i - 1]);
+        if (d.close[i - 1] < dn[i - 1]) l = Math.min(l, dn[i - 1]);
+      }
+      up[i] = u; dn[i] = l;
+      const pd = i > 0 ? dir[i - 1] : 0;
+      dir[i] = pd === 0 ? (d.close[i] > l ? 1 : -1) : pd === -1 && d.close[i] > dn[i - 1] ? 1 : pd === 1 && d.close[i] < up[i - 1] ? -1 : pd;
+    }
+    return { up: up.map((v, i) => (dir[i] === 1 ? v : NaNv)), down: dn.map((v, i) => (dir[i] === -1 ? v : NaNv)), dir };
+  }
+  function psar(d, start, inc, max) {
+    const N = d.n, out = new Array(N).fill(NaNv);
+    if (N < 2) return out;
+    let long = d.close[1] >= d.close[0], af = start, ep = long ? Math.max(d.high[0], d.high[1]) : Math.min(d.low[0], d.low[1]);
+    let sar = long ? Math.min(d.low[0], d.low[1]) : Math.max(d.high[0], d.high[1]);
+    out[1] = sar;
+    for (let i = 2; i < N; i++) {
+      sar = sar + af * (ep - sar);
+      if (long) {
+        sar = Math.min(sar, d.low[i - 1], d.low[i - 2]);
+        if (d.low[i] < sar) { long = false; sar = ep; ep = d.low[i]; af = start; }
+        else if (d.high[i] > ep) { ep = d.high[i]; af = Math.min(af + inc, max); }
+      } else {
+        sar = Math.max(sar, d.high[i - 1], d.high[i - 2]);
+        if (d.high[i] > sar) { long = true; sar = ep; ep = d.high[i]; af = start; }
+        else if (d.low[i] < ep) { ep = d.low[i]; af = Math.min(af + inc, max); }
+      }
+      out[i] = sar;
+    }
+    return out;
+  }
+  const SRC_OPTS = ["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"];
+  // tipo de parámetro: int | dec | src ; tipo de línea: line | hist | dots | hline
+  const CUSTOM_DEFS = {
+    sma: { name: "Media móvil simple (SMA)", pane: "price", short: (p) => `SMA ${p.length}`, desc: "Promedio de los últimos N cierres.",
+      params: [["length", "Longitud", "int", 50], ["source", "Fuente", "src", "close"]], lines: [["ma", "SMA", "line", { c: "#f59e0b", w: 2, v: true }]],
+      calc: (d, p) => ({ ma: sma(srcOf(d, p.source), p.length) }) },
+    ema: { name: "Media móvil exponencial (EMA)", pane: "price", short: (p) => `EMA ${p.length}`, desc: "Media que da más peso a las velas recientes.",
+      params: [["length", "Longitud", "int", 20], ["source", "Fuente", "src", "close"]], lines: [["ma", "EMA", "line", { c: "#22d3ee", w: 2, v: true }]],
+      calc: (d, p) => ({ ma: ema(srcOf(d, p.source), p.length) }) },
+    wma: { name: "Media móvil ponderada (WMA)", pane: "price", short: (p) => `WMA ${p.length}`, desc: "Media con pesos lineales hacia las velas recientes.",
+      params: [["length", "Longitud", "int", 20], ["source", "Fuente", "src", "close"]], lines: [["ma", "WMA", "line", { c: "#a78bfa", w: 2, v: true }]],
+      calc: (d, p) => ({ ma: wma(srcOf(d, p.source), p.length) }) },
+    keltner: { name: "Canales de Keltner", pane: "price", short: (p) => `KC ${p.length} ${p.mult}`, desc: "EMA con bandas a N veces el ATR.",
+      params: [["length", "Longitud EMA", "int", 20], ["atr", "Longitud ATR", "int", 10], ["mult", "Multiplicador", "dec", 2]],
+      lines: [["upper", "Banda superior", "line", { c: "#38bdf8", w: 1, v: true }], ["mid", "Media", "line", { c: "#38bdf8", w: 1, v: true }], ["lower", "Banda inferior", "line", { c: "#38bdf8", w: 1, v: true }]],
+      calc: (d, p) => { const m = ema(d.close, p.length), a = atr(d, p.atr); return { mid: m, upper: m.map((v, i) => v + p.mult * a[i]), lower: m.map((v, i) => v - p.mult * a[i]) }; } },
+    donchian: { name: "Canales de Donchian", pane: "price", short: (p) => `DC ${p.length}`, desc: "Máximo y mínimo de las últimas N velas.",
+      params: [["length", "Longitud", "int", 20]],
+      lines: [["upper", "Superior", "line", { c: "#60a5fa", w: 1, v: true }], ["basis", "Media", "line", { c: "#f97316", w: 1, v: true }], ["lower", "Inferior", "line", { c: "#60a5fa", w: 1, v: true }]],
+      calc: (d, p) => { const u = highest(d.high, p.length), l = lowest(d.low, p.length); return { upper: u, lower: l, basis: u.map((v, i) => (v + l[i]) / 2) }; } },
+    supertrend: { name: "Supertrend", pane: "price", short: (p) => `Supertrend ${p.atr} ${p.factor}`, desc: "Línea de tendencia basada en el ATR: debajo del precio en tendencia alcista, encima en bajista.",
+      params: [["atr", "Longitud ATR", "int", 10], ["factor", "Factor", "dec", 3]],
+      lines: [["up", "Tendencia alcista", "line", { c: "#2fd3a0", w: 2, v: true }], ["down", "Tendencia bajista", "line", { c: "#ff6170", w: 2, v: true }]],
+      calc: (d, p) => { const s = supertrend(d, p.atr, p.factor); return { up: s.up, down: s.down }; } },
+    psar: { name: "SAR parabólico", pane: "price", short: (p) => `SAR ${p.start} ${p.inc} ${p.max}`, desc: "Puntos que siguen la tendencia y marcan posibles giros.",
+      params: [["start", "Inicio", "dec", 0.02], ["inc", "Incremento", "dec", 0.02], ["max", "Máximo", "dec", 0.2]],
+      lines: [["sar", "SAR", "dots", { c: "#e879f9", w: 2, v: true }]], calc: (d, p) => ({ sar: psar(d, p.start, p.inc, p.max) }) },
+    volume: { name: "Volumen", pane: "new", short: (p) => `Volumen MA ${p.ma}`, desc: "Volumen de cada vela, coloreado por dirección, con su media.",
+      params: [["ma", "Longitud de la media", "int", 20]],
+      lines: [["vol_up", "Volumen vela alcista", "hist", { c: "#1d7a60", v: true }], ["vol_dn", "Volumen vela bajista", "hist", { c: "#8c3340", v: true }], ["ma", "Media del volumen", "line", { c: "#f0c75e", w: 1, v: true }]],
+      calc: (d, p) => ({ vol: d.volume, ma: sma(d.volume, p.ma), _dir: d.close.map((c, i) => (c >= d.open[i] ? 1 : -1)) }) },
+    rsi: { name: "Índice de fuerza relativa (RSI)", pane: "new", short: (p) => `RSI ${p.length}`, desc: "Oscilador 0–100: sobre 70 sobrecompra, bajo 30 sobreventa.",
+      params: [["length", "Longitud", "int", 14], ["source", "Fuente", "src", "close"], ["upper", "Nivel superior", "dec", 70], ["lower", "Nivel inferior", "dec", 30]],
+      lines: [["rsi", "RSI", "line", { c: "#b69cff", w: 2, v: true }], ["upper", "Nivel superior", "hline", { c: "#6f819b", v: true }], ["mid", "Nivel 50", "hline", { c: "#3a4a66", v: true }], ["lower", "Nivel inferior", "hline", { c: "#6f819b", v: true }]],
+      levels: (p) => ({ upper: p.upper, mid: 50, lower: p.lower }), calc: (d, p) => ({ rsi: rsi(srcOf(d, p.source), p.length) }) },
+    macd: { name: "MACD", pane: "new", short: (p) => `MACD ${p.fast} ${p.slow} ${p.signal}`, desc: "Diferencia entre dos EMA, su línea de señal y el histograma.",
+      params: [["fast", "Rápida", "int", 12], ["slow", "Lenta", "int", 26], ["signal", "Señal", "int", 9], ["source", "Fuente", "src", "close"]],
+      lines: [["macd", "MACD", "line", { c: "#62a8ff", w: 2, v: true }], ["signal", "Señal", "line", { c: "#ff9f5a", w: 1, v: true }], ["hist_pos", "Histograma positivo", "hist", { c: "#2fd3a0", v: true }], ["hist_neg", "Histograma negativo", "hist", { c: "#ff6170", v: true }], ["zero", "Línea cero", "hline", { c: "#3a4a66", v: true }]],
+      levels: () => ({ zero: 0 }),
+      calc: null /* se define abajo */ },
+    stoch: { name: "Estocástico", pane: "new", short: (p) => `Estocástico ${p.k} ${p.smooth} ${p.d}`, desc: "Dónde cierra el precio dentro de su rango reciente (0–100).",
+      params: [["k", "%K longitud", "int", 14], ["smooth", "%K suavizado", "int", 3], ["d", "%D suavizado", "int", 3], ["upper", "Nivel superior", "dec", 80], ["lower", "Nivel inferior", "dec", 20]],
+      lines: [["k", "%K", "line", { c: "#62a8ff", w: 2, v: true }], ["d", "%D", "line", { c: "#ff9f5a", w: 1, v: true }], ["upper", "Nivel superior", "hline", { c: "#6f819b", v: true }], ["lower", "Nivel inferior", "hline", { c: "#6f819b", v: true }]],
+      levels: (p) => ({ upper: p.upper, lower: p.lower }),
+      calc: (d, p) => { const k = sma(stochOf(d.close, d.high, d.low, p.k), p.smooth); return { k, d: sma(k, p.d) }; } },
+    stochrsi: { name: "RSI estocástico", pane: "new", short: (p) => `Stoch RSI ${p.k} ${p.d} ${p.rsi} ${p.stoch}`, desc: "Estocástico aplicado al RSI: más sensible a los giros.",
+      params: [["k", "%K", "int", 3], ["d", "%D", "int", 3], ["rsi", "Longitud RSI", "int", 14], ["stoch", "Longitud estocástico", "int", 14], ["upper", "Nivel superior", "dec", 80], ["lower", "Nivel inferior", "dec", 20]],
+      lines: [["k", "%K", "line", { c: "#62a8ff", w: 2, v: true }], ["d", "%D", "line", { c: "#ff9f5a", w: 1, v: true }], ["upper", "Nivel superior", "hline", { c: "#6f819b", v: true }], ["lower", "Nivel inferior", "hline", { c: "#6f819b", v: true }]],
+      levels: (p) => ({ upper: p.upper, lower: p.lower }),
+      calc: (d, p) => { const r = rsi(d.close, p.rsi), k = sma(stochOf(r, r, r, p.stoch), p.k); return { k, d: sma(k, p.d) }; } },
+    cci: { name: "Índice de canal de mercancías (CCI)", pane: "new", short: (p) => `CCI ${p.length}`, desc: "Distancia del precio a su media; ±100 marcan extremos.",
+      params: [["length", "Longitud", "int", 20], ["upper", "Nivel superior", "dec", 100], ["lower", "Nivel inferior", "dec", -100]],
+      lines: [["cci", "CCI", "line", { c: "#22d3ee", w: 2, v: true }], ["upper", "Nivel superior", "hline", { c: "#6f819b", v: true }], ["lower", "Nivel inferior", "hline", { c: "#6f819b", v: true }]],
+      levels: (p) => ({ upper: p.upper, lower: p.lower }),
+      calc: (d, p) => {
+        const tp = srcOf(d, "hlc3"), m = sma(tp, p.length), n = p.length;
+        return { cci: tp.map((v, i) => { if (!isNum(m[i])) return NaNv; let md = 0; for (let k = i - n + 1; k <= i; k++) md += Math.abs(tp[k] - m[i]); md /= n; return md === 0 ? 0 : (v - m[i]) / (0.015 * md); }) };
+      } },
+    willr: { name: "Williams %R", pane: "new", short: (p) => `%R ${p.length}`, desc: "Como el estocástico pero de 0 a −100.",
+      params: [["length", "Longitud", "int", 14], ["upper", "Nivel superior", "dec", -20], ["lower", "Nivel inferior", "dec", -80]],
+      lines: [["r", "%R", "line", { c: "#e879f9", w: 2, v: true }], ["upper", "Nivel superior", "hline", { c: "#6f819b", v: true }], ["lower", "Nivel inferior", "hline", { c: "#6f819b", v: true }]],
+      levels: (p) => ({ upper: p.upper, lower: p.lower }),
+      calc: (d, p) => { const hh = highest(d.high, p.length), ll = lowest(d.low, p.length); return { r: d.close.map((c, i) => (isNum(hh[i]) ? (hh[i] - ll[i] === 0 ? 0 : (-100 * (hh[i] - c)) / (hh[i] - ll[i])) : NaNv)) }; } },
+    mfi: { name: "Índice de flujo de dinero (MFI)", pane: "new", short: (p) => `MFI ${p.length}`, desc: "RSI ponderado por volumen.",
+      params: [["length", "Longitud", "int", 14], ["upper", "Nivel superior", "dec", 80], ["lower", "Nivel inferior", "dec", 20]],
+      lines: [["mfi", "MFI", "line", { c: "#f0c75e", w: 2, v: true }], ["upper", "Nivel superior", "hline", { c: "#6f819b", v: true }], ["lower", "Nivel inferior", "hline", { c: "#6f819b", v: true }]],
+      levels: (p) => ({ upper: p.upper, lower: p.lower }),
+      calc: (d, p) => {
+        const tp = srcOf(d, "hlc3"), n = p.length, out = new Array(d.n).fill(NaNv);
+        for (let i = n; i < d.n; i++) { let pos = 0, neg = 0; for (let k = i - n + 1; k <= i; k++) { const f = tp[k] * d.volume[k], df = tp[k] - tp[k - 1], eps = 1e-12 * Math.abs(tp[k]); if (df > eps) pos += f; else if (df < -eps) neg += f; /* diferencias de redondeo = empate */ } out[i] = neg === 0 ? 100 : 100 - 100 / (1 + pos / neg); }
+        return { mfi: out };
+      } },
+    atr: { name: "Rango verdadero medio (ATR)", pane: "new", short: (p) => `ATR ${p.length}`, desc: "Volatilidad media por vela.",
+      params: [["length", "Longitud", "int", 14]], lines: [["atr", "ATR", "line", { c: "#ff9f5a", w: 2, v: true }]], calc: (d, p) => ({ atr: atr(d, p.length) }) },
+    obv: { name: "Volumen en balance (OBV)", pane: "new", short: () => "OBV", desc: "Volumen acumulado: suma en velas alcistas y resta en bajistas.",
+      params: [], lines: [["obv", "OBV", "line", { c: "#4dd0e1", w: 2, v: true }]],
+      calc: (d) => { let s = 0; return { obv: d.close.map((c, i) => (i === 0 ? s : (s += c > d.close[i - 1] ? d.volume[i] : c < d.close[i - 1] ? -d.volume[i] : 0))) }; } },
+    roc: { name: "Tasa de cambio (ROC)", pane: "new", short: (p) => `ROC ${p.length}`, desc: "Variación porcentual frente a hace N velas.",
+      params: [["length", "Longitud", "int", 9]], lines: [["roc", "ROC", "line", { c: "#62a8ff", w: 2, v: true }], ["zero", "Línea cero", "hline", { c: "#3a4a66", v: true }]],
+      levels: () => ({ zero: 0 }), calc: (d, p) => ({ roc: d.close.map((c, i) => (i >= p.length ? (100 * (c - d.close[i - p.length])) / d.close[i - p.length] : NaNv)) }) },
+  };
+  CUSTOM_DEFS.macd.calc = (d, p) => {
+    const s = srcOf(d, p.source), f = ema(s, p.fast), sl = ema(s, p.slow), m = f.map((v, i) => v - sl[i]), sg = ema(m, p.signal);
+    return { macd: m, signal: sg, hist: m.map((v, i) => v - sg[i]) };
+  };
+  function customCalc(type, d, params) {
+    const def = CUSTOM_DEFS[type];
+    const p = Object.fromEntries(def.params.map(([k, , , dv]) => [k, params && params[k] !== undefined ? params[k] : dv]));
+    return def.calc(d, p);
+  }
+
+  // ------------------------------------------------------------ sesiones de mercado
+  /* Horario local de cada plaza (como el indicador de sesiones de TradingView); la conversión a UTC
+     usa la zona horaria real, así que el horario de verano de Londres y Nueva York se aplica solo. */
+  const SESSIONS = [
+    { key: "sydney", name: "Sídney", tz: "Australia/Sydney", start: "07:00", end: "16:00" },
+    { key: "tokyo", name: "Tokio", tz: "Asia/Tokyo", start: "09:00", end: "15:00" },
+    { key: "london", name: "Londres", tz: "Europe/London", start: "08:00", end: "16:30" },
+    { key: "ny", name: "Nueva York", tz: "America/New_York", start: "09:30", end: "16:00" },
+  ];
+  const _tzf = {};
+  function tzOffsetMs(tz, utcMs) {          // desfase (local − UTC) de la zona en ese instante
+    const f = _tzf[tz] || (_tzf[tz] = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    const p = Object.fromEntries(f.formatToParts(new Date(utcMs)).map((x) => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - utcMs;
+  }
+  function zonedToUtc(y, m, d, hh, mm, tz) {
+    const guess = Date.UTC(y, m, d, hh, mm);
+    let utc = guess - tzOffsetMs(tz, guess);
+    utc = guess - tzOffsetMs(tz, utc);       // segunda pasada para los días de cambio de horario
+    return utc;
+  }
+  function sessionWindows(fromMs, toMs, sess) {   // ventanas [inicio, fin) en UTC que tocan el rango
+    const out = [], [sh, sm] = sess.start.split(":").map(Number), [eh, em] = sess.end.split(":").map(Number);
+    for (let t = fromMs - 2 * 86400e3; t <= toMs + 86400e3; t += 86400e3) {
+      const loc = new Date(t + tzOffsetMs(sess.tz, t));
+      const y = loc.getUTCFullYear(), mo = loc.getUTCMonth(), da = loc.getUTCDate();
+      const a = zonedToUtc(y, mo, da, sh, sm, sess.tz);
+      let b = zonedToUtc(y, mo, da, eh, em, sess.tz);
+      if (b <= a) b = zonedToUtc(y, mo, da + 1, eh, em, sess.tz);
+      if (b > fromMs && a < toMs && !out.some((w) => w.start === a)) out.push({ start: a, end: b });
+    }
+    return out.sort((x, y) => x.start - y.start);
+  }
+  function sessionsAt(ms, list = SESSIONS) { return list.filter((s) => sessionWindows(ms, ms + 1, s).some((w) => w.start <= ms && ms < w.end)); }
+
   return {
-    TF_MS, floorTime, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
+    TF_MS, floorTime, wma, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
   };
@@ -1439,7 +1654,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const S = {
     symbols: LS.get("watch", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"]),
     sel: LS.get("sel", "UNIUSDT"), tf: LS.get("tf", "5m"), tz: LS.get("tz", "America/Costa_Rica"),
-    show: Object.assign({ bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true }, LS.get("show", {})), sound: LS.get("sound", true),
+    show: Object.assign({ bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true }, LS.get("show", {})), sound: LS.get("sound", true),
     closed: {}, live: {}, an: {}, quotes: {}, conn: { state: "iniciando", detail: "" }, health: {}, errors: {},
     signals: LS.get("signals", []), trades: LS.get("trades", {}), events: LS.get("events", []), hist: "sig",
   };
@@ -1708,6 +1923,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     fib: [["fib.levels", "Niveles de retroceso", { c: "#e8d8a8", v: true }], ["fib.zone", "Zona de entrada", { c: "#f0c75e", v: true }], ["fib.ext", "Extensiones", { c: "#b69cff", v: true }],
       ["fib.l236", "Nivel 23.6%", { v: true }], ["fib.l382", "Nivel 38.2%", { v: true }], ["fib.l500", "Nivel 50%", { v: true }], ["fib.l618", "Nivel 61.8%", { v: true }], ["fib.l786", "Nivel 78.6%", { v: true }], ["fib.edges", "Niveles 0% y 100%", { v: true }], ["fib.prices", "Precios en las etiquetas", { v: true }]],
     ew: [["ew.line", "Línea del conteo", { c: "#9cc9ff", w: 2, v: true }], ["ew.impulse", "Ondas 0-5", { c: "#62a8ff", v: true }], ["ew.corr", "Ondas A-B-C", { c: "#f0c75e", v: true }], ["ew.proj", "Proyecciones", { c: "#9cc9ff", v: true }], ["ew.inval", "Nivel de invalidación", { c: "#ff6170", v: true }]],
+    sess: [["sess.sydney", "Sídney", { c: "#b69cff", v: false }], ["sess.tokyo", "Tokio", { c: "#ff9f5a", v: true }], ["sess.london", "Londres", { c: "#62a8ff", v: true }], ["sess.ny", "Nueva York", { c: "#2fd3a0", v: true }],
+      ["sess.range", "Caja con máximo y mínimo (si no, franja completa)", { v: true }], ["sess.labels", "Etiquetas", { v: true }]],
     sig: [["sig.markers", "Flechas de señales", { v: true }], ["sig.levels", "Líneas de entrada, SL y TP", { v: true }], ["sig.entry", "Entrada", { c: "#e6ebf2" }], ["sig.sl", "Stop loss", { c: "#ff6170" }], ["sig.tp", "Objetivos (TP)", { c: "#2fd3a0" }]],
   };
   const STYLE_DEFAULTS = Object.fromEntries(Object.values(STYLE_DEF).flat().map(([k, , d]) => [k, Object.assign({}, d)]));
@@ -1724,13 +1941,43 @@ if (typeof module !== "undefined") module.exports = SSP;
     ew: { name: "Elliott", sw: () => st("ew.line").c, sub: () => `sensibilidad ${IND.ew_depth}` },
     sqz: { name: "SQZMOM", sw: () => st("sqz.lime").c, sub: () => `${IND.sqz_bb_length} ${IND.sqz_bb_mult} ${IND.sqz_kc_length} ${IND.sqz_kc_mult}` },
     dmi: { name: "DMI + ADX", sw: () => st("dmi.adx").c, sub: () => `${IND.dmi_length} ${IND.adx_smoothing} · nivel ${CFG.adxKey}` },
+    sess: { name: "Sesiones de mercado", sw: () => st("sess.london").c, sub: () => SESS_TF.includes(S.tf) ? SSP.SESSIONS.filter((x) => vis("sess." + x.key)).map((x) => x.name).join(" · ") || "ninguna" : "visibles hasta 1 h" },
   };
   const NARROW = () => window.matchMedia("(max-width: 700px)").matches;
+
+  // ------------------------------------------------------------ sesiones de mercado (horario local de cada plaza, editable)
+  const SESS_DEF = Object.fromEntries(SSP.SESSIONS.flatMap((x) => [[x.key + "_start", x.start], [x.key + "_end", x.end]]));
+  const SESSP = Object.assign({}, SESS_DEF, LS.get("sess", {}));
+  const sessList = () => SSP.SESSIONS.map((x) => Object.assign({}, x, { start: SESSP[x.key + "_start"], end: SESSP[x.key + "_end"] }));
+  const sessOn = () => sessList().filter((x) => vis("sess." + x.key));
+  const SESS_TF = ["1m", "3m", "5m", "15m", "1h"];
+  function sessionStatus(now = Date.now()) {
+    const list = sessOn(), active = SSP.sessionsAt(now, list);
+    let next = null;
+    for (const x of list) for (const w of SSP.sessionWindows(now, now + 3 * 86400e3, x)) if (w.start > now && (!next || w.start < next.start)) next = { s: x, start: w.start };
+    const ends = active.map((x) => ({ s: x, end: SSP.sessionWindows(now, now + 1, x).find((w) => w.start <= now && now < w.end).end }));
+    return { active, ends, next };
+  }
+  const dur = (ms) => { const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} h ${m % 60} min` : `${m} min`; };
+
+  // ------------------------------------------------------------ indicadores agregados por el usuario (biblioteca, como TradingView)
+  const CDEF = SSP.CUSTOM_DEFS;
+  const CUST = (LS.get("custom", []) || []).filter((x) => x && CDEF[x.type]);
+  const saveCust = () => LS.set("custom", CUST);
+  const cParams = (x) => Object.fromEntries(CDEF[x.type].params.map(([k, , , dv]) => [k, x.params && x.params[k] !== undefined ? x.params[k] : dv]));
+  const cSt = (x, k) => { const L = CDEF[x.type].lines.find((l) => l[0] === k); return Object.assign({}, L ? L[3] : {}, (x.style || {})[k] || {}); };
+  const cVis = (x, k) => cSt(x, k).v !== false;
+  const cMainColor = (x) => { const L = CDEF[x.type].lines.find((l) => l[2] !== "hline"); return L ? cSt(x, L[0]).c : "#888"; };
+  function addCustom(type) {
+    const x = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), type, params: {}, style: {}, v: true };
+    CUST.push(x); saveCust(); return x;
+  }
+  function removeCustom(id) { const i = CUST.findIndex((x) => x.id === id); if (i >= 0) { CUST.splice(i, 1); saveCust(); } }
 
   // ------------------------------------------------------------ gráfico
   const chart = (() => {
     const LC = window.LightweightCharts;
-    if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {} }; }
+    if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {}, info() { return {}; } }; }
     const c = LC.createChart($("chart"), {
       autoSize: true,
       layout: { background: { type: LC.ColorType.Solid, color: COL.night }, textColor: "#8fa0b8", fontSize: 11, fontFamily: '"IBM Plex Sans", system-ui, sans-serif', panes: { separatorColor: "#22314d", enableResize: true } },
@@ -1771,6 +2018,61 @@ if (typeof module !== "undefined") module.exports = SSP;
     c.timeScale().subscribeVisibleLogicalRangeChange(() => { draw(); clearTimeout(profT); profT = setTimeout(calcProfile, 250); });
     setInterval(draw, 400);
 
+    // ---- series de los indicadores agregados: precio → panel 0; "panel aparte" → un panel nuevo cada uno (desde el 2)
+    let cSeries = [], cSig = "";
+    function buildCustom() {
+      const want = CUST.filter((x) => x.v !== false);
+      const sig = want.map((x) => x.id + ":" + x.type).join(",");
+      if (sig === cSig) return;
+      cSig = sig;
+      for (const g of cSeries) for (const s of g.series) { try { c.removeSeries(s.api); } catch { /* ya quitada */ } }
+      cSeries = [];
+      for (let i = c.panes().length - 1; i >= 2; i--) { try { c.removePane(i); } catch { /* sin panel */ } }
+      let pane = 2;
+      for (const x of want) {
+        const D = CDEF[x.type], pi = D.pane === "price" ? 0 : pane++, g = { id: x.id, type: x.type, pane: pi, series: [], plines: [] };
+        const pf = x.type === "volume" ? { priceFormat: { type: "volume" } } : D.pane === "price" ? {} : { priceFormat: { type: "price", precision: 2, minMove: 0.01 } };
+        const hist = D.lines.filter((l) => l[2] === "hist");
+        if (hist.length) g.series.push({ kind: "hist", keys: hist.map((l) => l[0]), api: c.addSeries(LC.HistogramSeries, Object.assign({ priceLineVisible: false, lastValueVisible: true, title: "" }, pf), pi) });
+        for (const [k, label, kind] of D.lines) {
+          if (kind === "line" || kind === "dots") g.series.push({ kind, key: k, api: c.addSeries(LC.LineSeries, Object.assign({ priceLineVisible: false, lastValueVisible: D.pane !== "price", crosshairMarkerVisible: false, title: D.pane === "price" ? "" : label,
+            lineVisible: kind === "line", pointMarkersVisible: kind === "dots", pointMarkersRadius: 2 }, pf), pi) });
+        }
+        cSeries.push(g);
+      }
+      // alturas: 170 px para SQZMOM/ADX si no hay más paneles; con paneles extra se reparten (mín. 90 px cada uno)
+      const extra = c.panes().length - 2;
+      const ps = c.panes();
+      if (ps[0] && ps[0].setStretchFactor) {   // proporciones: precio grande, SQZMOM/ADX mediano, paneles agregados más bajos
+        ps[0].setStretchFactor(extra > 0 ? 5 : 3.2); ps[1]?.setStretchFactor(1.25); for (let i = 2; i < ps.length; i++) ps[i].setStretchFactor(extra > 2 ? 0.8 : 1);
+      } else requestAnimationFrame(() => { try { c.panes()[1]?.setHeight(extra > 0 ? 130 : 170); for (let i = 2; i < c.panes().length; i++) c.panes()[i].setHeight(110); } catch { /* */ } });
+    }
+    function styleCustom() {
+      for (const g of cSeries) {
+        const x = CUST.find((y) => y.id === g.id); if (!x) continue;
+        for (const s of g.series) if (s.kind !== "hist") s.api.applyOptions({ color: cSt(x, s.key).c, lineWidth: cSt(x, s.key).w || 1, visible: cVis(x, s.key) });
+      }
+    }
+    function dataCustom(d) {
+      for (const g of cSeries) {
+        const cd = d.custom[g.id]; if (!cd) continue;
+        const x = CUST.find((y) => y.id === g.id);
+        for (const s of g.series) {
+          if (s.kind === "hist") s.api.setData(cd._hist || []);
+          else s.api.setData(cd[s.key] || []);
+        }
+        // niveles horizontales (sobrecompra, sobreventa, cero…) como líneas de precio de la serie principal del panel
+        const host = g.series.find((s) => s.kind === "line") || g.series[0];
+        g.plines.forEach((pl) => { try { pl.s.removePriceLine(pl.l); } catch { /* */ } }); g.plines = [];
+        const D = CDEF[g.type];
+        if (host && D.levels) {
+          const lv = D.levels(cParams(x));
+          for (const [k, label, kind] of D.lines) if (kind === "hline" && cVis(x, k) && isFinite(lv[k]))
+            g.plines.push({ s: host.api, l: host.api.createPriceLine({ price: lv[k], color: cSt(x, k).c, lineWidth: 1, lineStyle: LC.LineStyle.Dashed, axisLabelVisible: false, title: "" }) });
+        }
+      }
+    }
+
     function styleSeries() {
       const up = st("candles.up").c, dn = st("candles.down").c;
       candles.applyOptions({ upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn, borderVisible: vis("candles.border"), borderUpColor: up, borderDownColor: dn });
@@ -1781,6 +2083,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       sqz.applyOptions({ visible: S.show.sqz }); dots.applyOptions({ visible: S.show.sqz });
       c.applyOptions({ leftPriceScale: { visible: S.show.dmi && !NARROW() } });   // en teléfono el ADX va sin eje para no quitar ancho
       setKey();
+      buildCustom(); styleCustom();
     }
     function setData(d, keepView) {
       data = d;
@@ -1793,6 +2096,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       vw.setData(d.vwap); vwU1.setData(d.vwU1); vwL1.setData(d.vwL1); vwU2.setData(d.vwU2); vwL2.setData(d.vwL2);
       sqz.setData(d.sqz); dots.setData(d.dots);
       diP.setData(d.diP); diM.setData(d.diM); adxS.setData(d.adx);
+      dataCustom(d);
       markers.setMarkers(vis("sig.markers") ? d.markers : []);
       if (lastLevels !== undefined) setLevels(lastLevels);
       if (!keepView) c.timeScale().scrollToRealTime();
@@ -1837,6 +2141,18 @@ if (typeof module !== "undefined") module.exports = SSP;
       const g = cv.getContext("2d");
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
       const ts = c.timeScale(), X = (ms) => { const x = ts.timeToCoordinate(ms / 1000); return x === null ? 0 : x; }, Y = (p) => candles.priceToCoordinate(p);
+      if (S.show.sess && data.sess) for (const w of data.sess) {
+        const hb = (ts.options().barSpacing || 6) / 2, ca = ts.timeToCoordinate(data.candles[w.i0].time), cb = ts.timeToCoordinate(data.candles[w.i1].time);
+        if (ca === null || cb === null) continue;
+        const xa = ca - hb, xb = cb + hb;
+        if (xb < 0 || xa > W) continue;
+        const col = st("sess." + w.key).c, box = vis("sess.range");
+        let yt = 0, yb = H;
+        if (box) { const a1 = Y(w.high), a2 = Y(w.low); if (a1 === null || a2 === null) continue; yt = a1 - 3; yb = a2 + 3; }
+        g.fillStyle = hexA(col, box ? 0.08 : 0.05); g.fillRect(xa, yt, xb - xa, yb - yt);
+        if (box) { g.strokeStyle = hexA(col, 0.45); g.setLineDash(w.open ? [4, 3] : []); g.strokeRect(xa, yt, xb - xa, yb - yt); g.setLineDash([]); }
+        if (vis("sess.labels") && xb - xa > 30) { g.fillStyle = hexA(col, 0.9); g.fillText(w.name + (w.open ? " · abierta" : ""), Math.max(xa, 0) + 4, box ? yt - 4 : 14); }
+      }
       if (S.show.ob) for (const ob of data.obs) {
         const bull = ob.direction === "alcista", mit = ob.status === "mitigada", key = bull ? "ob.bull" : "ob.bear";
         if (!vis(key) || (mit && !vis("ob.mitigated"))) continue;
@@ -1923,7 +2239,8 @@ if (typeof module !== "undefined") module.exports = SSP;
         if (vis("vrvp.va")) { hl(p.vah, st("vrvp.va").c, "VAH"); hl(p.val, st("vrvp.va").c, "VAL"); }
       }
     }
-    return { setData, updateLive, setLevels, draw, applyTz, calcProfile, setKey };
+    const info = () => ({ panes: c.panes().length, heights: c.panes().map((p) => p.getHeight()), sess: data && data.sess ? data.sess.length : -1, sess0: data && data.sess && data.sess[0], custom: cSeries.map((g) => ({ id: g.id, type: g.type, pane: g.pane, series: g.series.length, levels: g.plines.length })) });
+    return { setData, updateLive, setLevels, draw, applyTz, calcProfile, setKey, info };
   })();
 
   function chartData(sym, tf) {
@@ -1959,7 +2276,44 @@ if (typeof module !== "undefined") module.exports = SSP;
       const long = s.direction === "LONG";
       return { time: Math.floor((s.created_at / 1000 - 1) / step) * step, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : ""} ${s.rr_net.toFixed(1)}R` };
     }).sort((x, y) => x.time - y.time);
-    return { symbol: sym, tf, candles, bbU, bbM, bbL, vwap, vwU1, vwL1, vwU2, vwL2, sqz, dots, diP, diM, adx, obs, markers, last: a.rowAt(a.n - 1),
+    // indicadores agregados: se calculan sobre todo el historial cargado y se recortan a lo que se dibuja
+    const custom = {};
+    for (const x of CUST) {
+      if (x.v === false) continue;
+      let out; try { out = SSP.customCalc(x.type, d, cParams(x)); } catch (e) { console.warn("indicador", x.type, e); continue; }
+      const D = CDEF[x.type], r = {};
+      for (const [k, , kind] of D.lines) if (kind === "line" || kind === "dots") {
+        const arr = out[k] || [], o = [];
+        for (let i = i0; i < a.n; i++) { const t = d.openTime[i] / 1000; o.push(ok(arr[i]) ? { time: t, value: arr[i] } : { time: t }); }
+        r[k] = o;
+      }
+      const hist = D.lines.filter((l) => l[2] === "hist");
+      if (hist.length) {
+        const src = out.hist || out.vol || [], dir = out._dir, [pk, nk] = [hist[0][0], (hist[1] || hist[0])[0]], h = [];
+        const pc = cSt(x, pk), nc = cSt(x, nk);
+        for (let i = i0; i < a.n; i++) {
+          const t = d.openTime[i] / 1000, v = src[i];
+          if (!ok(v)) { h.push({ time: t }); continue; }
+          const pos = dir ? dir[i] > 0 : v >= 0, cs = pos ? pc : nc;
+          h.push(cs.v === false ? { time: t } : { time: t, value: v, color: cs.c });
+        }
+        r._hist = h;
+      }
+      custom[x.id] = r;
+    }
+    // sesiones: ventana de cada plaza con su máximo y mínimo (solo hasta 1 h; en 4 h y 1 día no se distinguen)
+    const sess = [];
+    if (SESS_TF.includes(tf) && candles.length) {
+      const ct = candles.map((k) => k.time * 1000), from = ct[0], to = ct[ct.length - 1] + SSP.TF_MS[tf];
+      for (const x of sessOn()) for (const w of SSP.sessionWindows(from, to, x)) {
+        let j0 = ct.findIndex((t) => t + SSP.TF_MS[tf] > w.start); if (j0 < 0) continue;
+        let j1 = j0; while (j1 + 1 < ct.length && ct[j1 + 1] < w.end) j1++;
+        if (ct[j0] >= w.end) continue;
+        let hi = -Infinity, lo = Infinity; for (let j = j0; j <= j1; j++) { hi = Math.max(hi, candles[j].high); lo = Math.min(lo, candles[j].low); }
+        sess.push({ key: x.key, name: x.name, i0: j0, i1: j1, high: hi, low: lo, open: w.end > to - SSP.TF_MS[tf] && w.start <= ct[ct.length - 1] });
+      }
+    }
+    return { symbol: sym, tf, candles, bbU, bbM, bbL, vwap, vwU1, vwL1, vwU2, vwL2, sqz, dots, diP, diM, adx, obs, markers, last: a.rowAt(a.n - 1), custom, sess,
       fib: SSP.fibSetup(a, tLast, trend1h(sym, tLast), FIBP), ew: SSP.elliottAsof(a, tLast, IND.ew_depth, IND.ew_min_atr) };
   }
   function trend1h(sym, t) { const h = S.an[k2(sym, "1h")]; return h ? h.trendAsof(t) : null; }
@@ -1982,17 +2336,28 @@ if (typeof module !== "undefined") module.exports = SSP;
   // ------------------------------------------------------------ leyenda del gráfico
   function renderLegend() {
     const folded = LS.get("legendFolded", NARROW());
-    $("indCount").textContent = Object.keys(LEG).filter((k) => S.show[k]).length;
+    $("indCount").textContent = Object.keys(LEG).filter((k) => S.show[k]).length + CUST.filter((x) => x.v !== false).length;
     if (folded) { $("legend").innerHTML = `<button class="fold" data-fold="0" aria-label="Mostrar la leyenda">Leyenda ▸</button>`; return; }
     $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).map(([k, L]) => `<div class="li${S.show[k] ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
       `<span>${L.name} <span class="faint">${esc(L.sub())}</span></span>` +
       `<button data-eye="${k}" aria-label="${S.show[k] ? "Ocultar" : "Mostrar"} ${L.name}" title="${S.show[k] ? "Ocultar" : "Mostrar"}">${S.show[k] ? "◉" : "○"}</button>` +
-      `<button data-edit="${k}" aria-label="Ajustar ${L.name}" title="Ajustar">⚙</button></div>`).join("");
+      `<button data-edit="${k}" aria-label="Ajustar ${L.name}" title="Ajustar">⚙</button></div>`).join("") +
+      CUST.map((x) => { const D = CDEF[x.type], on = x.v !== false, nm = esc(D.short(cParams(x))); return `<div class="li${on ? "" : " off"}"><span class="sw" style="background:${cMainColor(x)}"></span>` +
+        `<span>${nm} <span class="faint">${D.pane === "price" ? "precio" : "panel"}</span></span>` +
+        `<button data-ceye="${x.id}" aria-label="${on ? "Ocultar" : "Mostrar"} ${nm}" title="${on ? "Ocultar" : "Mostrar"}">${on ? "◉" : "○"}</button>` +
+        `<button data-cedit="${x.id}" aria-label="Ajustar ${nm}" title="Ajustar">⚙</button>` +
+        `<button data-cdel="${x.id}" aria-label="Quitar ${nm}" title="Quitar">✕</button></div>`; }).join("") +
+      `<button class="addind" data-addlib="1" title="Agregar un indicador de la biblioteca">＋ Indicador</button>`;
   }
   $("legend").addEventListener("click", (e) => {
     const eye = e.target.closest("[data-eye]"), ed = e.target.closest("[data-edit]");
     if (eye) { S.show[eye.dataset.eye] = !S.show[eye.dataset.eye]; LS.set("show", S.show); refreshChart(); }
     if (ed) openInd(ed.dataset.edit);
+    const ce = e.target.closest("[data-ceye]"), cd = e.target.closest("[data-cedit]"), cx = e.target.closest("[data-cdel]");
+    if (ce) { const x = CUST.find((y) => y.id === ce.dataset.ceye); if (x) { x.v = x.v === false; saveCust(); refreshChart(); } }
+    if (cd) openInd("c:" + cd.dataset.cedit);
+    if (cx) { removeCustom(cx.dataset.cdel); refreshChart(); if ($("indPanel").classList.contains("open")) renderIndPanel(); }
+    if (e.target.closest("[data-addlib]")) { lib.open = true; lib.q = ""; openInd(); }
     const fo = e.target.closest("[data-fold]"); if (fo) { LS.set("legendFolded", fo.dataset.fold === "1"); renderLegend(); }
   });
 
@@ -2005,7 +2370,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     $("price").textContent = fp(price);
     const ch = q.price24hPcnt !== undefined ? +q.price24hPcnt * 100 : null;
     $("chg").textContent = ch === null ? "" : `${pct(ch)} en 24 h`; $("chg").className = ch === null ? "muted" : ch >= 0 ? "buy" : "sell";
-    $("trendChips").innerHTML = ["1h", "15m", "5m"].map((tf) => { const t = trendOf(S.sel, tf); return `<span class="tchip ${t}" title="Tendencia en ${tf}">${tf.toUpperCase()} <b>${TREND_ICON[t] || "·"} ${t}</b></span>`; }).join("");
+    $("trendChips").innerHTML = ["1h", "15m", "5m"].map((tf) => { const t = trendOf(S.sel, tf); return `<span class="tchip ${t}" title="Tendencia en ${tf}">${tf.toUpperCase()} <b>${TREND_ICON[t] || "·"} ${t}</b></span>`; }).join("") +
+      (S.show.sess ? (() => { const ss = sessionStatus(); return `<span class="tchip sess" title="Sesiones de mercado abiertas ahora${ss.next ? ". Próxima: " + ss.next.s.name + " en " + dur(ss.next.start - Date.now()) : ""}">Sesión <b>${ss.active.length ? ss.active.map((x) => x.name).join(" + ") : "ninguna"}</b></span>`; })() : "");
     renderLadderNow(price);
   }
   function setConn(state, detail) {
@@ -2099,6 +2465,13 @@ if (typeof module !== "undefined") module.exports = SSP;
       if (rt.onda3) parts.push(`onda 3 = ${rt.onda3.toFixed(2)}× la 1`);
       if (rt.onda4) parts.push(`onda 4 retrocedió ${(rt.onda4 * 100).toFixed(0)}% de la 3`);
       row("info", "Ondas de Elliott", ew.direction, `${ew.status}.${parts.length ? " " + parts.join(", ") + "." : ""}${ew.invalidation ? ` El conteo se anula en ${fp(ew.invalidation.price)} (${ew.invalidation.text}).` : ""}`);
+    }
+    {
+      const ss = sessionStatus(), now = Date.now();
+      const act = ss.ends.map((e) => `${e.s.name} (cierra en ${dur(e.end - now)}, ${fmtTime(e.end)})`);
+      const over = ss.active.length > 1 ? " Solapamiento de sesiones: suele haber más volumen y movimientos más limpios." : "";
+      row(ss.active.length ? "info" : "", "Sesión de mercado", ss.active.length ? ss.active.map((x) => x.name).join(" + ") : "fuera de sesión",
+        `${act.length ? "Abierta: " + act.join(", ") + "." : "Ninguna de las sesiones activadas está abierta: suele haber menos volumen."}${over}${ss.next ? ` Próxima apertura: ${ss.next.s.name} en ${dur(ss.next.start - now)} (${fmtTime(ss.next.start)}).` : ""}`);
     }
     box.innerHTML = rows.join("") + '<p class="foot" style="margin-top:8px">Lecturas de la temporalidad del gráfico. El conteo de Elliott es automático y objetivo, pero es una interpretación entre varias posibles.</p>';
   }
@@ -2273,10 +2646,12 @@ if (typeof module !== "undefined") module.exports = SSP;
       params: [["fib.fast_speed", "Tendencia rápida desde (ATR por vela)", "dec"], ["fib.min_leg_atr", "Impulso mínimo (×ATR)", "dec"]] },
     { key: "ew", name: "Ondas de Elliott", desc: "Conteo automático 1-2-3-4-5 y A-B-C que respeta las tres reglas de Elliott. Más sensibilidad = ondas más grandes.",
       params: [["ind.ew_depth", "Sensibilidad (velas por lado)", "int"], ["ind.ew_min_atr", "Onda 1 mínima (×ATR)", "dec"]] },
+    { key: "sess", name: "Sesiones de mercado", desc: "Cajas con el rango de Sídney, Tokio, Londres y Nueva York (hora local de cada plaza; el horario de verano se aplica solo). Se dibujan en temporalidades hasta 1 h. Activa o desactiva cada sesión en Estilo.",
+      params: SSP.SESSIONS.flatMap((x) => [[`sess.${x.key}_start`, `${x.name}: apertura`, "time"], [`sess.${x.key}_end`, `${x.name}: cierre`, "time"]]) },
     { key: "sig", name: "Señales y niveles", noSwitch: true, desc: "Flechas de las señales confirmadas y líneas de entrada, stop loss y objetivos.", params: [] },
   ];
-  const OBJ = () => ({ ind: IND, cfg: CFG, fib: FIBP });
-  const DEF = { ind: SSP.DEFAULT_IND, cfg: { adxKey: 23 }, fib: SSP.DEFAULT_FIB };
+  const OBJ = () => ({ ind: IND, cfg: CFG, fib: FIBP, sess: SESSP });
+  const DEF = { ind: SSP.DEFAULT_IND, cfg: { adxKey: 23 }, fib: SSP.DEFAULT_FIB, sess: SESS_DEF };
   const getP = (path) => { const [g, k] = path.split("."); return OBJ()[g][k]; };
   const indOpen = { key: null, tab: {} };
   function paramsHtml(d) {
@@ -2284,6 +2659,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     return `<div class="grid3">${d.params.map(([path, label, type]) => {
       const v = getP(path);
       if (type === "bool") return `<label class="f chk"><input type="checkbox" data-p="${path}" data-t="bool" ${v ? "checked" : ""}>${label}</label>`;
+      if (type === "time") return `<label class="f">${label}<input type="time" data-p="${path}" data-t="time" value="${v}"></label>`;
       return `<label class="f">${label}<input data-p="${path}" data-t="${type}" inputmode="decimal" value="${type === "pct" ? +(v * 100).toFixed(2) : v}"></label>`;
     }).join("")}</div><p class="faint" style="margin:8px 0 0;font-size:12px">Los parámetros se aplican con “Aplicar cambios”.</p>`;
   }
@@ -2298,8 +2674,46 @@ if (typeof module !== "undefined") module.exports = SSP;
       return `<div class="srow"><label>${chk}<span>${label}</span></label>${col}${wid}</div>`;
     }).join("") + '<p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios de estilo se ven al instante.</p>';
   }
+  // ---- biblioteca y secciones de los indicadores agregados
+  const lib = { open: false, q: "" };
+  const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  function libListHtml() {
+    const q = norm(lib.q.trim());
+    const items = Object.entries(CDEF).filter(([k, D]) => !q || norm(D.name + " " + k + " " + D.desc).includes(q));
+    if (!items.length) return '<p class="faint">Ningún indicador coincide con la búsqueda.</p>';
+    const grp = (pane, title) => { const g = items.filter(([, D]) => (D.pane === "price") === (pane === "price")); return g.length ? `<h5 class="libh">${title}</h5>` + g.map(([k, D]) =>
+      `<button class="libitem" data-addc="${k}"><b>${D.name}</b><span>${D.desc}</span><i aria-hidden="true">＋</i></button>`).join("") : ""; };
+    return grp("price", "Sobre el gráfico de precio") + grp("new", "En un panel aparte");
+  }
+  function custParamsHtml(x) {
+    const D = CDEF[x.type], p = cParams(x);
+    if (!D.params.length) return '<p class="faint" style="margin:6px 0">Este indicador no tiene parámetros.</p>';
+    return `<div class="grid3">${D.params.map(([k, label, type]) => type === "src"
+      ? `<label class="f">${label}<select data-cp="${x.id}|${k}" data-t="src">${SSP.SRC_OPTS.map((o) => `<option ${p[k] === o ? "selected" : ""}>${o}</option>`).join("")}</select></label>`
+      : `<label class="f">${label}<input data-cp="${x.id}|${k}" data-t="${type}" inputmode="decimal" value="${p[k]}"></label>`).join("")}</div><p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios se aplican al salir del campo.</p>`;
+  }
+  function custStyleHtml(x) {
+    return CDEF[x.type].lines.map(([k, label, kind, def]) => {
+      const cur = cSt(x, k);
+      const wid = "w" in def ? `<select data-cs="${x.id}|${k}" data-sp="w" aria-label="Grosor de ${label}">${[1, 2, 3, 4].map((w) => `<option value="${w}" ${cur.w === w ? "selected" : ""}>${w} px</option>`).join("")}</select>` : "";
+      return `<div class="srow"><label><input type="checkbox" data-cs="${x.id}|${k}" data-sp="v" ${cur.v !== false ? "checked" : ""} aria-label="Mostrar ${label}"><span>${label}</span></label><input type="color" data-cs="${x.id}|${k}" data-sp="c" value="${cur.c}" aria-label="Color de ${label}">${wid}</div>`;
+    }).join("") + '<p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios de estilo se ven al instante.</p>';
+  }
+  function custSectionHtml(x) {
+    const D = CDEF[x.type], key = "c:" + x.id, open = indOpen.key === key, tab = indOpen.tab[key] || (D.params.length ? "params" : "style"), nm = esc(D.short(cParams(x)));
+    return `<section class="ind${open ? " open" : ""}" id="ind-${key}"><div class="ind-hd">` +
+      `<button class="ind-name" data-open="${key}" aria-expanded="${open}"><span class="chev">${open ? "▾" : "▸"}</span><span class="sw" style="background:${cMainColor(x)}"></span>${nm}</button>` +
+      `<label class="switch" title="Mostrar en el gráfico"><input type="checkbox" data-cshow="${x.id}" ${x.v !== false ? "checked" : ""} aria-label="Mostrar ${nm}"><span></span></label></div>` +
+      (open ? `<p>${D.name}. ${D.desc}</p><div class="seg itabs"><button data-itab="params" class="${tab === "params" ? "on" : ""}" data-k="${key}">Parámetros</button><button data-itab="style" class="${tab === "style" ? "on" : ""}" data-k="${key}">Estilo</button></div>` +
+        `<div class="ibody">${tab === "params" ? custParamsHtml(x) : custStyleHtml(x)}</div><div class="rowbtns"><button data-creset="${x.id}" class="resetbtn">Valores por defecto</button><button data-cdel="${x.id}" class="resetbtn danger">Quitar del gráfico</button></div>` : "") + `</section>`;
+  }
   function renderIndPanel() {
-    $("indBody").innerHTML = '<p class="muted" style="margin:10px 0 4px">Toca un indicador para ajustar sus parámetros y su estilo. Los cambios en Bollinger, SQZMOM, estructura y ATR también cambian las señales de las estrategias.</p>' +
+    const libHtml = lib.open
+      ? `<div class="lib"><div class="libtop"><input id="libQ" type="search" placeholder="Buscar indicador (RSI, MACD, EMA…)" value="${esc(lib.q)}" aria-label="Buscar indicador"><button data-libclose="1" class="resetbtn">Cerrar</button></div><div id="libList">${libListHtml()}</div></div>`
+      : `<button class="addbig" data-addlib="1">＋ Agregar indicador</button>`;
+    $("indBody").innerHTML = libHtml +
+      (CUST.length ? `<h5 class="libh">Tus indicadores (${CUST.length})</h5>` + CUST.map(custSectionHtml).join("") : "") +
+      '<h5 class="libh">Indicadores de la app</h5><p class="muted" style="margin:4px 0">Toca un indicador para ajustar sus parámetros y su estilo. Los cambios en Bollinger, SQZMOM, estructura y ATR también cambian las señales de las estrategias.</p>' +
       IND_DEF.map((d) => {
         const open = indOpen.key === d.key, tab = indOpen.tab[d.key] || (d.params.length ? "params" : "style");
         return `<section class="ind${open ? " open" : ""}" id="ind-${d.key}"><div class="ind-hd">` +
@@ -2331,13 +2745,41 @@ if (typeof module !== "undefined") module.exports = SSP;
     LS.set("style", STY);
     clearTimeout(styleT); styleT = setTimeout(() => { renderLegend(); refreshChart(); }, 40);
   }
-  $("indBody").addEventListener("input", onStyleInput);
+  $("indBody").addEventListener("input", (e) => {
+    if (e.target.id === "libQ") { lib.q = e.target.value; $("libList").innerHTML = libListHtml(); return; }
+    const cs = e.target.closest("[data-cs]");
+    if (cs) {
+      const [id, k] = cs.dataset.cs.split("|"), x = CUST.find((y) => y.id === id), prop = cs.dataset.sp; if (!x) return;
+      x.style = x.style || {}; x.style[k] = Object.assign({}, x.style[k] || {}, { [prop]: prop === "v" ? cs.checked : prop === "w" ? +cs.value : cs.value });
+      saveCust(); clearTimeout(styleT); styleT = setTimeout(() => { renderLegend(); refreshChart(); }, 40); return;
+    }
+    onStyleInput(e);
+  });
   $("indBody").addEventListener("change", (e) => {
     onStyleInput(e);
     const sw = e.target.closest("[data-show]");
     if (sw) { S.show[sw.dataset.show] = sw.checked; LS.set("show", S.show); refreshChart(); }
+    const cs = e.target.closest("[data-cshow]");
+    if (cs) { const x = CUST.find((y) => y.id === cs.dataset.cshow); if (x) { x.v = cs.checked; saveCust(); refreshChart(); } }
+    const cp = e.target.closest("[data-cp]");
+    if (cp) {
+      const [id, k] = cp.dataset.cp.split("|"), x = CUST.find((y) => y.id === id), t = cp.dataset.t; if (!x) return;
+      let v = cp.value;
+      if (t !== "src") { v = parseFloat(String(v).replace(",", ".")); if (Number.isNaN(v)) { cp.value = cParams(x)[k]; return; } if (t === "int") v = Math.max(1, Math.min(1000, Math.round(v))); }
+      x.params = Object.assign({}, x.params, { [k]: v }); cp.value = v; saveCust();
+      const nm = $(`ind-c:${id}`)?.querySelector(".ind-name"); if (nm) nm.lastChild.textContent = CDEF[x.type].short(cParams(x));
+      refreshChart();
+    }
   });
   $("indBody").addEventListener("click", (e) => {
+    if (e.target.closest("[data-addlib]")) { lib.open = true; lib.q = ""; renderIndPanel(); $("libQ")?.focus(); return; }
+    if (e.target.closest("[data-libclose]")) { lib.open = false; renderIndPanel(); return; }
+    const ad = e.target.closest("[data-addc]");
+    if (ad) { const x = addCustom(ad.dataset.addc); lib.open = false; indOpen.key = "c:" + x.id; renderIndPanel(); refreshChart(); toast(`${CDEF[x.type].name} agregado`, "info"); $(`ind-c:${x.id}`)?.scrollIntoView({ block: "nearest" }); return; }
+    const del = e.target.closest("[data-cdel]");
+    if (del) { const x = CUST.find((y) => y.id === del.dataset.cdel); removeCustom(del.dataset.cdel); renderIndPanel(); refreshChart(); if (x) toast(`${CDEF[x.type].name} quitado`, "info"); return; }
+    const cr = e.target.closest("[data-creset]");
+    if (cr) { const x = CUST.find((y) => y.id === cr.dataset.creset); if (x) { x.params = {}; x.style = {}; saveCust(); renderIndPanel(); refreshChart(); } return; }
     const op = e.target.closest("[data-open]");
     if (op) { captureParams(); indOpen.key = indOpen.key === op.dataset.open ? null : op.dataset.open; renderIndPanel(); restoreParams(); return; }
     const it = e.target.closest("[data-itab]");
@@ -2358,6 +2800,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       for (const [path, raw] of Object.entries(pendingParams)) {
         const [g, k] = path.split("."), obj = OBJ()[g], def = IND_DEF.flatMap((d) => d.params).find((x) => x[0] === path), t = def ? def[2] : "dec";
         if (t === "bool") { obj[k] = !!raw; continue; }
+        if (t === "time") { const m = /^(\d{1,2}):(\d{2})/.exec(String(raw)); if (m && +m[1] < 24 && +m[2] < 60) obj[k] = `${m[1].padStart(2, "0")}:${m[2]}`; continue; }
         let n = parseFloat(String(raw).replace(",", "."));
         if (Number.isNaN(n)) continue;
         if (t === "int") n = Math.max(1, Math.round(n));
@@ -2366,14 +2809,14 @@ if (typeof module !== "undefined") module.exports = SSP;
       }
     }
     for (const k of Object.keys(pendingParams)) delete pendingParams[k];
-    LS.set("ind", IND); LS.set("cfg", CFG); LS.set("fib", FIBP);
+    LS.set("ind", IND); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("sess", SESSP);
     engine2.strategy.p = Object.assign({}, FIBP);
     if (JSON.stringify(IND) !== before) for (const key of Object.keys(S.closed)) { const [s, tf] = key.split("|"); reanalyze(s, tf); }
     refreshChart();
   }
   $("indApply").onclick = () => { applyIndicators(); closeInd(); toast("Indicadores actualizados", "info"); };
   $("indReset").onclick = () => {
-    Object.assign(IND, SSP.DEFAULT_IND); CFG.adxKey = 23; FIBP.fast_speed = SSP.DEFAULT_FIB.fast_speed; FIBP.min_leg_atr = SSP.DEFAULT_FIB.min_leg_atr;
+    Object.assign(IND, SSP.DEFAULT_IND); Object.assign(SESSP, SESS_DEF); CFG.adxKey = 23; FIBP.fast_speed = SSP.DEFAULT_FIB.fast_speed; FIBP.min_leg_atr = SSP.DEFAULT_FIB.min_leg_atr;
     for (const k of Object.keys(STY)) STY[k] = Object.assign({}, STYLE_DEFAULTS[k]);
     LS.set("style", STY);
     applyIndicators(false); renderIndPanel(); renderLegend(); toast("Indicadores y colores restablecidos", "info");
@@ -2479,7 +2922,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, onKline, handleEvent, setConn };   // acceso para depuración
+  window.__ssp = { S, engine, engine2, onKline, handleEvent, setConn, chart, CUST };   // acceso para depuración
   start();
 })();
 
