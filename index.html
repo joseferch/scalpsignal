@@ -187,6 +187,90 @@ label.chk{display:flex;gap:6px;align-items:center;margin-top:18px}
 .libitem:hover{background:rgba(98,168,255,.07)}
 .legend .addind{border:1px dashed var(--rule2);background:rgba(14,21,34,.8);border-radius:999px;padding:2px 9px;color:var(--info)}
 .tchip.sess b{color:var(--info)}
+
+/* ---- operar en Bybit ---- */
+@media(min-width:1100px){aside.side{grid-column:2;grid-row:1 / span 2}}
+@media(min-width:1100px){main:has(.dock:not([hidden])) .chartwrap{height:calc(100vh - 300px)!important}}
+.tr-intro h3{margin:4px 0 6px;font-size:16px}
+.tr-intro p{color:var(--ink2);font-size:13px;margin:0 0 10px}
+.tr-locked{display:flex;flex-direction:column;gap:8px;border:1px solid var(--rule);border-radius:12px;padding:10px;background:var(--night)}
+.tr-acct{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:12.5px;color:var(--ink2);padding:8px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--night);margin-bottom:10px}
+.tr-acct b{color:var(--ink)}
+.tr-acct .envb{font-weight:700;font-size:11px;letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:rgba(98,168,255,.15);color:var(--info)}
+.tr-acct.real{border-color:rgba(255,97,112,.5)}
+.tr-acct.real .envb{background:rgba(255,97,112,.18);color:var(--sell)}
+.tr-acct .mini{margin-left:auto}
+.dotw{width:8px;height:8px;border-radius:50%;background:var(--ink3);display:inline-block}
+.dotw.ok{background:var(--buy);box-shadow:0 0 0 3px rgba(47,211,160,.15)}
+button.mini{padding:4px 9px;font-size:12px;border-radius:8px}
+button.mini.danger,.danger{color:var(--sell)}
+.tr-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
+@media(max-width:420px){.tr-grid{grid-template-columns:1fr}}
+.tr-form{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tr-form label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+.tr-form label.chk{margin-top:0;font-size:12.5px}
+.tr-row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.tr-types{display:flex}.tr-types button{flex:1;padding:6px 4px;font-size:12.5px}
+.tr-types.sm button{padding:4px;font-size:12px}
+.inl{display:flex;gap:6px}.inl input{flex:1;min-width:0}.inl select{width:auto;max-width:48%}
+.tr-pcts{display:flex;gap:4px}.tr-pcts button{flex:1;padding:4px 0;font-size:11.5px}
+.tr-calc{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--ink3)}
+.tr-calc b{color:var(--ink2);font-weight:600}
+.tr-mk{margin:0;font-size:12px}
+.tr-tpsl{gap:6px 8px}.tr-est{grid-column:1/-1;font-size:11.5px}
+.tr-opts{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.tr-opts select{width:auto;padding:3px 6px}
+.tr-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+.bbuy,.bsell{border:0;font-weight:700;padding:11px 6px;border-radius:10px;color:#06121d}
+.bbuy{background:var(--buy)}.bsell{background:var(--sell)}
+.bbuy:hover,.bsell:hover{filter:brightness(1.08)}
+.bbuy.hint,.bsell.hint{box-shadow:0 0 0 3px rgba(240,199,94,.6)}
+.tr-warn{margin:0;color:var(--sell);font-size:12px;font-weight:600}
+.tr-book{font-size:11.5px;min-width:0}
+.tr-bk-hd{display:flex;justify-content:space-between;color:var(--ink3);padding:0 4px 3px}
+.bk{position:relative;display:flex;justify-content:space-between;gap:6px;padding:1.5px 4px;cursor:pointer;font-variant-numeric:tabular-nums}
+.bk i{position:absolute;right:0;top:0;bottom:0;opacity:.16}
+.bk.a span:first-of-type{color:var(--sell)}.bk.a i{background:var(--sell)}
+.bk.b span:first-of-type{color:var(--buy)}.bk.b i{background:var(--buy)}
+.bk span{position:relative}
+.bk-mid{display:flex;justify-content:space-between;align-items:baseline;padding:5px 4px;border-block:1px solid var(--rule);margin:2px 0;font-size:13px}
+.tr-help{font-size:12.5px;color:var(--ink2);margin:6px 0}.tr-help ol{padding-left:18px;margin:6px 0}.tr-help li{margin:3px 0}
+.tdlg{max-width:440px;width:calc(100% - 32px)}
+.tdlg h2{margin:0 0 10px;font-size:17px}
+.tdlg .dlg-body{display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.tdlg .dlg-body p{margin:0}
+.tdlg label.f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--ink2)}
+.tdlg .dlg-ft{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.tdlg .dlg-ft button{min-width:110px}
+.tdlg .dlg-err{margin:8px 0 0;font-size:12.5px}
+.tr-sum{width:100%;border-collapse:collapse;font-size:13px}
+.tr-sum td{padding:5px 2px;border-bottom:1px dashed var(--rule)}
+.tr-sum td:first-child{color:var(--ink3);width:38%}
+.dock{border:1px solid var(--rule);border-radius:var(--r-lg);background:var(--deck);min-width:0;overflow:hidden}
+.dock-off{padding:10px 14px;color:var(--ink2);font-size:13px}
+.dock-tabs{display:flex;overflow-x:auto;gap:2px;border-bottom:1px solid var(--rule);padding:4px 6px 0;scrollbar-width:none}
+.dock-tabs button{flex:none;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 10px;color:var(--ink2);font-size:13px;white-space:nowrap}
+.dock-tabs button.on{color:var(--ink);border-bottom-color:var(--info)}
+.dock-tabs .badge{font-size:11px}
+.dock-body{padding:10px;max-height:340px;overflow:auto}
+.dock-empty{margin:6px 4px}
+.dock-tools{display:flex;justify-content:flex-end;margin-bottom:6px}
+.dock-sum{margin:0 0 6px;font-size:13px;color:var(--ink2)}
+.pcard,.ocard{border:1px solid var(--rule);border-radius:10px;padding:9px 10px;margin-bottom:8px;background:var(--night)}
+.pcard.long{border-left:3px solid var(--buy)}.pcard.short{border-left:3px solid var(--sell)}
+.pc-hd{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px}
+.pc-pnl{margin-left:auto;font-size:14px}.pc-pnl small{font-weight:500}
+.tag{font-size:11.5px;font-weight:700;padding:1px 7px;border-radius:6px;background:rgba(255,255,255,.05)}
+button.link{background:none;border:0;padding:0;font-weight:700;color:var(--ink);font-size:13.5px}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px 12px;margin:8px 0;font-size:12px}
+.pc-grid.wide{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:0}
+.pc-grid div{display:flex;flex-direction:column}.pc-grid span{color:var(--ink3);font-size:11px}.pc-grid b{font-weight:600;font-variant-numeric:tabular-nums}
+.pc-grid b.warn{color:#ff9f5a}
+.pc-act{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.tscroll{overflow-x:auto}
+.dtab{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.dtab th{text-align:left;color:var(--ink3);font-weight:500;padding:5px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.dtab td{padding:6px 8px;border-bottom:1px dashed var(--rule);white-space:nowrap}
 @keyframes flash{0%{background:var(--info-bg)}100%{background:transparent}}
 .switch{position:relative;width:38px;height:22px;flex:none}
 .switch input{opacity:0;width:0;height:0;position:absolute}
@@ -237,15 +321,18 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <div id="chart"></div><canvas id="overlay"></canvas>
     <div id="chartMsg">Conectando con Bybit…</div>
   </section>
+  <section id="dock" class="dock" hidden></section>
   <aside class="side">
     <section id="signalCard" class="signal" aria-live="polite"></section>
     <div class="tabs" role="tablist">
       <button data-tab="mercado" class="on">Mercado</button>
+      <button data-tab="operar">Operar</button>
       <button data-tab="pares">Pares <span id="wCount" class="faint"></span></button>
       <button data-tab="historial">Historial</button>
       <button data-tab="riesgo">Riesgo</button>
     </div>
     <section class="panel" id="tab-mercado"></section>
+    <section class="panel" id="tab-operar" hidden></section>
     <section class="panel" id="tab-pares" hidden>
       <div class="pairs-tools">
         <input id="search" class="grow" placeholder="Agregar par de Bybit (p. ej. DOGE)" autocomplete="off">
@@ -267,7 +354,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
       <button id="wakeBtn" title="Evita que la pantalla se apague (útil en Android)">Pantalla encendida</button>
       <button id="tzBtn">Hora de Costa Rica</button>
     </div>
-    <p class="foot">Análisis y alertas con datos públicos de Bybit. No ejecuta órdenes y ninguna señal garantiza ganancias; las operaciones son simuladas. Solo analiza mientras esta página está abierta. <span id="clock"></span></p>
+    <p class="foot">Análisis y alertas con datos de Bybit. Las señales y su seguimiento son simulados; solo se envían órdenes reales a Bybit cuando tú las confirmas en «Operar». Ninguna señal garantiza ganancias. Solo analiza mientras esta página está abierta. <span id="clock"></span></p>
   </aside>
 </main>
 
@@ -326,6 +413,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <button id="cfgSave" class="primary">Guardar</button>
   </div>
 </dialog>
+<dialog id="tdlg" class="tdlg"></dialog>
 <div id="toasts" aria-live="polite"></div>
 
 <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
@@ -1977,7 +2065,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   // ------------------------------------------------------------ gráfico
   const chart = (() => {
     const LC = window.LightweightCharts;
-    if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {}, info() { return {}; } }; }
+    if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {}, info() { return {}; }, setTradeLines() {} }; }
     const c = LC.createChart($("chart"), {
       autoSize: true,
       layout: { background: { type: LC.ColorType.Solid, color: COL.night }, textColor: "#8fa0b8", fontSize: 11, fontFamily: '"IBM Plex Sans", system-ui, sans-serif', panes: { separatorColor: "#22314d", enableResize: true } },
@@ -2099,6 +2187,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       dataCustom(d);
       markers.setMarkers(vis("sig.markers") ? d.markers : []);
       if (lastLevels !== undefined) setLevels(lastLevels);
+      if (lastTrade) setTradeLines(lastTrade);
       if (!keepView) c.timeScale().scrollToRealTime();
       calcProfile();
     }
@@ -2115,6 +2204,13 @@ if (typeof module !== "undefined") module.exports = SSP;
       const add = (price, color, title, style = LC.LineStyle.Dashed) => lines.push(candles.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }));
       add(lv.entry, st("sig.entry").c, `Entrada ${lv.direction}`, LC.LineStyle.Solid);
       add(lv.stop_loss, st("sig.sl").c, "SL"); add(lv.tp1, st("sig.tp").c, "TP1"); add(lv.tp2, st("sig.tp").c, "TP2"); add(lv.tp3, st("sig.tp").c, "TP3");
+    }
+    // líneas de la cuenta de Bybit (posición, liquidación, TP/SL, órdenes abiertas)
+    let tLines = [], lastTrade = null;
+    function setTradeLines(list) {
+      lastTrade = list;
+      tLines.forEach((l) => { try { candles.removePriceLine(l); } catch { /* */ } }); tLines = [];
+      for (const x of list || []) if (x.price > 0) tLines.push(candles.createPriceLine({ price: x.price, color: x.color, lineWidth: x.width || 1, lineStyle: x.dash ? LC.LineStyle.Dashed : LC.LineStyle.Solid, axisLabelVisible: true, title: x.title }));
     }
     function calcProfile() {
       profile = null;
@@ -2240,7 +2336,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       }
     }
     const info = () => ({ panes: c.panes().length, heights: c.panes().map((p) => p.getHeight()), sess: data && data.sess ? data.sess.length : -1, sess0: data && data.sess && data.sess[0], custom: cSeries.map((g) => ({ id: g.id, type: g.type, pane: g.pane, series: g.series.length, levels: g.plines.length })) });
-    return { setData, updateLive, setLevels, draw, applyTz, calcProfile, setKey, info };
+    return { setData, updateLive, setLevels, draw, applyTz, calcProfile, setKey, info, setTradeLines };
   })();
 
   function chartData(sym, tf) {
@@ -2424,7 +2520,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     html += `</div>`;
     $("signalCard").innerHTML = html;
     renderLadderNow();
-    chart.setLevels(lvSlot ? Object.assign({ direction: lvSlot.direction }, lvSlot.levels) : null);
+    S.curLevels = lvSlot ? Object.assign({ direction: lvSlot.direction, symbol: S.sel }, lvSlot.levels) : null;
+    chart.setLevels(S.curLevels);
   }
   function renderLadderNow(price) {
     const el = document.getElementById("ladderNow");
@@ -2488,7 +2585,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     const b = e.target.closest("[data-tab]"); if (!b) return;
     S.tab = b.dataset.tab;
     document.querySelectorAll(".tabs [data-tab]").forEach((x) => x.classList.toggle("on", x === b));
-    ["mercado", "pares", "historial", "riesgo"].forEach((t) => ($(`tab-${t}`).hidden = t !== S.tab));
+    ["mercado", "operar", "pares", "historial", "riesgo"].forEach((t) => ($(`tab-${t}`).hidden = t !== S.tab));
+    window.__trade?.onTab(S.tab);
     if (S.tab === "mercado") renderMarket(); if (S.tab === "pares") renderWatch(); if (S.tab === "historial") renderHist();
   });
 
@@ -2922,8 +3020,718 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, onKline, handleEvent, setConn, chart, CUST };   // acceso para depuración
+  window.__ssp = { S, engine, engine2, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep };   // acceso para depuración
   start();
+})();
+
+</script>
+<script>
+/* ScalpSignal Pro · Operar en Bybit (manual, desde el navegador)
+   - Firma HMAC-SHA256 de la API v5 con WebCrypto; la clave secreta nunca sale del teléfono.
+   - La clave se guarda cifrada (AES-GCM, clave derivada del PIN con PBKDF2) o solo en memoria.
+   - Cada orden se confirma antes de enviarse. Nada se envía de forma automática. */
+(() => {
+  const A = window.__ssp;
+  if (!A) return;
+  const { S, LS, toast, esc } = A;
+  const $ = (id) => document.getElementById(id);
+  const ENV = {
+    demo: { name: "Demo de Bybit", short: "DEMO", rest: "https://api-demo.bybit.com", ws: "wss://stream-demo.bybit.com/v5/private", pub: "wss://stream.bybit.com/v5/public/linear", real: false },
+    testnet: { name: "Testnet", short: "TESTNET", rest: "https://api-testnet.bybit.com", ws: "wss://stream-testnet.bybit.com/v5/private", pub: "wss://stream-testnet.bybit.com/v5/public/linear", real: false },
+    real: { name: "Cuenta real", short: "REAL", rest: "https://api.bybit.com", ws: "wss://stream.bybit.com/v5/private", pub: "wss://stream.bybit.com/v5/public/linear", real: true },
+  };
+  const T = {
+    env: LS.get("trade:env", "demo"), key: "", secret: "", hkey: null, offset: 0, on: false, busy: false,
+    wallet: null, acct: null, positions: [], orders: [], hist: [], execs: [], pnl: [], instr: {}, hedge: {},
+    dock: LS.get("trade:dock", "pos"), form: Object.assign({ type: "Limit", unit: "base", tpsl: false, reduce: false, post: false, tif: "GTC", trigBy: "LastPrice", condType: "Market", tpBy: "LastPrice" }, LS.get("trade:form", {})),
+    confirm: LS.get("trade:confirm", true), ws: null, pub: null, book: { b: new Map(), a: new Map(), sym: "" }, trades: [], pubSubs: new Set(), lastSel: "",
+  };
+  const E = () => ENV[T.env] || ENV.demo;
+  const cred = () => LS.get("trade:cred", null);   // {env, key, salt, iv, ct}
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  const hex = (buf) => [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, "0")).join("");
+  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const num = (v) => (v === undefined || v === null || v === "" ? NaN : +v);
+  const f2 = (v, d = 2) => (Number.isFinite(v) ? v.toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—");
+  const sgn = (v, d = 2) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + f2(v, d) : "—");
+  const cls = (v) => (v > 0 ? "buy" : v < 0 ? "sell" : "");
+  const when = (ms) => (ms ? A.fmtTime(+ms) : "—");
+
+  // ------------------------------------------------------------ cifrado de la clave con el PIN
+  async function pinKey(pin, salt) {
+    const base = await crypto.subtle.importKey("raw", enc.encode(pin), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  }
+  async function saveCred(env, key, secret, pin) {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await pinKey(pin, salt), enc.encode(JSON.stringify({ key, secret })));
+    LS.set("trade:cred", { env, key: key.slice(0, 4) + "…" + key.slice(-3), salt: b64(salt), iv: b64(iv), ct: b64(ct) });
+  }
+  async function openCred(pin) {
+    const c = cred(); if (!c) throw new Error("No hay ninguna clave guardada.");
+    try {
+      const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(c.iv) }, await pinKey(pin, unb64(c.salt)), unb64(c.ct));
+      return Object.assign({ env: c.env }, JSON.parse(dec.decode(pt)));
+    } catch { throw new Error("PIN incorrecto."); }
+  }
+
+  // ------------------------------------------------------------ API v5 firmada
+  const ERR = {
+    10002: "La hora del teléfono no coincide con la de Bybit. Revisa la hora automática del teléfono.",
+    10003: "La clave API no es válida para este entorno (¿es de Demo, Testnet o de la cuenta real?).",
+    10004: "Firma incorrecta: revisa que la clave secreta esté completa.",
+    10005: "La clave API no tiene permiso para esta acción. Activa «Contratos: Órdenes y Posiciones».",
+    10010: "Tu IP no está autorizada para esta clave API.",
+    33004: "La clave API caducó. Crea una nueva en Bybit.",
+    110007: "Saldo disponible insuficiente.",
+    110012: "Saldo disponible insuficiente.",
+    110017: "«Solo reducir»: la orden aumentaría la posición o no hay posición que reducir.",
+    110025: "El modo de posición no coincide (unidireccional / cobertura).",
+    110094: "La orden no alcanza el valor mínimo permitido.",
+    110013: "El apalancamiento no es válido para este par.",
+    170131: "Saldo insuficiente.",
+  };
+  function errText(j) { return ERR[j.retCode] ? `${ERR[j.retCode]} (código ${j.retCode})` : `${j.retMsg || "Error"} (código ${j.retCode})`; }
+  async function api(method, path, params = {}, { auth = true, ok = [] } = {}) {
+    const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+    const qs = method === "GET" ? new URLSearchParams(clean).toString() : "", body = method === "POST" ? JSON.stringify(clean) : "";
+    const headers = {};
+    if (auth) {
+      if (!T.hkey) throw new Error("La cuenta no está conectada.");
+      const ts = String(Math.round(Date.now() + T.offset)), rw = "10000";
+      const sig = hex(await crypto.subtle.sign("HMAC", T.hkey, enc.encode(ts + T.key + rw + (method === "GET" ? qs : body))));
+      Object.assign(headers, { "X-BAPI-API-KEY": T.key, "X-BAPI-TIMESTAMP": ts, "X-BAPI-RECV-WINDOW": rw, "X-BAPI-SIGN": sig });
+    }
+    if (method === "POST") headers["Content-Type"] = "application/json";
+    let r;
+    try { r = await fetch(E().rest + path + (qs ? "?" + qs : ""), { method, headers, body: method === "POST" ? body : undefined }); }
+    catch { throw new Error("No hay conexión con Bybit. Revisa tu internet."); }
+    let j = null; try { j = await r.json(); } catch { /* cuerpo vacío */ }
+    if (!j) throw new Error(r.status === 401 ? "Bybit rechazó la clave API (401). Revisa la clave, el secreto y el entorno elegido." : r.status === 403 ? "Bybit bloqueó la conexión (403): no se permite desde esta ubicación." : `Bybit respondió HTTP ${r.status}.`);
+    if (j.retCode !== 0 && !ok.includes(j.retCode)) throw Object.assign(new Error(errText(j)), { code: j.retCode });
+    return j.result || {};
+  }
+  async function syncTime() {
+    const t0 = Date.now(), r = await api("GET", "/v5/market/time", {}, { auth: false }), t1 = Date.now();
+    const server = r.timeNano ? +r.timeNano / 1e6 : +r.timeSecond * 1000;
+    T.offset = server - (t0 + t1) / 2;
+  }
+
+  // ------------------------------------------------------------ instrumento: pasos de precio y cantidad
+  const dp = (step) => { const s = String(step); return s.includes("e-") ? +s.split("e-")[1] : (s.split(".")[1] || "").replace(/0+$/, "").length; };
+  async function instr(sym) {
+    if (T.instr[sym]) return T.instr[sym];
+    const r = await api("GET", "/v5/market/instruments-info", { category: "linear", symbol: sym }, { auth: false });
+    const x = (r.list || [])[0]; if (!x) throw new Error(`${sym} no existe en ${E().name}.`);
+    const L = x.lotSizeFilter || {}, P = x.priceFilter || {}, V = x.leverageFilter || {};
+    return (T.instr[sym] = { sym, tick: +P.tickSize, qtyStep: +L.qtyStep, minQty: +L.minOrderQty, maxQty: +L.maxOrderQty, maxMkt: +(L.maxMktOrderQty || L.maxOrderQty), minNotional: +(L.minNotionalValue || 0), maxLev: +V.maxLeverage || 100, levStep: +V.leverageStep || 0.01, base: x.baseCoin || sym.replace(/USDT$/, ""), pdp: dp(P.tickSize), qdp: dp(L.qtyStep) });
+  }
+  const rp = (I, p) => (I && Number.isFinite(p) ? (Math.round(p / I.tick) * I.tick).toFixed(I.pdp) : "");
+  const rq = (I, q) => (I && Number.isFinite(q) ? (Math.floor(q / I.qtyStep + 1e-9) * I.qtyStep).toFixed(I.qdp) : "");
+  const fpx = (sym, p) => { const I = T.instr[sym]; return Number.isFinite(+p) && +p > 0 ? (I ? (+p).toFixed(I.pdp) : A.fp(+p)) : "—"; };
+
+  // ------------------------------------------------------------ datos de la cuenta
+  async function loadWallet() {
+    let r;
+    try { r = await api("GET", "/v5/account/wallet-balance", { accountType: "UNIFIED" }); }
+    catch (e) { if (e.code === 10001 || e.code === 3400002) r = await api("GET", "/v5/account/wallet-balance", { accountType: "CONTRACT" }); else throw e; }
+    const w = (r.list || [])[0] || {}, usdt = (w.coin || []).find((c) => c.coin === "USDT") || {};
+    T.wallet = { equity: num(w.totalEquity ?? usdt.equity), avail: num(w.totalAvailableBalance ?? usdt.availableToWithdraw), balance: num(w.totalWalletBalance ?? usdt.walletBalance), upl: num(w.totalPerpUPL ?? usdt.unrealisedPnl), im: num(w.totalInitialMargin ?? usdt.totalPositionIM), mm: num(w.totalMaintenanceMargin ?? usdt.totalPositionMM), coins: (w.coin || []).filter((c) => +c.equity !== 0 || c.coin === "USDT"), type: w.accountType || "UNIFIED" };
+  }
+  async function loadPositions() {
+    const r = await api("GET", "/v5/position/list", { category: "linear", settleCoin: "USDT", limit: 200 });
+    T.positions = (r.list || []).filter((p) => +p.size > 0);
+  }
+  async function loadOrders() {
+    const r = await api("GET", "/v5/order/realtime", { category: "linear", settleCoin: "USDT", limit: 50 });
+    T.orders = r.list || [];
+  }
+  async function loadHistory() {
+    const [h, x, p] = await Promise.all([
+      api("GET", "/v5/order/history", { category: "linear", limit: 50 }).catch(() => ({ list: [] })),
+      api("GET", "/v5/execution/list", { category: "linear", limit: 50 }).catch(() => ({ list: [] })),
+      api("GET", "/v5/position/closed-pnl", { category: "linear", limit: 50 }).catch(() => ({ list: [] })),
+    ]);
+    T.hist = h.list || []; T.execs = x.list || []; T.pnl = p.list || [];
+  }
+  async function loadMode(sym) {   // modo de posición del par: unidireccional (idx 0) o cobertura (1 y 2)
+    try { const r = await api("GET", "/v5/position/list", { category: "linear", symbol: sym }); T.hedge[sym] = (r.list || []).some((p) => +p.positionIdx > 0); T.levOf = T.levOf || {}; const p0 = (r.list || [])[0]; if (p0) T.levOf[sym] = +p0.leverage; } catch { /* sin datos */ }
+  }
+  async function refreshAll(withHist = true) {
+    await Promise.all([loadWallet(), loadPositions(), loadOrders(), withHist ? loadHistory() : null]);
+    try { T.acct = await api("GET", "/v5/account/info"); } catch { /* opcional */ }
+    renderAll();
+  }
+
+  // ------------------------------------------------------------ conexión
+  async function connect(c, { save, pin } = {}) {
+    T.busy = true; renderTrade();
+    try {
+      T.env = c.env; LS.set("trade:env", c.env);
+      T.key = c.key.trim(); T.secret = c.secret.trim();
+      T.hkey = await crypto.subtle.importKey("raw", enc.encode(T.secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      await syncTime();
+      await loadWallet();                     // prueba de la clave
+      if (save && pin) await saveCred(c.env, T.key, T.secret, pin);
+      T.on = true;
+      await refreshAll();
+      await instr(S.sel).catch(() => null); await loadMode(S.sel);
+      openPrivate(); openPublic();
+      clearInterval(T.poll); T.poll = setInterval(() => { if (T.on) refreshAll(false).catch(() => null); }, 30000);
+      clearInterval(T.histPoll); T.histPoll = setInterval(() => { if (T.on && T.dock !== "pos") loadHistory().then(renderDock).catch(() => null); }, 60000);
+      toast(`Cuenta conectada · ${E().name}`, "info");
+      return true;
+    } catch (e) {
+      T.on = false; T.hkey = null; T.secret = "";
+      throw e;
+    } finally { T.busy = false; renderTrade(); renderAll(); }
+  }
+  function disconnect(forget) {
+    T.on = false; T.hkey = null; T.key = ""; T.secret = "";
+    try { T.ws && T.ws.close(); } catch { /* */ } T.ws = null;
+    clearInterval(T.poll); clearInterval(T.histPoll); clearInterval(T.ping);
+    T.wallet = null; T.positions = []; T.orders = []; T.hist = []; T.execs = []; T.pnl = [];
+    if (forget) LS.set("trade:cred", null);
+    renderAll();
+  }
+
+  // ------------------------------------------------------------ WebSocket privado (órdenes, posiciones, ejecuciones, saldo)
+  let wsBack = 1000;
+  async function openPrivate() {
+    try { T.ws && T.ws.close(); } catch { /* */ }
+    if (!T.on) return;
+    const ws = new WebSocket(E().ws); T.ws = ws;
+    ws.onopen = async () => {
+      const expires = Math.round(Date.now() + T.offset + 10000);
+      const sig = hex(await crypto.subtle.sign("HMAC", T.hkey, enc.encode("GET/realtime" + expires)));
+      ws.send(JSON.stringify({ op: "auth", args: [T.key, expires, sig] }));
+    };
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.op === "auth") {
+        if (m.success) { wsBack = 1000; ws.send(JSON.stringify({ op: "subscribe", args: ["position.linear", "order.linear", "execution.linear", "wallet"] })); T.wsOk = true; renderTrade(); }
+        else { T.wsOk = false; toast("Bybit no aceptó la conexión en vivo de la cuenta; se actualizará cada 30 s.", "info"); }
+        return;
+      }
+      if (!m.topic) return;
+      const d = m.data || [];
+      if (m.topic.startsWith("position")) { for (const p of d) { const i = T.positions.findIndex((x) => x.symbol === p.symbol && +x.positionIdx === +p.positionIdx); if (+p.size > 0) { if (i >= 0) T.positions[i] = Object.assign({}, T.positions[i], p); else T.positions.push(p); } else if (i >= 0) T.positions.splice(i, 1); } renderAll(); }
+      else if (m.topic.startsWith("order")) {
+        for (const o of d) {
+          const i = T.orders.findIndex((x) => x.orderId === o.orderId), live = ["New", "PartiallyFilled", "Untriggered", "Created"].includes(o.orderStatus);
+          if (live) { if (i >= 0) T.orders[i] = o; else T.orders.unshift(o); } else { if (i >= 0) T.orders.splice(i, 1); T.hist.unshift(o); T.hist = T.hist.slice(0, 100); }
+          if (o.orderStatus === "Rejected") toast(`Orden rechazada: ${o.rejectReason || o.symbol}`, "invalidada");
+          if (o.orderStatus === "Triggered") toast(`Se activó la orden condicional de ${o.symbol}`, "info");
+        }
+        renderAll();
+      } else if (m.topic.startsWith("execution")) {
+        for (const x of d) {
+          if (x.execType && x.execType !== "Trade") continue;
+          T.execs.unshift(x);
+          toast(`Ejecutada: ${x.side === "Buy" ? "compra" : "venta"} ${x.execQty} ${x.symbol} a ${fpx(x.symbol, x.execPrice)}`, "confirmada");
+          try { A.beep("confirmada"); } catch { /* */ }
+        }
+        T.execs = T.execs.slice(0, 100);
+        clearTimeout(T.pnlT); T.pnlT = setTimeout(() => api("GET", "/v5/position/closed-pnl", { category: "linear", limit: 50 }).then((r) => { T.pnl = r.list || []; renderDock(); }).catch(() => null), 1500);
+        renderDock();
+      } else if (m.topic === "wallet") { loadWallet().then(renderAll).catch(() => null); }
+    };
+    ws.onclose = () => { T.wsOk = false; if (T.on && T.ws === ws) { setTimeout(openPrivate, wsBack); wsBack = Math.min(30000, wsBack * 2); refreshAll(false).catch(() => null); } renderTrade(); };
+    clearInterval(T.ping); T.ping = setInterval(() => { try { ws.readyState === 1 && ws.send(JSON.stringify({ op: "ping" })); } catch { /* */ } }, 20000);
+  }
+
+  // ------------------------------------------------------------ WebSocket público: libro de órdenes, operaciones y precios de las posiciones
+  function openPublic() {
+    try { T.pub && T.pub.close(); } catch { /* */ }
+    const ws = new WebSocket(E().pub); T.pub = ws; T.pubSubs = new Set();
+    ws.onopen = () => syncPublic();
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (!m.topic) return;
+      if (m.topic.startsWith("orderbook.")) {
+        const d = m.data; if (!d || d.s !== T.book.sym) return;
+        if (m.type === "snapshot") { T.book.b = new Map(); T.book.a = new Map(); }
+        for (const [p, q] of d.b || []) +q ? T.book.b.set(p, +q) : T.book.b.delete(p);
+        for (const [p, q] of d.a || []) +q ? T.book.a.set(p, +q) : T.book.a.delete(p);
+        schedBook();
+      } else if (m.topic.startsWith("publicTrade.")) {
+        for (const t of m.data || []) if (t.s === T.book.sym) T.trades.unshift(t);
+        T.trades = T.trades.slice(0, 30); schedBook();
+      } else if (m.topic.startsWith("tickers.")) {
+        const d = m.data || {}, s = d.symbol; if (!s) return;
+        T.tick = T.tick || {}; T.tick[s] = Object.assign(T.tick[s] || {}, d);
+      }
+    };
+    ws.onclose = () => { if (T.pub === ws) setTimeout(() => { if (T.pub === ws) openPublic(); }, 3000); };
+    clearInterval(T.pubPing); T.pubPing = setInterval(() => { try { ws.readyState === 1 && ws.send(JSON.stringify({ op: "ping" })); } catch { /* */ } }, 20000);
+  }
+  function syncPublic() {
+    const ws = T.pub; if (!ws || ws.readyState !== 1) return;
+    const want = new Set();
+    if (S.tab === "operar") { want.add(`orderbook.50.${S.sel}`); want.add(`publicTrade.${S.sel}`); }
+    for (const p of T.positions) want.add(`tickers.${p.symbol}`);
+    want.add(`tickers.${S.sel}`);
+    const add = [...want].filter((x) => !T.pubSubs.has(x)), del = [...T.pubSubs].filter((x) => !want.has(x));
+    if (del.length) ws.send(JSON.stringify({ op: "unsubscribe", args: del }));
+    if (add.length) ws.send(JSON.stringify({ op: "subscribe", args: add }));
+    T.pubSubs = want;
+    if (T.book.sym !== S.sel) { T.book = { b: new Map(), a: new Map(), sym: S.sel }; T.trades = []; }
+  }
+  const markOf = (sym, fallback) => { const t = (T.tick || {})[sym], q = S.quotes[sym] || {}; return num(t?.markPrice) || num(q.markPrice) || num(t?.lastPrice) || num(q.lastPrice) || num(fallback); };
+  const lastOf = (sym) => { const t = (T.tick || {})[sym], q = S.quotes[sym] || {}; return num(t?.lastPrice) || num(q.lastPrice); };
+
+  // ------------------------------------------------------------ pestaña Operar
+  const PANEL = () => $("tab-operar");
+  function renderTrade() {
+    const box = PANEL(); if (!box) return;
+    if (T.on && $("trQty")) readForm();
+    if (!T.on) {
+      const c = cred();
+      box.innerHTML = `<div class="tr-intro">
+        <h3>Operar en Bybit</h3>
+        <p>Conecta tu cuenta con una clave API para comprar y vender perpetuos USDT desde aquí, con tu confirmación en cada orden. Empieza en la cuenta <b>Demo</b> de Bybit para probar sin dinero real.</p>
+        ${c ? `<div class="tr-locked"><span>🔒 Clave guardada · ${esc(ENV[c.env]?.name || c.env)} · ${esc(c.key)}</span>
+          <label class="f">PIN<input id="trPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Tu PIN"></label>
+          <div class="rowbtns"><button id="trUnlock" class="primary" ${T.busy ? "disabled" : ""}>${T.busy ? "Conectando…" : "Desbloquear y conectar"}</button><button id="trForget" class="resetbtn danger">Borrar clave</button></div></div>`
+        : `<button id="trSetup" class="primary" style="width:100%">Conectar cuenta de Bybit</button>`}
+        <p class="foot" style="margin-top:10px">La clave secreta se guarda solo en este dispositivo, cifrada con tu PIN, y se usa para firmar cada solicitud directamente con Bybit. Crea la clave <b>sin permiso de retiro ni de transferencia</b>.</p>
+      </div>`;
+      const u = $("trUnlock"); if (u) u.onclick = async () => { try { const k = await openCred($("trPin").value); await connect(k); } catch (e) { toast(e.message, "invalidada"); } };
+      const fg = $("trForget"); if (fg) fg.onclick = async () => { if (await ask({ title: "Borrar la clave guardada", body: "<p>Se borra la clave API de este dispositivo. Para volver a operar tendrás que pegarla de nuevo.</p>", ok: "Borrar", danger: true })) { LS.set("trade:cred", null); renderTrade(); } };
+      const st = $("trSetup"); if (st) st.onclick = setupDialog;
+      const pin = $("trPin"); if (pin) pin.onkeydown = (e) => { if (e.key === "Enter") $("trUnlock").click(); };
+      return;
+    }
+    const w = T.wallet || {}, I = T.instr[S.sel], F = T.form, sym = S.sel, lev = (T.levOf || {})[sym] || A.RISK.leverage || 10;
+    const mm = T.acct?.marginMode, mmTx = mm === "ISOLATED_MARGIN" ? "Aislado" : mm === "PORTFOLIO_MARGIN" ? "Cartera" : "Cruzado";
+    box.innerHTML = `
+      <div class="tr-acct ${E().real ? "real" : ""}">
+        <span class="envb">${E().short}</span>
+        <span>Patrimonio <b>${f2(w.equity)}</b></span><span>Disponible <b>${f2(w.avail)}</b></span>
+        <span class="${cls(w.upl)}">PnL ${sgn(w.upl)}</span>
+        <span class="dotw ${T.wsOk ? "ok" : ""}" title="${T.wsOk ? "Actualización en vivo" : "Actualización cada 30 s"}"></span>
+        <button id="trMenu" class="mini" title="Cuenta">⋯</button>
+      </div>
+      <div class="tr-grid">
+        <div class="tr-form">
+          <div class="tr-row"><button id="trLev" class="mini">${mmTx} · ${lev}x</button>${T.hedge[sym] ? '<span class="faint">cobertura</span>' : ""}<button id="trSig" class="mini" title="Rellenar con la señal actual">Usar señal</button></div>
+          <div class="seg tr-types">${[["Limit", "Límite"], ["Market", "Mercado"], ["Cond", "Condicional"]].map(([k, l]) => `<button data-ttype="${k}" class="${F.type === k ? "on" : ""}">${l}</button>`).join("")}</div>
+          ${F.type === "Cond" ? `<label class="f">Precio de activación<span class="inl"><input id="trTrig" inputmode="decimal" value="${esc(F.trig || "")}"><select id="trTrigBy">${[["LastPrice", "Último"], ["MarkPrice", "Marca"], ["IndexPrice", "Índice"]].map(([k, l]) => `<option value="${k}" ${F.trigBy === k ? "selected" : ""}>${l}</option>`).join("")}</select></span></label>
+            <div class="seg tr-types sm">${[["Market", "A mercado"], ["Limit", "Límite"]].map(([k, l]) => `<button data-ctype="${k}" class="${F.condType === k ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
+          ${F.type === "Limit" || (F.type === "Cond" && F.condType === "Limit") ? `<label class="f">Precio (USDT)<span class="inl"><input id="trPrice" inputmode="decimal" value="${esc(F.price || "")}"><button id="trLast" class="mini">Último</button></span></label>` : F.type === "Market" ? `<p class="faint tr-mk">Se ejecuta al mejor precio disponible (≈ ${fpx(sym, lastOf(sym))}).</p>` : ""}
+          <label class="f">Cantidad<span class="inl"><input id="trQty" inputmode="decimal" value="${esc(F.qty || "")}"><select id="trUnit"><option value="base" ${F.unit === "base" ? "selected" : ""}>${I ? I.base : "Moneda"}</option><option value="usdt" ${F.unit === "usdt" ? "selected" : ""}>Valor USDT</option><option value="margin" ${F.unit === "margin" ? "selected" : ""}>Margen USDT</option></select></span></label>
+          <div class="tr-pcts">${[10, 25, 50, 75, 100].map((p) => `<button data-pct="${p}">${p}%</button>`).join("")}</div>
+          <div id="trCalc" class="tr-calc"></div>
+          <label class="chk"><input type="checkbox" id="trTpsl" ${F.tpsl ? "checked" : ""} ${F.reduce ? "disabled" : ""}> TP/SL</label>
+          ${F.tpsl && !F.reduce ? `<div class="grid2 tr-tpsl"><label class="f">Take profit<input id="trTp" inputmode="decimal" value="${esc(F.tp || "")}" placeholder="Precio"></label><label class="f">Stop loss<input id="trSl" inputmode="decimal" value="${esc(F.sl || "")}" placeholder="Precio"></label>
+            <label class="f">Activar por<select id="trTpBy">${[["LastPrice", "Último"], ["MarkPrice", "Marca"], ["IndexPrice", "Índice"]].map(([k, l]) => `<option value="${k}" ${F.tpBy === k ? "selected" : ""}>${l}</option>`).join("")}</select></label><div id="trTpslEst" class="faint tr-est"></div></div>` : ""}
+          <div class="tr-opts">
+            <label class="chk"><input type="checkbox" id="trReduce" ${F.reduce ? "checked" : ""}> Solo reducir</label>
+            ${F.type === "Limit" ? `<label class="chk"><input type="checkbox" id="trPost" ${F.post ? "checked" : ""}> Post-Only</label><select id="trTif" ${F.post ? "disabled" : ""} aria-label="Vigencia">${["GTC", "IOC", "FOK"].map((t) => `<option ${F.tif === t ? "selected" : ""}>${t}</option>`).join("")}</select>` : ""}
+          </div>
+          <div class="tr-btns"><button id="trBuy" class="bbuy">${F.reduce ? "Comprar (reducir)" : "Abrir long"}</button><button id="trSell" class="bsell">${F.reduce ? "Vender (reducir)" : "Abrir short"}</button></div>
+          ${E().real ? '<p class="tr-warn">Cuenta REAL: las órdenes usan tu dinero.</p>' : ""}
+        </div>
+        <div class="tr-book"><div class="tr-bk-hd"><span>Precio</span><span>Cantidad</span></div><div id="trBook"></div><h5 class="libh">Operaciones recientes</h5><div id="trTrades"></div></div>
+      </div>`;
+    bindForm(); updCalc(); drawBook();
+  }
+  function saveForm() { const keep = Object.assign({}, T.form); delete keep.qty; delete keep.price; delete keep.tp; delete keep.sl; delete keep.trig; LS.set("trade:form", keep); }
+  function readForm() {
+    const F = T.form, v = (id) => { const el = $(id); return el ? el.value.trim().replace(",", ".") : undefined; };
+    for (const [id, k] of [["trPrice", "price"], ["trQty", "qty"], ["trTp", "tp"], ["trSl", "sl"], ["trTrig", "trig"]]) { const x = v(id); if (x !== undefined) F[k] = x; }
+  }
+  function bindForm() {
+    const box = PANEL(), F = T.form;
+    box.querySelectorAll("[data-ttype]").forEach((b) => (b.onclick = () => { readForm(); F.type = b.dataset.ttype; saveForm(); renderTrade(); }));
+    box.querySelectorAll("[data-ctype]").forEach((b) => (b.onclick = () => { readForm(); F.condType = b.dataset.ctype; saveForm(); renderTrade(); }));
+    box.querySelectorAll("[data-pct]").forEach((b) => (b.onclick = () => { readForm(); const mx = maxQty(); if (mx > 0) { F.unit = "base"; F.qty = rq(T.instr[S.sel], mx * b.dataset.pct / 100); renderTrade(); } }));
+    box.querySelectorAll("input,select").forEach((el) => el.addEventListener("input", () => { readForm(); updCalc(); }));
+    const on = (id, fn) => { const el = $(id); if (el) el.onchange = fn; };
+    on("trUnit", (e) => { readForm(); const I = T.instr[S.sel], q = qtyBase(), nu = e.target.value; F.unit = nu; if (q > 0) { const px = refPrice(), lev = curLev(); F.qty = nu === "base" ? rq(I, q) : nu === "usdt" ? (q * px).toFixed(2) : (q * px / lev).toFixed(2); } saveForm(); renderTrade(); });
+    on("trTpsl", (e) => { readForm(); F.tpsl = e.target.checked; saveForm(); renderTrade(); });
+    on("trReduce", (e) => { readForm(); F.reduce = e.target.checked; saveForm(); renderTrade(); });
+    on("trPost", (e) => { readForm(); F.post = e.target.checked; saveForm(); renderTrade(); });
+    on("trTif", (e) => { F.tif = e.target.value; saveForm(); });
+    on("trTrigBy", (e) => { F.trigBy = e.target.value; saveForm(); });
+    on("trTpBy", (e) => { F.tpBy = e.target.value; saveForm(); });
+    const last = $("trLast"); if (last) last.onclick = () => { readForm(); F.price = rp(T.instr[S.sel], lastOf(S.sel)); renderTrade(); };
+    $("trBuy").onclick = () => submit("Buy");
+    $("trSell").onclick = () => submit("Sell");
+    $("trLev").onclick = levDialog;
+    $("trSig").onclick = useSignal;
+    $("trMenu").onclick = acctMenu;
+  }
+  const curLev = () => (T.levOf || {})[S.sel] || A.RISK.leverage || 10;
+  function refPrice() {
+    const F = T.form;
+    if (F.type === "Limit" || (F.type === "Cond" && F.condType === "Limit")) { const p = num(F.price); if (p > 0) return p; }
+    if (F.type === "Cond") { const p = num(F.trig); if (p > 0) return p; }
+    return lastOf(S.sel);
+  }
+  function qtyBase() {
+    const F = T.form, q = num(F.qty), px = refPrice();
+    if (!(q > 0)) return NaN;
+    return F.unit === "base" ? q : F.unit === "usdt" ? q / px : (q * curLev()) / px;
+  }
+  function maxQty() { const w = T.wallet, px = refPrice(); return w && px > 0 ? (w.avail * curLev() * 0.98) / px : 0; }   // 2 % de margen para comisiones
+  function updCalc() {
+    const el = $("trCalc"); if (!el) return;
+    const I = T.instr[S.sel], q = qtyBase(), px = refPrice(), lev = curLev(), qR = num(rq(I, q));
+    const val = qR * px, margin = val / lev, fee = val * 0.00055;
+    el.innerHTML = q > 0 && px > 0
+      ? `<span>Cantidad <b>${rq(I, q) || "—"} ${I ? I.base : ""}</b></span><span>Valor <b>${f2(val)} USDT</b></span><span>Margen <b>${f2(margin)} USDT</b></span><span>Comisión aprox. <b>${f2(fee, 3)}</b></span>${I && qR < I.minQty ? `<span class="sell">Mínimo ${I.minQty} ${I.base}</span>` : ""}${T.wallet && margin > T.wallet.avail ? '<span class="sell">Supera el disponible</span>' : ""}`
+      : `<span class="faint">Disponible ${f2(T.wallet?.avail)} USDT · Máx. ${rq(I, maxQty()) || "—"} ${I ? I.base : ""} con ${lev}x</span>`;
+    const est = $("trTpslEst");
+    if (est) {
+      const tp = num(T.form.tp), sl = num(T.form.sl), entry = px, txt = [];
+      if (q > 0 && tp > 0) txt.push(`TP: long ${sgn((tp - entry) * qR)} / short ${sgn((entry - tp) * qR)} USDT`);
+      if (q > 0 && sl > 0) txt.push(`SL: long ${sgn((sl - entry) * qR)} / short ${sgn((entry - sl) * qR)} USDT`);
+      est.textContent = txt.join(" · ");
+    }
+  }
+
+  // ------------------------------------------------------------ enviar una orden
+  async function submit(side) {
+    readForm();
+    const F = T.form, sym = S.sel;
+    try {
+      const I = await instr(sym);
+      if (T.hedge[sym] === undefined) await loadMode(sym);
+      const qty = rq(I, qtyBase());
+      if (!(+qty > 0)) throw new Error("Escribe la cantidad.");
+      if (+qty < I.minQty) throw new Error(`La cantidad mínima en ${sym} es ${I.minQty} ${I.base}.`);
+      const o = { category: "linear", symbol: sym, side, qty, orderLinkId: "ssp-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) };
+      const isLimit = F.type === "Limit" || (F.type === "Cond" && F.condType === "Limit");
+      o.orderType = isLimit ? "Limit" : "Market";
+      if (o.orderType === "Market" && +qty > I.maxMkt) throw new Error(`Máximo por orden a mercado: ${I.maxMkt} ${I.base}.`);
+      if (isLimit) { const p = rp(I, num(F.price)); if (!(+p > 0)) throw new Error("Escribe el precio límite."); o.price = p; }
+      if (F.type === "Limit") o.timeInForce = F.post ? "PostOnly" : F.tif;
+      const last = lastOf(sym);
+      if (F.type === "Cond") {
+        const tg = rp(I, num(F.trig)); if (!(+tg > 0)) throw new Error("Escribe el precio de activación.");
+        if (!(last > 0)) throw new Error("Todavía no hay precio actual para calcular la dirección de la activación.");
+        o.triggerPrice = tg; o.triggerDirection = +tg > last ? 1 : 2; o.triggerBy = F.trigBy;
+      }
+      if (F.reduce) o.reduceOnly = true;
+      const posIdx = T.hedge[sym] ? (F.reduce ? (side === "Buy" ? 2 : 1) : side === "Buy" ? 1 : 2) : 0;
+      o.positionIdx = posIdx;
+      if (F.tpsl && !F.reduce) {
+        const tp = rp(I, num(F.tp)), sl = rp(I, num(F.sl)), ref = num(o.price) || num(o.triggerPrice) || last;
+        if (tp) { if (side === "Buy" ? +tp <= ref : +tp >= ref) throw new Error(`El take profit de un ${side === "Buy" ? "long debe estar por encima" : "short debe estar por debajo"} del precio de entrada.`); o.takeProfit = tp; o.tpTriggerBy = F.tpBy; }
+        if (sl) { if (side === "Buy" ? +sl >= ref : +sl <= ref) throw new Error(`El stop loss de un ${side === "Buy" ? "long debe estar por debajo" : "short debe estar por encima"} del precio de entrada.`); o.stopLoss = sl; o.slTriggerBy = F.tpBy; }
+        if (tp || sl) o.tpslMode = "Full";
+      }
+      const px = num(o.price) || num(o.triggerPrice) || last, val = +qty * px, lev = curLev();
+      if (I.minNotional && val < I.minNotional) throw new Error(`El valor mínimo por orden es ${I.minNotional} USDT.`);
+      const lossAtSl = o.stopLoss ? Math.abs(px - +o.stopLoss) * +qty : null, gainAtTp = o.takeProfit ? Math.abs(+o.takeProfit - px) * +qty : null;
+      const typeTx = F.type === "Cond" ? `Condicional (${o.orderType === "Market" ? "a mercado" : "límite"})` : o.orderType === "Market" ? "A mercado" : `Límite ${o.timeInForce === "PostOnly" ? "Post-Only" : o.timeInForce}`;
+      const rows = [["Par", sym], ["Dirección", side === "Buy" ? (F.reduce ? "Compra (solo reducir)" : "Long / compra") : (F.reduce ? "Venta (solo reducir)" : "Short / venta")], ["Tipo", typeTx],
+        o.triggerPrice ? ["Activación", `${o.triggerPrice} (${o.triggerDirection === 1 ? "al subir" : "al bajar"}, ${F.trigBy === "MarkPrice" ? "marca" : F.trigBy === "IndexPrice" ? "índice" : "último"})`] : null,
+        ["Precio", o.price || `mercado (≈ ${fpx(sym, last)})`], ["Cantidad", `${qty} ${I.base}`], ["Valor", `${f2(val)} USDT`], ["Margen aprox.", `${f2(val / lev)} USDT con ${lev}x`],
+        o.takeProfit ? ["Take profit", `${o.takeProfit} (≈ +${f2(gainAtTp)} USDT)`] : null, o.stopLoss ? ["Stop loss", `${o.stopLoss} (≈ −${f2(lossAtSl)} USDT)`] : null,
+        !o.stopLoss && !F.reduce ? ["Aviso", "<span class='sell'>Sin stop loss</span>"] : null].filter(Boolean);
+      if (T.confirm || E().real) {
+        const okd = await ask({ title: `Confirmar ${side === "Buy" ? "compra" : "venta"}`, body: `${E().real ? '<p class="tr-warn">Cuenta REAL de Bybit</p>' : `<p class="faint">${E().name}</p>`}<table class="tr-sum">${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>`, ok: side === "Buy" ? "Confirmar compra" : "Confirmar venta", side, extra: E().real ? "" : `<label class="chk"><input type="checkbox" id="dlgNoAsk"> No volver a preguntar en ${E().name}</label>` });
+        if (!okd) return;
+        if (okd.noAsk) { T.confirm = false; LS.set("trade:confirm", false); }
+      }
+      const r = await api("POST", "/v5/order/create", o);
+      toast(`Orden enviada a Bybit: ${side === "Buy" ? "compra" : "venta"} ${qty} ${sym}`, "info");
+      T.form.qty = ""; renderTrade();
+      setTimeout(() => refreshAll(false).catch(() => null), 1200);
+      return r;
+    } catch (e) { toast(e.message, "invalidada"); }
+  }
+
+  // ------------------------------------------------------------ rellenar con la señal actual (el usuario revisa y confirma)
+  function useSignal() {
+    const sym = S.sel, lv = S.curLevels && S.curLevels.symbol === sym ? S.curLevels : null;
+    const sig = lv || [...S.signals].reverse().find((s) => s.symbol === sym && Date.now() - s.created_at < 3600e3);
+    if (!sig) { toast("No hay una señal con entrada para este par en este momento.", "info"); return; }
+    const I = T.instr[sym], dir = sig.direction, entry = num(sig.entry ?? sig.activation_price), sl = num(sig.stop_loss), tp = num(sig.tp2 ?? sig.tp1);
+    const F = T.form;
+    F.type = "Limit"; F.price = rp(I, entry); F.tpsl = true; F.reduce = false; F.tp = rp(I, tp); F.sl = rp(I, sl); F.unit = "base";
+    try {
+      const risk = Object.assign({}, A.RISK, { account_capital: T.wallet && T.wallet.equity > 0 ? T.wallet.equity : A.RISK.account_capital, leverage: curLev() });
+      const p = SSP.planPosition(dir, entry, sl, tp, risk);
+      if (p && p.quantity > 0) F.qty = rq(I, p.quantity);
+    } catch { /* sin cálculo de tamaño */ }
+    saveForm(); renderTrade();
+    toast(`Formulario rellenado con la señal ${dir === "LONG" ? "de compra" : "de venta"}: revisa y pulsa ${dir === "LONG" ? "«Abrir long»" : "«Abrir short»"}.`, "info");
+    const b = $(dir === "LONG" ? "trBuy" : "trSell"); if (b) b.classList.add("hint");
+  }
+
+  // ------------------------------------------------------------ apalancamiento y modo de margen
+  async function levDialog() {
+    const sym = S.sel;
+    try {
+      const I = await instr(sym), cur = curLev(), mm = T.acct?.marginMode || "REGULAR_MARGIN";
+      const r = await ask({ title: `Apalancamiento · ${sym}`, body: `<label class="f">Apalancamiento (1–${I.maxLev}x)<input id="dlgLev" type="number" min="1" max="${I.maxLev}" step="${I.levStep}" value="${cur}"></label>
+        <input id="dlgLevR" type="range" min="1" max="${I.maxLev}" step="1" value="${cur}" style="width:100%">
+        <label class="f">Modo de margen de la cuenta<select id="dlgMm"><option value="REGULAR_MARGIN" ${mm === "REGULAR_MARGIN" ? "selected" : ""}>Cruzado</option><option value="ISOLATED_MARGIN" ${mm === "ISOLATED_MARGIN" ? "selected" : ""}>Aislado</option>${mm === "PORTFOLIO_MARGIN" ? '<option value="PORTFOLIO_MARGIN" selected>Cartera</option>' : ""}</select></label>
+        <p class="faint">En la cuenta unificada, el modo de margen se aplica a toda la cuenta. Bybit no permite cambiarlo con posiciones u órdenes abiertas.</p>`, ok: "Guardar", onOpen: (d) => { const a = d.querySelector("#dlgLev"), b = d.querySelector("#dlgLevR"); b.oninput = () => (a.value = b.value); a.oninput = () => (b.value = a.value); }, read: (d) => ({ lev: +d.querySelector("#dlgLev").value, mm: d.querySelector("#dlgMm").value }) });
+      if (!r) return;
+      if (r.mm !== mm) { await api("POST", "/v5/account/set-margin-mode", { setMarginMode: r.mm }); T.acct = Object.assign({}, T.acct, { marginMode: r.mm }); toast(`Modo de margen: ${r.mm === "ISOLATED_MARGIN" ? "aislado" : "cruzado"}`, "info"); }
+      const lev = Math.min(I.maxLev, Math.max(1, Math.round(r.lev / I.levStep) * I.levStep));
+      if (lev !== cur) { await api("POST", "/v5/position/set-leverage", { category: "linear", symbol: sym, buyLeverage: String(lev), sellLeverage: String(lev) }, { ok: [110043] }); T.levOf = T.levOf || {}; T.levOf[sym] = lev; toast(`Apalancamiento de ${sym}: ${lev}x`, "info"); }
+      renderTrade();
+    } catch (e) { toast(e.message, "invalidada"); }
+  }
+
+  // ------------------------------------------------------------ menú de la cuenta
+  async function acctMenu() {
+    const r = await ask({ title: "Cuenta de Bybit", body: `<p>${E().name}${T.acct?.unifiedMarginStatus ? " · cuenta unificada" : ""}.</p>
+      <label class="chk"><input type="checkbox" id="dlgConf" ${T.confirm ? "checked" : ""}> Pedir confirmación antes de cada orden${E().real ? " (en la cuenta real siempre se pide)" : ""}</label>
+      <div class="rowbtns" style="margin-top:10px"><button data-act="refresh">Actualizar datos</button><button data-act="switch">Cambiar de cuenta</button><button data-act="off" class="resetbtn danger">Desconectar</button></div>`, ok: "Cerrar", cancel: false,
+      onOpen: (d) => d.querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => { d.dataset.act = b.dataset.act; d.querySelector(".dlg-ok").click(); })), read: (d) => ({ act: d.dataset.act, conf: d.querySelector("#dlgConf").checked }) });
+    if (!r) return;
+    T.confirm = r.conf; LS.set("trade:confirm", r.conf);
+    if (r.act === "refresh") { await refreshAll().catch((e) => toast(e.message, "invalidada")); toast("Datos de la cuenta actualizados", "info"); }
+    if (r.act === "off") disconnect(false);
+    if (r.act === "switch") { disconnect(false); setupDialog(); }
+  }
+
+  // ------------------------------------------------------------ conectar: entorno, clave, secreto y PIN
+  async function setupDialog() {
+    const r = await ask({ title: "Conectar cuenta de Bybit", body: `
+      <label class="f">Cuenta<select id="dlgEnv"><option value="demo" ${T.env === "demo" ? "selected" : ""}>Demo de Bybit (dinero ficticio, precios reales)</option><option value="real" ${T.env === "real" ? "selected" : ""}>Cuenta real</option><option value="testnet" ${T.env === "testnet" ? "selected" : ""}>Testnet (testnet.bybit.com)</option></select></label>
+      <label class="f">API key<input id="dlgKey" autocomplete="off" spellcheck="false"></label>
+      <label class="f">API secret<input id="dlgSec" type="password" autocomplete="off" spellcheck="false"></label>
+      <label class="f">PIN para guardarla cifrada (mín. 4 dígitos)<input id="dlgPin" type="password" inputmode="numeric" autocomplete="new-password"></label>
+      <label class="chk"><input type="checkbox" id="dlgSave" checked> Guardar en este dispositivo (cifrada con el PIN)</label>
+      <details class="tr-help"><summary>Cómo crear la clave API</summary><ol>
+        <li><b>Demo:</b> en bybit.com entra a tu cuenta, cambia a «Demo Trading» y en tu perfil abre «API». <b>Real:</b> perfil → «API» → «Crear nueva clave».</li>
+        <li>Elige «Claves generadas por el sistema» y permisos de <b>lectura y escritura</b>.</li>
+        <li>Marca solo <b>Contratos → Órdenes y Posiciones</b> (y «Unified Trading» si aparece). <b>No</b> actives retiros ni transferencias.</li>
+        <li>Bybit puede hacer caducar a los 3 meses las claves sin IP fija; si caduca, crea otra.</li></ol></details>
+      <p class="faint">La clave secreta no se envía a ningún servidor de esta app: solo se usa en tu dispositivo para firmar las órdenes que tú confirmas.</p>`, ok: "Conectar",
+      read: (d) => ({ env: d.querySelector("#dlgEnv").value, key: d.querySelector("#dlgKey").value, secret: d.querySelector("#dlgSec").value, pin: d.querySelector("#dlgPin").value, save: d.querySelector("#dlgSave").checked }),
+      check: (v) => (!v.key.trim() || !v.secret.trim() ? "Pega la API key y el secreto." : v.save && !/^\d{4,}$/.test(v.pin) ? "El PIN debe tener al menos 4 dígitos." : "") });
+    if (!r) return;
+    try { await connect(r, { save: r.save, pin: r.pin }); } catch (e) { toast(e.message, "invalidada"); renderTrade(); }
+  }
+
+  // ------------------------------------------------------------ libro de órdenes
+  let bookT = null;
+  function schedBook() { if (bookT) return; bookT = setTimeout(() => { bookT = null; drawBook(); }, 250); }
+  function drawBook() {
+    const bk = $("trBook"), tr = $("trTrades"); if (!bk) return;
+    const n = 8, asks = [...T.book.a.entries()].map(([p, q]) => [+p, q]).sort((x, y) => x[0] - y[0]).slice(0, n).reverse(), bids = [...T.book.b.entries()].map(([p, q]) => [+p, q]).sort((x, y) => y[0] - x[0]).slice(0, n);
+    const mx = Math.max(1e-12, ...asks.map((x) => x[1]), ...bids.map((x) => x[1])), sym = T.book.sym;
+    const row = (p, q, side) => `<div class="bk ${side}" data-bp="${p}"><i style="width:${(q / mx) * 100}%"></i><span>${fpx(sym, p)}</span><span>${q.toLocaleString("es-CR", { maximumFractionDigits: 4 })}</span></div>`;
+    const last = lastOf(sym), spread = asks.length && bids.length ? asks[asks.length - 1][0] - bids[0][0] : NaN;
+    bk.innerHTML = asks.length || bids.length ? asks.map(([p, q]) => row(p, q, "a")).join("") + `<div class="bk-mid"><b>${fpx(sym, last)}</b><span class="faint">diferencial ${Number.isFinite(spread) ? fpx(sym, spread) : "—"}</span></div>` + bids.map(([p, q]) => row(p, q, "b")).join("") : '<p class="faint">Cargando el libro…</p>';
+    if (tr) tr.innerHTML = T.trades.slice(0, 12).map((t) => `<div class="bk ${t.S === "Buy" ? "b" : "a"}"><span>${fpx(sym, t.p)}</span><span>${t.v}</span><span class="faint">${new Date(+t.T).toLocaleTimeString("es-CR", { hour12: false })}</span></div>`).join("");
+  }
+  document.addEventListener("click", (e) => {
+    const r = e.target.closest("#trBook [data-bp]"); if (!r) return;
+    const F = T.form; if (F.type === "Market") F.type = "Limit";
+    readForm(); F.price = rp(T.instr[S.sel], +r.dataset.bp); renderTrade();
+  });
+
+  // ------------------------------------------------------------ panel inferior: posiciones, órdenes, historial y activos
+  const DOCKS = [["pos", "Posiciones"], ["ord", "Órdenes"], ["cond", "TP/SL y condicionales"], ["hist", "Historial de órdenes"], ["exec", "Operaciones"], ["pnl", "PnL cerrado"], ["assets", "Activos"]];
+  const isCond = (o) => !!o.stopOrderType && o.stopOrderType !== "UNKNOWN" || o.orderStatus === "Untriggered";
+  const sideTx = (s, reduce) => (s === "Buy" ? (reduce ? "Compra · cerrar" : "Compra") : (reduce ? "Venta · cerrar" : "Venta"));
+  const STATUS = { New: "Nueva", PartiallyFilled: "Parcial", Untriggered: "En espera", Filled: "Ejecutada", Cancelled: "Cancelada", PartiallyFilledCanceled: "Parcial · cancelada", Rejected: "Rechazada", Triggered: "Activada", Deactivated: "Desactivada" };
+  const STOPTYPE = { TakeProfit: "Take profit", StopLoss: "Stop loss", PartialTakeProfit: "TP parcial", PartialStopLoss: "SL parcial", TrailingStop: "Stop dinámico", Stop: "Condicional", tpslOrder: "TP/SL" };
+  function renderDock() {
+    const box = $("dock"); if (!box) return;
+    box.hidden = !T.on && !cred();
+    if (box.hidden) return;
+    if (!T.on) { box.innerHTML = `<div class="dock-off">Cuenta de Bybit bloqueada · <button id="dkUnlock" class="mini">Abrir Operar</button></div>`; $("dkUnlock").onclick = () => document.querySelector(".tabs [data-tab='operar']").click(); return; }
+    const cnt = { pos: T.positions.length, ord: T.orders.filter((o) => !isCond(o)).length, cond: T.orders.filter(isCond).length };
+    const tabs = `<div class="dock-tabs">${DOCKS.map(([k, l]) => `<button data-dock="${k}" class="${T.dock === k ? "on" : ""}">${l}${cnt[k] !== undefined ? ` <span class="badge">${cnt[k]}</span>` : ""}</button>`).join("")}</div>`;
+    let body = "";
+    const cell = (l, v, c = "") => `<div><span>${l}</span><b class="${c}">${v}</b></div>`;
+    if (T.dock === "pos") {
+      body = T.positions.length ? `<div class="dock-tools"><button data-closeall="1" class="mini danger">Cerrar todas a mercado</button></div>` + T.positions.map((p) => {
+        const long = p.side === "Buy", size = +p.size, entry = +p.avgPrice, mark = markOf(p.symbol, p.markPrice), upl = (mark - entry) * size * (long ? 1 : -1), im = +p.positionIM || (size * entry) / (+p.leverage || 1), roi = im ? (upl / im) * 100 : NaN;
+        return `<div class="pcard ${long ? "long" : "short"}"><div class="pc-hd"><button class="link" data-gosym="${p.symbol}">${p.symbol}</button><span class="tag ${long ? "buy" : "sell"}">${long ? "Long" : "Short"} ${p.leverage}x</span><span class="faint">${p.tradeMode === 1 ? "Aislado" : "Cruzado"}</span><b class="${cls(upl)} pc-pnl">${sgn(upl)} USDT <small>(${sgn(roi)}%)</small></b></div>
+          <div class="pc-grid">${cell("Tamaño", `${p.size}`)}${cell("Valor", f2(size * mark))}${cell("Entrada", fpx(p.symbol, entry))}${cell("Marca", fpx(p.symbol, mark))}${cell("Liquidación", fpx(p.symbol, +p.liqPrice), "warn")}${cell("Margen", f2(im))}${cell("PnL realizado", sgn(+p.curRealisedPnl), cls(+p.curRealisedPnl))}${cell("TP / SL", `${+p.takeProfit ? fpx(p.symbol, +p.takeProfit) : "—"} / ${+p.stopLoss ? fpx(p.symbol, +p.stopLoss) : "—"}`)}</div>
+          <div class="pc-act"><button class="mini" data-tpsl="${p.symbol}|${p.positionIdx}">TP/SL</button><button class="mini" data-closel="${p.symbol}|${p.positionIdx}">Cerrar límite</button><button class="mini danger" data-closem="${p.symbol}|${p.positionIdx}">Cerrar a mercado</button></div></div>`;
+      }).join("") : '<p class="faint dock-empty">No tienes posiciones abiertas.</p>';
+    } else if (T.dock === "ord" || T.dock === "cond") {
+      const list = T.orders.filter((o) => (T.dock === "cond" ? isCond(o) : !isCond(o)));
+      body = list.length ? `<div class="dock-tools"><button data-cancelall="${T.dock}" class="mini danger">Cancelar todas</button></div>` + list.map((o) => `<div class="ocard"><div class="pc-hd"><button class="link" data-gosym="${o.symbol}">${o.symbol}</button><span class="tag ${o.side === "Buy" ? "buy" : "sell"}">${sideTx(o.side, o.reduceOnly)}</span><span class="faint">${STOPTYPE[o.stopOrderType] || (o.orderType === "Limit" ? "Límite" : "Mercado")} · ${STATUS[o.orderStatus] || o.orderStatus}</span></div>
+        <div class="pc-grid">${cell("Precio", o.orderType === "Market" ? "Mercado" : fpx(o.symbol, o.price))}${+o.triggerPrice ? cell("Activación", `${o.triggerDirection === 1 ? "≥" : "≤"} ${fpx(o.symbol, o.triggerPrice)}`) : ""}${cell("Cantidad", `${+o.cumExecQty ? o.cumExecQty + " / " : ""}${+o.qty ? o.qty : "posición"}`)}${+o.takeProfit || +o.stopLoss ? cell("TP / SL", `${+o.takeProfit ? fpx(o.symbol, o.takeProfit) : "—"} / ${+o.stopLoss ? fpx(o.symbol, o.stopLoss) : "—"}`) : ""}${cell("Hora", when(o.createdTime))}</div>
+        <div class="pc-act">${o.stopOrderType && ["TakeProfit", "StopLoss", "tpslOrder"].includes(o.stopOrderType) ? "" : `<button class="mini" data-amend="${o.orderId}">Modificar</button>`}<button class="mini danger" data-cancel="${o.orderId}">Cancelar</button></div></div>`).join("") : `<p class="faint dock-empty">${T.dock === "cond" ? "No hay órdenes TP/SL ni condicionales." : "No hay órdenes abiertas."}</p>`;
+    } else if (T.dock === "hist") {
+      body = table(["Hora", "Par", "Lado", "Tipo", "Precio", "Cantidad", "Ejecutado", "Estado"], T.hist.map((o) => [when(o.updatedTime || o.createdTime), o.symbol, `<span class="${o.side === "Buy" ? "buy" : "sell"}">${sideTx(o.side, o.reduceOnly)}</span>`, STOPTYPE[o.stopOrderType] || (o.orderType === "Limit" ? "Límite" : "Mercado"), +o.avgPrice ? fpx(o.symbol, o.avgPrice) : +o.price ? fpx(o.symbol, o.price) : "—", o.qty, o.cumExecQty, STATUS[o.orderStatus] || o.orderStatus]), "No hay órdenes en el historial.");
+    } else if (T.dock === "exec") {
+      body = table(["Hora", "Par", "Lado", "Precio", "Cantidad", "Valor", "Comisión", "Rol"], T.execs.map((x) => [when(x.execTime), x.symbol, `<span class="${x.side === "Buy" ? "buy" : "sell"}">${x.side === "Buy" ? "Compra" : "Venta"}</span>`, fpx(x.symbol, x.execPrice), x.execQty, f2(+x.execValue || +x.execPrice * +x.execQty), f2(+x.execFee, 4), x.isMaker ? "Maker" : "Taker"]), "Todavía no hay operaciones.");
+    } else if (T.dock === "pnl") {
+      const tot = T.pnl.reduce((s, x) => s + +x.closedPnl, 0);
+      body = (T.pnl.length ? `<p class="dock-sum">Total de las últimas ${T.pnl.length}: <b class="${cls(tot)}">${sgn(tot)} USDT</b></p>` : "") + table(["Cierre", "Par", "Posición", "Cantidad", "Entrada", "Salida", "PnL"], T.pnl.map((x) => [when(x.updatedTime), x.symbol, x.side === "Sell" ? '<span class="buy">Long</span>' : '<span class="sell">Short</span>', x.closedSize || x.qty, fpx(x.symbol, x.avgEntryPrice), fpx(x.symbol, x.avgExitPrice), `<b class="${cls(+x.closedPnl)}">${sgn(+x.closedPnl, 4)}</b>`]), "Todavía no hay posiciones cerradas.");
+    } else if (T.dock === "assets") {
+      const w = T.wallet || {};
+      body = `<div class="pc-grid wide">${cell("Patrimonio", f2(w.equity) + " USDT")}${cell("Saldo de la billetera", f2(w.balance))}${cell("Disponible", f2(w.avail))}${cell("PnL no realizado", sgn(w.upl), cls(w.upl))}${cell("Margen inicial", f2(w.im))}${cell("Margen de mantenimiento", f2(w.mm))}${cell("Cuenta", `${w.type || "—"} · ${E().name}`)}</div>` +
+        table(["Moneda", "Patrimonio", "Saldo", "PnL no realizado", "Valor USD"], (w.coins || []).map((c) => [c.coin, (+c.equity).toLocaleString("es-CR", { maximumFractionDigits: 6 }), (+c.walletBalance).toLocaleString("es-CR", { maximumFractionDigits: 6 }), sgn(+c.unrealisedPnl), f2(+c.usdValue)]), "Sin monedas.");
+    }
+    box.innerHTML = tabs + `<div class="dock-body">${body}</div>`;
+  }
+  function table(head, rows, empty) {
+    if (!rows.length) return `<p class="faint dock-empty">${empty}</p>`;
+    return `<div class="tscroll"><table class="dtab"><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  async function onDock(e) {
+    const g = (a) => e.target.closest(`[data-${a}]`);
+    let b;
+    if ((b = g("dock"))) { T.dock = b.dataset.dock; LS.set("trade:dock", T.dock); renderDock(); if (["hist", "exec", "pnl"].includes(T.dock)) loadHistory().then(renderDock).catch(() => null); return; }
+    if ((b = g("gosym"))) { const s = b.dataset.gosym; if (S.symbols.includes(s)) A.selectSymbol(s); else toast(`${s} no está en tu lista de pares: agrégalo en «Pares» para ver su gráfico.`, "info"); return; }
+    try {
+      if ((b = g("cancel"))) { const o = T.orders.find((x) => x.orderId === b.dataset.cancel); if (!o) return; await api("POST", "/v5/order/cancel", { category: "linear", symbol: o.symbol, orderId: o.orderId }); toast(`Orden de ${o.symbol} cancelada`, "info"); T.orders = T.orders.filter((x) => x !== o); renderAll(); }
+      else if ((b = g("cancelall"))) {
+        const cond = b.dataset.cancelall === "cond", list = T.orders.filter((o) => (cond ? isCond(o) : !isCond(o)));
+        if (!(await ask({ title: "Cancelar órdenes", body: `<p>Se cancelan ${list.length} ${cond ? "órdenes TP/SL y condicionales" : "órdenes abiertas"}.</p>`, ok: "Cancelar todas", danger: true }))) return;
+        let bad = 0;
+        for (const o of list) await api("POST", "/v5/order/cancel", { category: "linear", symbol: o.symbol, orderId: o.orderId }).catch(() => bad++);
+        toast(bad ? `Se cancelaron ${list.length - bad} de ${list.length} órdenes` : "Órdenes canceladas", "info"); await loadOrders(); renderAll();
+      } else if ((b = g("amend"))) await amendDialog(T.orders.find((x) => x.orderId === b.dataset.amend));
+      else if ((b = g("tpsl"))) await tpslDialog(findPos(b.dataset.tpsl));
+      else if ((b = g("closem"))) await closePos(findPos(b.dataset.closem), "Market");
+      else if ((b = g("closel"))) await closePos(findPos(b.dataset.closel), "Limit");
+      else if ((b = g("closeall"))) {
+        if (!(await ask({ title: "Cerrar todas las posiciones", body: `<p>Se cierran a mercado ${T.positions.length} posiciones${E().real ? " de tu cuenta REAL" : ""}.</p>`, ok: "Cerrar todas", danger: true }))) return;
+        for (const p of [...T.positions]) await sendClose(p, "Market").catch((er) => toast(`${p.symbol}: ${er.message}`, "invalidada"));
+        setTimeout(() => refreshAll(false).catch(() => null), 1200);
+      }
+    } catch (er) { toast(er.message, "invalidada"); }
+  }
+  const findPos = (k) => { const [s, i] = k.split("|"); return T.positions.find((p) => p.symbol === s && String(p.positionIdx) === i); };
+  async function sendClose(p, type, price) {
+    const I = await instr(p.symbol), o = { category: "linear", symbol: p.symbol, side: p.side === "Buy" ? "Sell" : "Buy", orderType: type, qty: p.size, reduceOnly: true, positionIdx: +p.positionIdx, orderLinkId: "ssp-c-" + Date.now().toString(36) };
+    if (type === "Limit") o.price = rp(I, price);
+    if (type === "Market" && +p.size > I.maxMkt) o.qty = rq(I, I.maxMkt);
+    return api("POST", "/v5/order/create", o);
+  }
+  async function closePos(p, type) {
+    if (!p) return;
+    const I = await instr(p.symbol), mark = markOf(p.symbol, p.markPrice), long = p.side === "Buy";
+    const r = await ask({ title: `Cerrar ${long ? "long" : "short"} · ${p.symbol}`, body: `${E().real ? '<p class="tr-warn">Cuenta REAL</p>' : ""}<p>Tamaño ${p.size} · entrada ${fpx(p.symbol, p.avgPrice)} · marca ${fpx(p.symbol, mark)}</p>` +
+      (type === "Limit" ? `<label class="f">Precio límite<input id="dlgPx" inputmode="decimal" value="${rp(I, lastOf(p.symbol) || mark)}"></label>` : `<p>Se cierra a mercado (orden «solo reducir»).</p>`),
+      ok: type === "Limit" ? "Poner orden de cierre" : "Cerrar a mercado", danger: true, read: (d) => ({ px: num((d.querySelector("#dlgPx")?.value || "").replace(",", ".")) }) });
+    if (!r) return;
+    if (type === "Limit" && !(r.px > 0)) throw new Error("Escribe el precio límite.");
+    await sendClose(p, type, r.px);
+    toast(`Orden de cierre enviada: ${p.symbol}`, "info");
+    setTimeout(() => refreshAll(false).catch(() => null), 1200);
+  }
+  async function tpslDialog(p) {
+    if (!p) return;
+    const I = await instr(p.symbol), long = p.side === "Buy", entry = +p.avgPrice, size = +p.size;
+    const r = await ask({ title: `TP/SL de la posición · ${p.symbol}`, body: `<p>${long ? "Long" : "Short"} ${p.size} · entrada ${fpx(p.symbol, entry)}</p>
+      <div class="grid2"><label class="f">Take profit<input id="dlgTp" inputmode="decimal" value="${+p.takeProfit ? p.takeProfit : ""}" placeholder="vacío = sin TP"></label><label class="f">Stop loss<input id="dlgSl" inputmode="decimal" value="${+p.stopLoss ? p.stopLoss : ""}" placeholder="vacío = sin SL"></label></div><p id="dlgEst" class="faint"></p>
+      <p class="faint">Se aplica a toda la posición y se cierra a mercado al activarse.</p>`, ok: "Guardar TP/SL",
+      onOpen: (d) => { const upd = () => { const tp = num(d.querySelector("#dlgTp").value), sl = num(d.querySelector("#dlgSl").value), k = long ? 1 : -1, t = []; if (tp > 0) t.push(`En el TP: ${sgn((tp - entry) * size * k)} USDT`); if (sl > 0) t.push(`En el SL: ${sgn((sl - entry) * size * k)} USDT`); d.querySelector("#dlgEst").textContent = t.join(" · "); }; d.querySelectorAll("input").forEach((x) => (x.oninput = upd)); upd(); },
+      read: (d) => ({ tp: d.querySelector("#dlgTp").value.trim().replace(",", "."), sl: d.querySelector("#dlgSl").value.trim().replace(",", ".") }) });
+    if (!r) return;
+    await api("POST", "/v5/position/trading-stop", { category: "linear", symbol: p.symbol, tpslMode: "Full", positionIdx: +p.positionIdx, takeProfit: r.tp ? rp(I, +r.tp) : "0", stopLoss: r.sl ? rp(I, +r.sl) : "0", tpTriggerBy: "LastPrice", slTriggerBy: "LastPrice" }, { ok: [34040] });
+    toast(`TP/SL de ${p.symbol} actualizado`, "info");
+    setTimeout(() => refreshAll(false).catch(() => null), 800);
+  }
+  async function amendDialog(o) {
+    if (!o) return;
+    const I = await instr(o.symbol);
+    const r = await ask({ title: `Modificar orden · ${o.symbol}`, body: `<div class="grid2">${o.orderType === "Limit" ? `<label class="f">Precio<input id="dlgP" inputmode="decimal" value="${o.price}"></label>` : ""}${+o.triggerPrice ? `<label class="f">Activación<input id="dlgT" inputmode="decimal" value="${o.triggerPrice}"></label>` : ""}<label class="f">Cantidad<input id="dlgQ" inputmode="decimal" value="${o.qty}"></label></div>`, ok: "Modificar",
+      read: (d) => ({ p: d.querySelector("#dlgP")?.value, t: d.querySelector("#dlgT")?.value, q: d.querySelector("#dlgQ").value }) });
+    if (!r) return;
+    const body = { category: "linear", symbol: o.symbol, orderId: o.orderId };
+    if (r.p && +r.p !== +o.price) body.price = rp(I, +r.p.replace(",", "."));
+    if (r.t && +r.t !== +o.triggerPrice) body.triggerPrice = rp(I, +r.t.replace(",", "."));
+    if (r.q && +r.q !== +o.qty) body.qty = rq(I, +r.q.replace(",", "."));
+    if (Object.keys(body).length === 3) return;
+    await api("POST", "/v5/order/amend", body);
+    toast(`Orden de ${o.symbol} modificada`, "info");
+    setTimeout(() => loadOrders().then(renderAll).catch(() => null), 600);
+  }
+
+  // ------------------------------------------------------------ diálogo genérico
+  function ask({ title, body, ok = "Aceptar", cancel = true, danger, side, extra = "", onOpen, read, check }) {
+    return new Promise((resolve) => {
+      const d = $("tdlg");
+      d.innerHTML = `<h2>${title}</h2><div class="dlg-body">${body}</div>${extra}<p class="dlg-err sell" hidden></p><div class="dlg-ft">${cancel ? '<button class="dlg-no">Cancelar</button>' : ""}<button class="dlg-ok ${side === "Buy" ? "bbuy" : side === "Sell" ? "bsell" : danger ? "bsell" : "primary"}">${ok}</button></div>`;
+      const done = (v) => { d.close(); resolve(v); };
+      d.querySelector(".dlg-ok").onclick = () => {
+        const v = read ? read(d) : true, msg = check ? check(v) : "";
+        if (msg) { const er = d.querySelector(".dlg-err"); er.textContent = msg; er.hidden = false; return; }
+        const na = d.querySelector("#dlgNoAsk");
+        done(read ? v : na ? { noAsk: na.checked } : true);
+      };
+      const no = d.querySelector(".dlg-no"); if (no) no.onclick = () => done(null);
+      d.oncancel = (e) => { e.preventDefault(); done(null); };
+      d.showModal();
+      if (onOpen) onOpen(d);
+      const first = d.querySelector(".dlg-body input:not([type=checkbox]):not([type=range])"); if (first) first.focus();
+    });
+  }
+
+  // ------------------------------------------------------------ líneas en el gráfico
+  let lineSig = "";
+  function updLines() {
+    if (!A.chart.setTradeLines) return;
+    const sym = S.sel, L = [];
+    if (T.on) {
+      for (const p of T.positions.filter((x) => x.symbol === sym)) {
+        const long = p.side === "Buy";
+        L.push({ price: +p.avgPrice, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: `${long ? "Long" : "Short"} ${p.size}` });
+        if (+p.liqPrice) L.push({ price: +p.liqPrice, color: "#ff9f5a", dash: true, title: "Liquidación" });
+        if (+p.takeProfit) L.push({ price: +p.takeProfit, color: "#2fd3a0", dash: true, title: "TP" });
+        if (+p.stopLoss) L.push({ price: +p.stopLoss, color: "#ff6170", dash: true, title: "SL" });
+      }
+      for (const o of T.orders.filter((x) => x.symbol === sym)) {
+        if (["TakeProfit", "StopLoss"].includes(o.stopOrderType)) continue;   // ya dibujados con la posición
+        const px = +o.triggerPrice || +o.price;
+        L.push({ price: px, color: "#62a8ff", dash: true, title: `${o.side === "Buy" ? "Compra" : "Venta"} ${o.qty}${+o.triggerPrice ? " cond." : ""}` });
+      }
+    }
+    const sig = JSON.stringify(L);
+    if (sig !== lineSig) { lineSig = sig; A.chart.setTradeLines(L); }
+  }
+
+  // con la pestaña abierta solo se actualizan las cifras: así no se pierde lo que el usuario está escribiendo
+  function updAcctBar() {
+    const bar = document.querySelector("#tab-operar .tr-acct"); if (!bar) return false;
+    const w = T.wallet || {}, sp = bar.querySelectorAll(":scope > span");
+    if (sp.length < 5) return false;
+    sp[1].innerHTML = `Patrimonio <b>${f2(w.equity)}</b>`; sp[2].innerHTML = `Disponible <b>${f2(w.avail)}</b>`;
+    sp[3].className = cls(w.upl); sp[3].textContent = `PnL ${sgn(w.upl)}`; sp[4].className = `dotw ${T.wsOk ? "ok" : ""}`;
+    return true;
+  }
+  let dockT = null;
+  function schedDock() { if (dockT) return; dockT = setTimeout(() => { dockT = null; renderDock(); }, 300); }
+  function renderAll() {
+    if (!(T.on && updAcctBar())) renderTrade(); else updCalc();
+    schedDock(); updLines(); syncPublic();
+  }
+
+  // PnL vivo de las posiciones y cambio de par
+  setInterval(() => {
+    if (S.sel !== T.lastSel) {
+      T.lastSel = S.sel;
+      if (T.on) { instr(S.sel).then(() => { if (S.tab === "operar") renderTrade(); }).catch(() => null); loadMode(S.sel).then(() => S.tab === "operar" && renderTrade()); }
+      if (S.tab === "operar") renderTrade();
+      updLines(); syncPublic();
+    }
+    if (T.on && T.dock === "pos" && T.positions.length) renderDockPnl();
+  }, 1000);
+  function renderDockPnl() {   // solo actualiza las cifras sin redibujar todo (para no perder el toque en los botones)
+    const box = $("dock"); if (!box) return;
+    box.querySelectorAll(".pcard").forEach((el, i) => {
+      const p = T.positions[i]; if (!p) return;
+      const long = p.side === "Buy", size = +p.size, entry = +p.avgPrice, mark = markOf(p.symbol, p.markPrice), upl = (mark - entry) * size * (long ? 1 : -1), im = +p.positionIM || (size * entry) / (+p.leverage || 1);
+      const b = el.querySelector(".pc-pnl"); if (b) { b.className = `${cls(upl)} pc-pnl`; b.innerHTML = `${sgn(upl)} USDT <small>(${sgn(im ? (upl / im) * 100 : NaN)}%)</small>`; }
+    });
+  }
+
+  $("dock")?.addEventListener("click", onDock);
+  window.__trade = {
+    onTab(tab) { if (tab === "operar") { renderTrade(); if (T.on) instr(S.sel).then(renderTrade).catch(() => null); } syncPublic(); },
+    T, api, connect, disconnect, ENV,
+  };
+  renderTrade(); renderDock();
 })();
 
 </script>
