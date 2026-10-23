@@ -8,7 +8,8 @@ const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png",
 const NEVER = ["api.bybit.com", "stream.bybit.com", "api.telegram.org"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  // "reload": no usar la caché HTTP del navegador (GitHub Pages la guarda 10 min) para no instalar una versión vieja
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" })))));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith("scalpsignal-") && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -20,7 +21,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET" || NEVER.some((h) => url.hostname.endsWith(h))) return;      // datos de mercado: siempre en vivo
   if (req.mode === "navigate" || url.pathname.endsWith("/index.html")) {
     // la página: primero la red (para recibir actualizaciones), si no hay conexión la copia guardada
-    e.respondWith(fetch(req).then((r) => { const cp = r.clone(); caches.open(CACHE).then((c) => c.put("./index.html", cp)); return r; })
+    e.respondWith(fetch(req.url, { cache: "no-cache", credentials: "same-origin" }).then((r) => { const cp = r.clone(); caches.open(CACHE).then((c) => c.put("./index.html", cp)); return r; })
       .catch(() => caches.match("./index.html")));
     return;
   }
