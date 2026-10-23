@@ -320,7 +320,33 @@ dialog{background:var(--deck);color:var(--ink);border:1px solid var(--rule2);bor
 dialog::backdrop{background:rgba(5,9,16,.6)}
 dialog h2{margin:0 0 6px;font-size:18px}
 dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
-@media(max-width:700px){#toasts{top:8px;bottom:auto;flex-direction:column}.seg button{padding:5px 10px}}
+@media(max-width:700px){
+  .seg button{padding:5px 10px}
+  /* avisos: abajo, pequeños y como máximo dos, para no tapar el precio ni el gráfico */
+  #toasts{left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));width:calc(100vw - 24px);gap:6px}
+  #toasts .toast{padding:6px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+  #toasts .toast:nth-child(n+3){display:none}
+  /* encabezado compacto */
+  .top{padding:6px 10px 0}
+  .top-row{gap:6px 10px;flex-wrap:nowrap}
+  .brand{display:none}
+  #symSel{max-width:132px;padding:5px 8px;font-size:14px}
+  .quote{gap:6px;min-width:0}
+  #price{font-size:18px}
+  #chg{font-size:11px}
+  .trend-chips{display:none}
+  #connTx{display:none}
+  .top-right{margin-left:auto;gap:6px}
+  .tfbar{flex-wrap:nowrap;overflow-x:auto;padding:6px 0 7px;gap:6px;scrollbar-width:none}
+  .tfbar::-webkit-scrollbar{display:none}
+  #tfs{flex:none}
+  #tfs button{padding:4px 7px;font-size:12.5px}
+  .btn-ind{flex:none;padding:4px 8px;font-size:12.5px}
+  main{padding:8px;gap:10px}
+  .chartwrap{height:66svh!important;min-height:360px;border-radius:12px}
+  .legend{font-size:11px;top:6px;left:6px}
+  .mobsimple{margin:10px 0 2px;font-size:13px}
+}
 @media(max-width:560px){.trend-chips .tchip:not(:first-child){display:none}#price{font-size:19px}.levels{grid-template-columns:repeat(2,1fr)}.pair{grid-template-columns:1fr auto 70px 22px}.pair .tr{display:none}}
 </style>
 </head>
@@ -2108,6 +2134,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     sess: { name: "Sesiones de mercado", sw: () => st("sess.london").c, sub: () => SESS_TF.includes(S.tf) ? SSP.SESSIONS.filter((x) => vis("sess." + x.key)).map((x) => x.name).join(" · ") || "ninguna" : "visibles hasta 1 h" },
   };
   const NARROW = () => window.matchMedia("(max-width: 700px)").matches;
+  // vista simple en el teléfono: menos textos sobre el gráfico (se puede apagar en Indicadores)
+  const MS = () => NARROW() && LS.get("mobSimple", true) !== false;
 
   // ------------------------------------------------------------ entradas de dibujo (no cambian las estrategias) y visibilidad por temporalidad
   const DISP_DEF = { bb_src: "close", bb_ma: "sma", bb_off: 0, vwap_anchor: "utc", vwap_src: "hlc3", vwap_m1: 1, vwap_m2: 2, vwap_m3: 3 };
@@ -2156,7 +2184,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {}, info() { return {}; }, setTradeLines() {}, coord: null }; }
     const c = LC.createChart($("chart"), {
       autoSize: true,
-      layout: { background: { type: LC.ColorType.Solid, color: COL.night }, textColor: "#8fa0b8", fontSize: 11, fontFamily: '"IBM Plex Sans", system-ui, sans-serif', panes: { separatorColor: "#22314d", enableResize: true } },
+      layout: { background: { type: LC.ColorType.Solid, color: COL.night }, textColor: "#8fa0b8", fontSize: NARROW() ? 10 : 11, fontFamily: '"IBM Plex Sans", system-ui, sans-serif', panes: { separatorColor: "#22314d", enableResize: true } },
       grid: { vertLines: { color: COL.rule }, horzLines: { color: COL.rule } },
       crosshair: { mode: LC.CrosshairMode.Normal },
       rightPriceScale: { borderColor: "#22314d" },
@@ -2216,13 +2244,19 @@ if (typeof module !== "undefined") module.exports = SSP;
         }
         cSeries.push(g);
       }
-      // alturas: 170 px para SQZMOM/ADX si no hay más paneles; con paneles extra se reparten (mín. 90 px cada uno)
+      paneSizes();
+    }
+    // alturas de los paneles: en el teléfono el precio ocupa más espacio
+    let lastNar = null;
+    function paneSizes() {
+      lastNar = NARROW();
       const extra = c.panes().length - 2;
       const ps = c.panes();
       if (ps[0] && ps[0].setStretchFactor) {   // proporciones: precio grande, SQZMOM/ADX mediano, paneles agregados más bajos
-        ps[0].setStretchFactor(extra > 0 ? 5 : 3.2); ps[1]?.setStretchFactor(1.25); for (let i = 2; i < ps.length; i++) ps[i].setStretchFactor(extra > 2 ? 0.8 : 1);
+        const nar = NARROW(); ps[0].setStretchFactor(extra > 0 ? (nar ? 7 : 5) : (nar ? 4.2 : 3.2)); ps[1]?.setStretchFactor(nar ? 1 : 1.25); for (let i = 2; i < ps.length; i++) ps[i].setStretchFactor(extra > 2 ? 0.8 : 1);
       } else requestAnimationFrame(() => { try { c.panes()[1]?.setHeight(extra > 0 ? 130 : 170); for (let i = 2; i < c.panes().length; i++) c.panes()[i].setHeight(110); } catch { /* */ } });
     }
+    function styleCustomPanes() { if (lastNar !== NARROW()) paneSizes(); }
     function styleCustom() {
       for (const g of cSeries) {
         const x = CUST.find((y) => y.id === g.id); if (!x) continue;
@@ -2260,7 +2294,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       sqz.applyOptions({ visible: shw("sqz") }); dots.applyOptions({ visible: shw("sqz") });
       c.applyOptions({ leftPriceScale: { visible: shw("dmi") && !NARROW() } });   // en teléfono el ADX va sin eje para no quitar ancho
       setKey();
-      buildCustom(); styleCustom();
+      buildCustom(); styleCustom(); styleCustomPanes();
     }
     function setData(d, keepView) {
       data = d;
@@ -2324,7 +2358,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       $("legend").style.left = (LW + 10) + "px";
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       const g = cv.getContext("2d");
-      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      const ms = MS(), FS = ms ? 10 : 11, FONT = `${FS}px "IBM Plex Sans", system-ui, sans-serif`, FONTB = `600 ${FS}px "IBM Plex Sans", system-ui, sans-serif`; g.font = FONT;
       const ts = c.timeScale(), X = (ms) => { const x = ts.timeToCoordinate(ms / 1000); return x === null ? 0 : x; }, Y = (p) => candles.priceToCoordinate(p);
       // rellenos entre bandas (debajo de todo lo demás)
       const fillBetween = (A, B, col, op) => {
@@ -2361,7 +2396,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         if (box) { const a1 = Y(w.high), a2 = Y(w.low); if (a1 === null || a2 === null) continue; yt = a1 - 3; yb = a2 + 3; }
         g.fillStyle = hexA(col, box ? 0.08 : 0.05); g.fillRect(xa, yt, xb - xa, yb - yt);
         if (box) { g.strokeStyle = hexA(col, 0.45); g.setLineDash(w.open ? [4, 3] : []); g.strokeRect(xa, yt, xb - xa, yb - yt); g.setLineDash([]); }
-        if (vis("sess.labels") && xb - xa > 30) { g.fillStyle = hexA(col, 0.9); g.fillText(w.name + (w.open ? " · abierta" : ""), Math.max(xa, 0) + 4, box ? yt - 4 : 14); }
+        if (vis("sess.labels") && !ms && xb - xa > 30) { g.fillStyle = hexA(col, 0.9); g.fillText(w.name + (w.open ? " · abierta" : ""), Math.max(xa, 0) + 4, box ? yt - 4 : 14); }
       }
       if (shw("ob")) for (const ob of data.obs) {
         const bull = ob.direction === "alcista", mit = ob.status === "mitigada", key = bull ? "ob.bull" : "ob.bear";
@@ -2371,7 +2406,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         const x = X(ob.obTime), col = st(key).c;
         g.fillStyle = hexA(col, mit ? 0.06 : 0.15); g.fillRect(x, y1, W - x, y2 - y1);
         g.strokeStyle = hexA(col, 0.55); g.setLineDash(mit ? [4, 3] : []); g.strokeRect(x, y1, W - x, y2 - y1); g.setLineDash([]);
-        if (vis("ob.labels")) { g.fillStyle = COL.ink2; g.fillText(`OB ${bull ? "alcista" : "bajista"}${mit ? " · mitigado" : ""}`, x + 4, y1 + 12); }
+        if (vis("ob.labels") && !ms) { g.fillStyle = COL.ink2; g.fillText(`OB ${bull ? "alcista" : "bajista"}${mit ? " · mitigado" : ""}`, x + 4, y1 + 12); }
       }
       const fb = data.fib;
       if (shw("fib") && fb && !fb.running) {
@@ -2379,7 +2414,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         const yz1 = Y(fb.zone.near), yz2 = Y(fb.zone.far);
         if (vis("fib.zone") && yz1 !== null && yz2 !== null) {
           g.fillStyle = hexA(st("fib.zone").c, 0.12); g.fillRect(x2, Math.min(yz1, yz2), W - x2, Math.abs(yz2 - yz1));
-          g.fillStyle = COL.ink; g.fillText(`Zona ${fb.marketLabel.toLowerCase()} ${(fb.zone.from * 100).toFixed(1)}–${(fb.zone.to * 100).toFixed(1)}%`, x2 + 4, Math.max(yz1, yz2) - 4);
+          g.fillStyle = COL.ink; g.fillText(ms ? `Zona ${(fb.zone.from * 100).toFixed(1)}–${(fb.zone.to * 100).toFixed(1)}%` : `Zona ${fb.marketLabel.toLowerCase()} ${(fb.zone.from * 100).toFixed(1)}–${(fb.zone.to * 100).toFixed(1)}%`, x2 + 4, Math.max(yz1, yz2) - 4);
         }
         if (vis("fib.levels")) for (const l of fb.levels) {
           if (!vis(FIB_KEY[l.ratio])) continue;
@@ -2387,7 +2422,7 @@ if (typeof module !== "undefined") module.exports = SSP;
           const edge = l.ratio === 0 || l.ratio === 1, inZ = l.ratio >= fb.zone.from - 1e-9 && l.ratio <= fb.zone.to + 1e-9, col = st("fib.levels").c;
           g.strokeStyle = hexA(col, edge ? 0.5 : inZ ? 0.95 : 0.45);
           g.setLineDash(edge ? [] : [6, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
-          g.fillStyle = inZ ? col : COL.ink3; g.fillText(`${(l.ratio * 100).toFixed(1)}%${showP ? "  " + fp(l.price) : ""}`, x1 + 4, y - 3);
+          if (!ms || inZ) { g.fillStyle = inZ ? col : COL.ink3; g.fillText(`${(l.ratio * 100).toFixed(1)}%${showP && !ms ? "  " + fp(l.price) : ""}`, x1 + 4, y - 3); }
         }
         if (vis("fib.ext") && fb.p3) {
           const x3 = X(fb.p3.time), col = st("fib.ext").c;
@@ -2396,7 +2431,7 @@ if (typeof module !== "undefined") module.exports = SSP;
             const tgt = fb.extTargets.some((r) => Math.abs(r - e.ratio) < 1e-9);
             g.strokeStyle = hexA(col, tgt ? 0.95 : 0.4); g.setLineDash([2, 4]);
             g.beginPath(); g.moveTo(x3, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
-            g.fillStyle = tgt ? col : COL.ink3; g.fillText(`Ext ${(e.ratio * 100).toFixed(1)}%${showP ? "  " + fp(e.price) : ""}${tgt ? "  objetivo" : ""}`, Math.max(x3, x2) + 4, y - 3);
+            if (!ms || tgt) { g.fillStyle = tgt ? col : COL.ink3; g.fillText(ms ? `Ext ${(e.ratio * 100).toFixed(0)}%` : `Ext ${(e.ratio * 100).toFixed(1)}%${showP ? "  " + fp(e.price) : ""}${tgt ? "  objetivo" : ""}`, Math.max(x3, x2) + 4, y - 3); }
           }
         }
       }
@@ -2412,21 +2447,21 @@ if (typeof module !== "undefined") module.exports = SSP;
           const corr = /[ABC]/.test(p.label), key = corr ? "ew.corr" : "ew.impulse";
           if (!vis(key)) return;
           const isHigh = i === 0 ? !up : (pts[i].y < pts[i - 1].y), cy = p.y + (isHigh ? -14 : 14), col = st(key).c;
-          g.beginPath(); g.arc(p.x, cy, 9, 0, Math.PI * 2); g.fillStyle = "#152034"; g.fill();
+          g.beginPath(); g.arc(p.x, cy, ms ? 7 : 9, 0, Math.PI * 2); g.fillStyle = "#152034"; g.fill();
           g.strokeStyle = col; g.stroke();
-          g.fillStyle = col; g.font = '600 11px "IBM Plex Sans", system-ui, sans-serif';
-          g.textAlign = "center"; g.fillText(p.label, p.x, cy + 4); g.textAlign = "start"; g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
+          g.fillStyle = col; g.font = FONTB;
+          g.textAlign = "center"; g.fillText(p.label, p.x, cy + 4); g.textAlign = "start"; g.font = FONT;
         });
         const last = pts[pts.length - 1];
         if (last) {
           if (vis("ew.proj")) for (const pr of ew.projections) {
             const y = Y(pr.price); if (y === null) continue;
             g.strokeStyle = hexA(st("ew.proj").c, 0.55); g.setLineDash([3, 5]); g.beginPath(); g.moveTo(last.x, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
-            g.fillStyle = st("ew.proj").c; g.fillText(`${pr.label}  ${fp(pr.price)}`, last.x + 14, y - 3);
+            if (!ms) { g.fillStyle = st("ew.proj").c; g.fillText(`${pr.label}  ${fp(pr.price)}`, last.x + 14, y - 3); }
           }
           if (ew.invalidation && vis("ew.inval")) {
             const y = Y(ew.invalidation.price), col = st("ew.inval").c;
-            if (y !== null) { g.strokeStyle = hexA(col, 0.75); g.setLineDash([1, 4]); g.beginPath(); g.moveTo(last.x, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.fillText(`Invalida el conteo  ${fp(ew.invalidation.price)}`, last.x + 14, y + 13); }
+            if (y !== null) { g.strokeStyle = hexA(col, 0.75); g.setLineDash([1, 4]); g.beginPath(); g.moveTo(last.x, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.fillText(ms ? `Invalida ${fp(ew.invalidation.price)}` : `Invalida el conteo  ${fp(ew.invalidation.price)}`, last.x + 14, y + 13); }
           }
         }
       }
@@ -2461,7 +2496,7 @@ if (typeof module !== "undefined") module.exports = SSP;
           const txt = h ? `${p2(h)}:${p2(m)}:${p2(ss)}` : `${p2(m)}:${p2(ss)}`, up = px >= lastC.open, tw = g.measureText(txt).width;
           const bx = W - tw - 12, by = Math.min(H - 17, y + 11);
           g.fillStyle = up ? st("candles.up").c : st("candles.down").c; g.fillRect(bx, by, tw + 10, 15);
-          g.fillStyle = "#06121d"; g.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; g.fillText(txt, bx + 5, by + 11.5); g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
+          g.fillStyle = "#06121d"; g.font = FONTB; g.fillText(txt, bx + 5, by + 11.5); g.font = FONT;
         }
       }
       // etiquetas de la cuenta (PnL de la posición en vivo, PnL estimado en TP/SL/liquidación)
@@ -2469,17 +2504,17 @@ if (typeof module !== "undefined") module.exports = SSP;
         if (!it.tag) continue;
         const t = typeof it.tag === "function" ? it.tag() : it.tag; if (!t || !t.text) continue;
         const y = Y(it.price); if (y === null || y < 6 || y > H - 6) continue;
-        g.font = '600 11px "IBM Plex Sans", system-ui, sans-serif';
-        const tw = g.measureText(t.text).width, bw = tw + 12, bx = Math.max(4, W - bw - 74), by = y - 9;
+        g.font = FONTB;
+        const tw = g.measureText(t.text).width, bw = tw + 12, bx = Math.max(4, W - bw - (ms ? 50 : 74)), by = y - 9;
         const bg = t.live ? (t.pos ? st("candles.up").c : st("candles.down").c) : "rgba(14,21,34,.92)";
-        g.fillStyle = bg; g.fillRect(bx, by, bw, 18);
+        g.fillStyle = bg; g.fillRect(bx, by, bw, ms ? 16 : 18);
         if (!t.live) { g.strokeStyle = t.color || "#8a98ad"; g.strokeRect(bx + 0.5, by + 0.5, bw - 1, 17); }
         g.fillStyle = t.live ? "#06121d" : (t.color || COL.ink); g.fillText(t.text, bx + 6, by + 13);
-        g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
+        g.font = FONT;
       }
       const p = profile;
       if (shw("vrvp") && p && p.rows.length) {
-        const maxV = Math.max(...p.rows.map((r) => r.volume)) || 1, maxW = W * 0.2, labels = vis("vrvp.labels");
+        const maxV = Math.max(...p.rows.map((r) => r.volume)) || 1, maxW = W * (ms ? 0.12 : 0.2), labels = vis("vrvp.labels") && !ms;
         if (vis("vrvp.bars")) for (const r of p.rows) {
           const yt = Y(r.high), yb = Y(r.low);
           if (yt === null || yb === null) continue;
@@ -3049,7 +3084,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const libHtml = lib.open
       ? `<div class="lib"><div class="libtop"><input id="libQ" type="search" placeholder="Buscar indicador (RSI, MACD, EMA…)" value="${esc(lib.q)}" aria-label="Buscar indicador"><button data-libclose="1" class="resetbtn">Cerrar</button></div><div id="libList">${libListHtml()}</div></div>`
       : `<div class="addrow"><button class="addbig" data-addlib="1">＋ Agregar indicador</button><button class="addbig tplb" data-tpl="1">Plantillas</button></div>`;
-    $("indBody").innerHTML = (tpl.open ? tplHtml() : "") + libHtml +
+    $("indBody").innerHTML = (NARROW() ? `<label class="chk mobsimple"><input type="checkbox" id="mobSimple" ${LS.get("mobSimple", true) !== false ? "checked" : ""}> Vista simple en el teléfono <span class="faint">(menos textos sobre el gráfico)</span></label>` : "") + (tpl.open ? tplHtml() : "") + libHtml +
       (CUST.length ? `<h5 class="libh">Tus indicadores (${CUST.length})</h5>` + CUST.map(custSectionHtml).join("") : "") +
       '<h5 class="libh">Indicadores de la app</h5><p class="muted" style="margin:4px 0">Toca un indicador para ajustar sus parámetros y su estilo. Los cambios en Bollinger, SQZMOM, estructura y ATR también cambian las señales de las estrategias.</p>' +
       IND_DEF.map((d) => {
@@ -3094,6 +3129,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     onStyleInput(e);
   });
   $("indBody").addEventListener("change", (e) => {
+    if (e.target.id === "mobSimple") { LS.set("mobSimple", e.target.checked); chart.draw(); return; }
     onStyleInput(e);
     const sw = e.target.closest("[data-show]");
     if (sw) { S.show[sw.dataset.show] = sw.checked; LS.set("show", S.show); refreshChart(); }
