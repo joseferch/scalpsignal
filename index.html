@@ -3076,6 +3076,29 @@ if (typeof module !== "undefined") module.exports = SSP;
     } catch { throw new Error("PIN incorrecto."); }
   }
 
+  // ------------------------------------------------------------ sesión permanente (no pedir el PIN al abrir)
+  /* La clave API se cifra con una clave AES generada en el dispositivo y marcada como NO extraíble,
+     guardada en IndexedDB: ni el código de la página puede leerla en claro, solo usarla para descifrar aquí. */
+  const IDB = () => new Promise((res, rej) => { const r = indexedDB.open("ssp-trade", 1); r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  async function idb(op, val) {
+    const db = await IDB();
+    return new Promise((res, rej) => { const st = db.transaction("k", op === "get" ? "readonly" : "readwrite").objectStore("k"), rq = op === "get" ? st.get("aes") : op === "put" ? st.put(val, "aes") : st.delete("aes"); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); });
+  }
+  const autoOn = () => !!LS.get("trade:auto", null);
+  async function saveAuto(env, key, secret) {
+    const k = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    await idb("put", k);
+    const iv = crypto.getRandomValues(new Uint8Array(12)), ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k, enc.encode(JSON.stringify({ key, secret })));
+    LS.set("trade:auto", { env, iv: b64(iv), ct: b64(ct) });
+  }
+  async function openAuto() {
+    const a = LS.get("trade:auto", null); if (!a) return null;
+    const k = await idb("get"); if (!k) return null;
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(a.iv) }, k, unb64(a.ct));
+    return Object.assign({ env: a.env }, JSON.parse(dec.decode(pt)));
+  }
+  async function clearAuto() { LS.set("trade:auto", null); try { await idb("del"); } catch { /* sin IndexedDB */ } }
+
   // ------------------------------------------------------------ API v5 firmada
   const ERR = {
     10002: "La hora del teléfono no coincide con la de Bybit. Revisa la hora automática del teléfono.",
@@ -3165,7 +3188,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   }
 
   // ------------------------------------------------------------ conexión
-  async function connect(c, { save, pin } = {}) {
+  async function connect(c, { save, pin, keep } = {}) {
     T.busy = true; renderTrade();
     try {
       T.env = c.env; LS.set("trade:env", c.env);
@@ -3174,6 +3197,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       await syncTime();
       await loadWallet();                     // prueba de la clave
       if (save && pin) await saveCred(c.env, T.key, T.secret, pin);
+      if (keep === true) await saveAuto(c.env, T.key, T.secret).catch(() => toast("Este navegador no permite mantener la sesión abierta; se pedirá el PIN.", "info"));
+      if (keep === false) await clearAuto();
       T.on = true;
       await refreshAll();
       await instr(S.sel).catch(() => null); await loadMode(S.sel);
@@ -3293,12 +3318,13 @@ if (typeof module !== "undefined") module.exports = SSP;
         <p>Conecta tu cuenta con una clave API para comprar y vender perpetuos USDT desde aquí, con tu confirmación en cada orden. Empieza en la cuenta <b>Demo</b> de Bybit para probar sin dinero real.</p>
         ${c ? `<div class="tr-locked"><span>🔒 Clave guardada · ${esc(ENV[c.env]?.name || c.env)} · ${esc(c.key)}</span>
           <label class="f">PIN<input id="trPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Tu PIN"></label>
+          <label class="chk"><input type="checkbox" id="trKeep" checked> Mantener la sesión abierta en este dispositivo</label>
           <div class="rowbtns"><button id="trUnlock" class="primary" ${T.busy ? "disabled" : ""}>${T.busy ? "Conectando…" : "Desbloquear y conectar"}</button><button id="trForget" class="resetbtn danger">Borrar clave</button></div></div>`
         : `<button id="trSetup" class="primary" style="width:100%">Conectar cuenta de Bybit</button>`}
         <p class="foot" style="margin-top:10px">La clave secreta se guarda solo en este dispositivo, cifrada con tu PIN, y se usa para firmar cada solicitud directamente con Bybit. Crea la clave <b>sin permiso de retiro ni de transferencia</b>.</p>
       </div>`;
-      const u = $("trUnlock"); if (u) u.onclick = async () => { try { const k = await openCred($("trPin").value); await connect(k); } catch (e) { toast(e.message, "invalidada"); } };
-      const fg = $("trForget"); if (fg) fg.onclick = async () => { if (await ask({ title: "Borrar la clave guardada", body: "<p>Se borra la clave API de este dispositivo. Para volver a operar tendrás que pegarla de nuevo.</p>", ok: "Borrar", danger: true })) { LS.set("trade:cred", null); renderTrade(); } };
+      const u = $("trUnlock"); if (u) u.onclick = async () => { try { const k = await openCred($("trPin").value); await connect(k, { keep: $("trKeep").checked }); } catch (e) { toast(e.message, "invalidada"); } };
+      const fg = $("trForget"); if (fg) fg.onclick = async () => { if (await ask({ title: "Borrar la clave guardada", body: "<p>Se borra la clave API de este dispositivo. Para volver a operar tendrás que pegarla de nuevo.</p>", ok: "Borrar", danger: true })) { LS.set("trade:cred", null); await clearAuto(); renderTrade(); } };
       const st = $("trSetup"); if (st) st.onclick = setupDialog;
       const pin = $("trPin"); if (pin) pin.onkeydown = (e) => { if (e.key === "Enter") $("trUnlock").click(); };
       return;
@@ -3484,10 +3510,17 @@ if (typeof module !== "undefined") module.exports = SSP;
   async function acctMenu() {
     const r = await ask({ title: "Cuenta de Bybit", body: `<p>${E().name}${T.acct?.unifiedMarginStatus ? " · cuenta unificada" : ""}.</p>
       <label class="chk"><input type="checkbox" id="dlgConf" ${T.confirm ? "checked" : ""}> Pedir confirmación antes de cada orden${E().real ? " (en la cuenta real siempre se pide)" : ""}</label>
+      <label class="chk"><input type="checkbox" id="dlgKeep" ${autoOn() ? "checked" : ""}> Mantener la sesión abierta en este dispositivo (no pedir el PIN al abrir la app)</label>
+      <p class="faint">Con la sesión abierta, cualquiera que use este teléfono desbloqueado puede operar. «Desconectar» la cierra y vuelve a pedir el PIN.</p>
       <div class="rowbtns" style="margin-top:10px"><button data-act="refresh">Actualizar datos</button><button data-act="switch">Cambiar de cuenta</button><button data-act="off" class="resetbtn danger">Desconectar</button></div>`, ok: "Cerrar", cancel: false,
-      onOpen: (d) => d.querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => { d.dataset.act = b.dataset.act; d.querySelector(".dlg-ok").click(); })), read: (d) => ({ act: d.dataset.act, conf: d.querySelector("#dlgConf").checked }) });
+      onOpen: (d) => d.querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => { d.dataset.act = b.dataset.act; d.querySelector(".dlg-ok").click(); })), read: (d) => ({ act: d.dataset.act, conf: d.querySelector("#dlgConf").checked, keep: d.querySelector("#dlgKeep").checked }) });
     if (!r) return;
     T.confirm = r.conf; LS.set("trade:confirm", r.conf);
+    if (r.keep !== autoOn() && !["off", "switch"].includes(r.act)) {
+      if (r.keep) { await saveAuto(T.env, T.key, T.secret).then(() => toast("La sesión quedará abierta en este dispositivo", "info")).catch(() => toast("Este navegador no permite mantener la sesión abierta.", "invalidada")); }
+      else { await clearAuto(); toast("Se pedirá el PIN al abrir la app", "info"); }
+    }
+    if (r.act === "off" || r.act === "switch") await clearAuto();
     if (r.act === "refresh") { await refreshAll().catch((e) => toast(e.message, "invalidada")); toast("Datos de la cuenta actualizados", "info"); }
     if (r.act === "off") disconnect(false);
     if (r.act === "switch") { disconnect(false); setupDialog(); }
@@ -3501,16 +3534,17 @@ if (typeof module !== "undefined") module.exports = SSP;
       <label class="f">API secret<input id="dlgSec" type="password" autocomplete="off" spellcheck="false"></label>
       <label class="f">PIN para guardarla cifrada (mín. 4 dígitos)<input id="dlgPin" type="password" inputmode="numeric" autocomplete="new-password"></label>
       <label class="chk"><input type="checkbox" id="dlgSave" checked> Guardar en este dispositivo (cifrada con el PIN)</label>
+      <label class="chk"><input type="checkbox" id="dlgKeep" checked> Mantener la sesión abierta (no pedir el PIN al abrir la app)</label>
       <details class="tr-help"><summary>Cómo crear la clave API</summary><ol>
         <li><b>Demo:</b> en bybit.com entra a tu cuenta, cambia a «Demo Trading» y en tu perfil abre «API». <b>Real:</b> perfil → «API» → «Crear nueva clave».</li>
         <li>Elige «Claves generadas por el sistema» y permisos de <b>lectura y escritura</b>.</li>
         <li>Marca solo <b>Contratos → Órdenes y Posiciones</b> (y «Unified Trading» si aparece). <b>No</b> actives retiros ni transferencias.</li>
         <li>Bybit puede hacer caducar a los 3 meses las claves sin IP fija; si caduca, crea otra.</li></ol></details>
       <p class="faint">La clave secreta no se envía a ningún servidor de esta app: solo se usa en tu dispositivo para firmar las órdenes que tú confirmas.</p>`, ok: "Conectar",
-      read: (d) => ({ env: d.querySelector("#dlgEnv").value, key: d.querySelector("#dlgKey").value, secret: d.querySelector("#dlgSec").value, pin: d.querySelector("#dlgPin").value, save: d.querySelector("#dlgSave").checked }),
+      read: (d) => ({ env: d.querySelector("#dlgEnv").value, key: d.querySelector("#dlgKey").value, secret: d.querySelector("#dlgSec").value, pin: d.querySelector("#dlgPin").value, save: d.querySelector("#dlgSave").checked, keep: d.querySelector("#dlgKeep").checked }),
       check: (v) => (!v.key.trim() || !v.secret.trim() ? "Pega la API key y el secreto." : v.save && !/^\d{4,}$/.test(v.pin) ? "El PIN debe tener al menos 4 dígitos." : "") });
     if (!r) return;
-    try { await connect(r, { save: r.save, pin: r.pin }); } catch (e) { toast(e.message, "invalidada"); renderTrade(); }
+    try { await connect(r, { save: r.save, pin: r.pin, keep: r.keep }); } catch (e) { toast(e.message, "invalidada"); renderTrade(); }
   }
 
   // ------------------------------------------------------------ libro de órdenes
@@ -3732,6 +3766,33 @@ if (typeof module !== "undefined") module.exports = SSP;
     T, api, connect, disconnect, ENV,
   };
   renderTrade(); renderDock();
+
+  // reconexión automática al abrir la app y al volver de segundo plano
+  let autoT = null;
+  async function autoConnect() {
+    clearTimeout(autoT);
+    if (T.on || T.busy || !autoOn()) return;
+    let c;
+    try { c = await openAuto(); } catch { c = null; }
+    if (!c) { await clearAuto(); renderTrade(); return; }   // el navegador borró la clave del dispositivo: se usará el PIN
+    try { await connect(c); }
+    catch (e) {
+      if ([10003, 10004, 10005, 33004].includes(e.code)) { await clearAuto(); toast(`No se pudo reabrir la sesión de Bybit: ${e.message}`, "invalidada"); }
+      else { toast("Sin conexión con Bybit: se reintentará en 30 s.", "info"); autoT = setTimeout(autoConnect, 30000); }
+    }
+  }
+  function resume() {
+    if (document.visibilityState !== "visible") return;
+    if (!T.on) { autoConnect(); return; }
+    if (!T.ws || T.ws.readyState > 1) openPrivate();
+    if (!T.pub || T.pub.readyState > 1) openPublic();
+    syncTime().catch(() => null);
+    refreshAll(false).catch(() => null);
+  }
+  document.addEventListener("visibilitychange", resume);
+  window.addEventListener("online", resume);
+  window.addEventListener("pageshow", resume);
+  autoConnect();
 })();
 
 </script>
