@@ -189,7 +189,7 @@ label.chk{display:flex;gap:6px;align-items:center;margin-top:18px}
 .tchip.sess b{color:var(--info)}
 
 /* ---- operar en Bybit ---- */
-@media(min-width:1100px){aside.side{grid-column:2;grid-row:1 / span 2}}
+@media(min-width:1100px){aside.side{grid-column:2;grid-row:1 / span 2}main{grid-template-rows:auto 1fr;align-items:start}}
 @media(min-width:1100px){main:has(.dock:not([hidden])) .chartwrap{height:calc(100vh - 300px)!important}}
 .tr-intro h3{margin:4px 0 6px;font-size:16px}
 .tr-intro p{color:var(--ink2);font-size:13px;margin:0 0 10px}
@@ -271,6 +271,11 @@ button.link{background:none;border:0;padding:0;font-weight:700;color:var(--ink);
 .dtab{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
 .dtab th{text-align:left;color:var(--ink3);font-weight:500;padding:5px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
 .dtab td{padding:6px 8px;border-bottom:1px dashed var(--rule);white-space:nowrap}
+.hbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.hbar select{width:auto;padding:4px 6px;font-size:12px}
+.hbar .mini:first-of-type{margin-left:auto}
+.src{font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.06);color:var(--ink2)}
+.src.app{background:rgba(98,168,255,.15);color:var(--info)}
 @keyframes flash{0%{background:var(--info-bg)}100%{background:transparent}}
 .switch{position:relative;width:38px;height:22px;flex:none}
 .switch input{opacity:0;width:0;height:0;position:absolute}
@@ -3170,13 +3175,50 @@ if (typeof module !== "undefined") module.exports = SSP;
     const r = await api("GET", "/v5/order/realtime", { category: "linear", settleCoin: "USDT", limit: 50 });
     T.orders = r.list || [];
   }
-  async function loadHistory() {
+  // ------------------------------------------------------------ historial completo (app + Bybit), por periodos
+  /* Bybit entrega el historial en ventanas de 7 días como máximo y por páginas: se recorren las ventanas
+     del periodo elegido y se juntan. Incluye todo lo de la cuenta, se haya hecho desde esta app o desde Bybit. */
+  T.hq = Object.assign({ days: 7, cat: "linear", sym: "all", src: "all" }, LS.get("trade:hq", {}));
+  T.histErr = {};
+  const HKEY = { hist: (o) => o.orderId, exec: (x) => x.execId || `${x.orderId}|${x.execTime}|${x.execQty}`, pnl: (x) => x.orderId || `${x.symbol}|${x.updatedTime}` };
+  function periodStart(days) {
+    if (days === 0) { const d = new Date(Date.now() - 6 * 3600e3); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + 6 * 3600e3; }   // hoy, desde las 00:00 de Costa Rica
+    return Date.now() - days * 86400e3;
+  }
+  async function fetchRange(path, params, from, to, maxRows = 2000) {
+    const out = [];
+    for (let end = to; end > from && out.length < maxRows; end -= 7 * 86400e3) {
+      const start = Math.max(from, end - 7 * 86400e3 + 1);
+      let cursor = "";
+      for (let page = 0; page < 10 && out.length < maxRows; page++) {
+        const r = await api("GET", path, Object.assign({}, params, { startTime: start, endTime: end, limit: path.includes("closed-pnl") ? 100 : path.includes("execution") ? 100 : 50, cursor }));
+        out.push(...(r.list || []));
+        cursor = r.nextPageCursor || "";
+        if (!cursor || !(r.list || []).length) break;
+      }
+    }
+    return out;
+  }
+  function mergeRows(kind, cur, add) {
+    const m = new Map(cur.map((x) => [HKEY[kind](x), x]));
+    const t = (x) => +(x.execTime || x.updatedTime || x.createdTime || 0);
+    for (const x of add) { const k = HKEY[kind](x), old = m.get(k); if (!old || t(x) >= t(old)) m.set(k, x); }   // se queda con la versión más reciente
+    return [...m.values()].sort((a, b) => t(b) - t(a));
+  }
+  async function loadHistory(recentOnly = false) {
+    const q = T.hq, to = Date.now(), from = recentOnly ? to - 86400e3 : periodStart(q.days);
+    const cats = q.cat === "all" ? ["linear", "spot"] : [q.cat];
+    const take = async (kind, path, cat) => {
+      try { const rows = (await fetchRange(path, { category: cat }, from, to)).map((x) => Object.assign({ category: cat }, x)); T.histErr[kind + cat] = ""; return rows; }
+      catch (e) { T.histErr[kind + cat] = e.code === 10005 ? `Tu clave API no tiene permiso para leer ${cat === "spot" ? "Spot" : "contratos"}.` : e.message; return []; }
+    };
     const [h, x, p] = await Promise.all([
-      api("GET", "/v5/order/history", { category: "linear", limit: 50 }).catch(() => ({ list: [] })),
-      api("GET", "/v5/execution/list", { category: "linear", limit: 50 }).catch(() => ({ list: [] })),
-      api("GET", "/v5/position/closed-pnl", { category: "linear", limit: 50 }).catch(() => ({ list: [] })),
+      Promise.all(cats.map((c) => take("hist", "/v5/order/history", c))).then((a) => a.flat()),
+      Promise.all(cats.map((c) => take("exec", "/v5/execution/list", c))).then((a) => a.flat()),
+      cats.includes("linear") ? take("pnl", "/v5/position/closed-pnl", "linear") : Promise.resolve([]),
     ]);
-    T.hist = h.list || []; T.execs = x.list || []; T.pnl = p.list || [];
+    if (recentOnly) { T.hist = mergeRows("hist", T.hist, h); T.execs = mergeRows("exec", T.execs, x); T.pnl = mergeRows("pnl", T.pnl, p); }
+    else { T.hist = mergeRows("hist", [], h); T.execs = mergeRows("exec", [], x); T.pnl = mergeRows("pnl", [], p); T.histLoaded = Date.now(); }
   }
   async function loadMode(sym) {   // modo de posición del par: unidireccional (idx 0) o cobertura (1 y 2)
     try { const r = await api("GET", "/v5/position/list", { category: "linear", symbol: sym }); T.hedge[sym] = (r.list || []).some((p) => +p.positionIdx > 0); T.levOf = T.levOf || {}; const p0 = (r.list || [])[0]; if (p0) T.levOf[sym] = +p0.leverage; } catch { /* sin datos */ }
@@ -3204,7 +3246,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       await instr(S.sel).catch(() => null); await loadMode(S.sel);
       openPrivate(); openPublic();
       clearInterval(T.poll); T.poll = setInterval(() => { if (T.on) refreshAll(false).catch(() => null); }, 30000);
-      clearInterval(T.histPoll); T.histPoll = setInterval(() => { if (T.on && T.dock !== "pos") loadHistory().then(renderDock).catch(() => null); }, 60000);
+      clearInterval(T.histPoll); T.histPoll = setInterval(() => { if (T.on && ["hist", "exec", "pnl"].includes(T.dock)) loadHistory(true).then(renderDock).catch(() => null); }, 60000);
       toast(`Cuenta conectada · ${E().name}`, "info");
       return true;
     } catch (e) {
@@ -3235,7 +3277,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.op === "auth") {
-        if (m.success) { wsBack = 1000; ws.send(JSON.stringify({ op: "subscribe", args: ["position.linear", "order.linear", "execution.linear", "wallet"] })); T.wsOk = true; renderTrade(); }
+        if (m.success) { wsBack = 1000; ws.send(JSON.stringify({ op: "subscribe", args: ["position.linear", "order", "execution", "wallet"] })); T.wsOk = true; renderTrade(); }
         else { T.wsOk = false; toast("Bybit no aceptó la conexión en vivo de la cuenta; se actualizará cada 30 s.", "info"); }
         return;
       }
@@ -3245,20 +3287,20 @@ if (typeof module !== "undefined") module.exports = SSP;
       else if (m.topic.startsWith("order")) {
         for (const o of d) {
           const i = T.orders.findIndex((x) => x.orderId === o.orderId), live = ["New", "PartiallyFilled", "Untriggered", "Created"].includes(o.orderStatus);
-          if (live) { if (i >= 0) T.orders[i] = o; else T.orders.unshift(o); } else { if (i >= 0) T.orders.splice(i, 1); T.hist.unshift(o); T.hist = T.hist.slice(0, 100); }
+          if (live) { if (o.category && o.category !== "linear") continue; if (i >= 0) T.orders[i] = o; else T.orders.unshift(o); }
+          else { if (i >= 0) T.orders.splice(i, 1); T.hist = mergeRows("hist", T.hist, [o]); }
           if (o.orderStatus === "Rejected") toast(`Orden rechazada: ${o.rejectReason || o.symbol}`, "invalidada");
           if (o.orderStatus === "Triggered") toast(`Se activó la orden condicional de ${o.symbol}`, "info");
         }
         renderAll();
       } else if (m.topic.startsWith("execution")) {
         for (const x of d) {
+          T.execs = mergeRows("exec", T.execs, [x]);
           if (x.execType && x.execType !== "Trade") continue;
-          T.execs.unshift(x);
           toast(`Ejecutada: ${x.side === "Buy" ? "compra" : "venta"} ${x.execQty} ${x.symbol} a ${fpx(x.symbol, x.execPrice)}`, "confirmada");
           try { A.beep("confirmada"); } catch { /* */ }
         }
-        T.execs = T.execs.slice(0, 100);
-        clearTimeout(T.pnlT); T.pnlT = setTimeout(() => api("GET", "/v5/position/closed-pnl", { category: "linear", limit: 50 }).then((r) => { T.pnl = r.list || []; renderDock(); }).catch(() => null), 1500);
+        clearTimeout(T.pnlT); T.pnlT = setTimeout(() => api("GET", "/v5/position/closed-pnl", { category: "linear", limit: 50 }).then((r) => { T.pnl = mergeRows("pnl", T.pnl, (r.list || []).map((x) => Object.assign({ category: "linear" }, x))); renderDock(); }).catch(() => null), 1500);
         renderDock();
       } else if (m.topic === "wallet") { loadWallet().then(renderAll).catch(() => null); }
     };
@@ -3592,13 +3634,10 @@ if (typeof module !== "undefined") module.exports = SSP;
       body = list.length ? `<div class="dock-tools"><button data-cancelall="${T.dock}" class="mini danger">Cancelar todas</button></div>` + list.map((o) => `<div class="ocard"><div class="pc-hd"><button class="link" data-gosym="${o.symbol}">${o.symbol}</button><span class="tag ${o.side === "Buy" ? "buy" : "sell"}">${sideTx(o.side, o.reduceOnly)}</span><span class="faint">${STOPTYPE[o.stopOrderType] || (o.orderType === "Limit" ? "Límite" : "Mercado")} · ${STATUS[o.orderStatus] || o.orderStatus}</span></div>
         <div class="pc-grid">${cell("Precio", o.orderType === "Market" ? "Mercado" : fpx(o.symbol, o.price))}${+o.triggerPrice ? cell("Activación", `${o.triggerDirection === 1 ? "≥" : "≤"} ${fpx(o.symbol, o.triggerPrice)}`) : ""}${cell("Cantidad", `${+o.cumExecQty ? o.cumExecQty + " / " : ""}${+o.qty ? o.qty : "posición"}`)}${+o.takeProfit || +o.stopLoss ? cell("TP / SL", `${+o.takeProfit ? fpx(o.symbol, o.takeProfit) : "—"} / ${+o.stopLoss ? fpx(o.symbol, o.stopLoss) : "—"}`) : ""}${cell("Hora", when(o.createdTime))}</div>
         <div class="pc-act">${o.stopOrderType && ["TakeProfit", "StopLoss", "tpslOrder"].includes(o.stopOrderType) ? "" : `<button class="mini" data-amend="${o.orderId}">Modificar</button>`}<button class="mini danger" data-cancel="${o.orderId}">Cancelar</button></div></div>`).join("") : `<p class="faint dock-empty">${T.dock === "cond" ? "No hay órdenes TP/SL ni condicionales." : "No hay órdenes abiertas."}</p>`;
-    } else if (T.dock === "hist") {
-      body = table(["Hora", "Par", "Lado", "Tipo", "Precio", "Cantidad", "Ejecutado", "Estado"], T.hist.map((o) => [when(o.updatedTime || o.createdTime), o.symbol, `<span class="${o.side === "Buy" ? "buy" : "sell"}">${sideTx(o.side, o.reduceOnly)}</span>`, STOPTYPE[o.stopOrderType] || (o.orderType === "Limit" ? "Límite" : "Mercado"), +o.avgPrice ? fpx(o.symbol, o.avgPrice) : +o.price ? fpx(o.symbol, o.price) : "—", o.qty, o.cumExecQty, STATUS[o.orderStatus] || o.orderStatus]), "No hay órdenes en el historial.");
-    } else if (T.dock === "exec") {
-      body = table(["Hora", "Par", "Lado", "Precio", "Cantidad", "Valor", "Comisión", "Rol"], T.execs.map((x) => [when(x.execTime), x.symbol, `<span class="${x.side === "Buy" ? "buy" : "sell"}">${x.side === "Buy" ? "Compra" : "Venta"}</span>`, fpx(x.symbol, x.execPrice), x.execQty, f2(+x.execValue || +x.execPrice * +x.execQty), f2(+x.execFee, 4), x.isMaker ? "Maker" : "Taker"]), "Todavía no hay operaciones.");
-    } else if (T.dock === "pnl") {
-      const tot = T.pnl.reduce((s, x) => s + +x.closedPnl, 0);
-      body = (T.pnl.length ? `<p class="dock-sum">Total de las últimas ${T.pnl.length}: <b class="${cls(tot)}">${sgn(tot)} USDT</b></p>` : "") + table(["Cierre", "Par", "Posición", "Cantidad", "Entrada", "Salida", "PnL"], T.pnl.map((x) => [when(x.updatedTime), x.symbol, x.side === "Sell" ? '<span class="buy">Long</span>' : '<span class="sell">Short</span>', x.closedSize || x.qty, fpx(x.symbol, x.avgEntryPrice), fpx(x.symbol, x.avgExitPrice), `<b class="${cls(+x.closedPnl)}">${sgn(+x.closedPnl, 4)}</b>`]), "Todavía no hay posiciones cerradas.");
+    } else if (T.dock === "hist" || T.dock === "exec" || T.dock === "pnl") {
+      const V = histView(T.dock);
+      body = histBar(T.dock) + (T.histBusy ? '<p class="faint dock-empty">Cargando el historial de Bybit…</p>' : "") + V.errs + V.sum + table(V.head, V.rows.slice(0, T.histShow || 200), V.empty) +
+        (V.rows.length > (T.histShow || 200) ? `<div class="dock-tools" style="justify-content:center;margin-top:8px"><button class="mini" data-hmore="1">Mostrar más (${V.rows.length - (T.histShow || 200)} restantes)</button></div>` : "");
     } else if (T.dock === "assets") {
       const w = T.wallet || {};
       body = `<div class="pc-grid wide">${cell("Patrimonio", f2(w.equity) + " USDT")}${cell("Saldo de la billetera", f2(w.balance))}${cell("Disponible", f2(w.avail))}${cell("PnL no realizado", sgn(w.upl), cls(w.upl))}${cell("Margen inicial", f2(w.im))}${cell("Margen de mantenimiento", f2(w.mm))}${cell("Cuenta", `${w.type || "—"} · ${E().name}`)}</div>` +
@@ -3606,6 +3645,63 @@ if (typeof module !== "undefined") module.exports = SSP;
     }
     box.innerHTML = tabs + `<div class="dock-body">${body}</div>`;
   }
+  // ---- historial: filtros, resumen y exportación
+  const srcOf = (o) => (String(o.orderLinkId || "").startsWith("ssp-") ? "App" : "Bybit");
+  const srcTag = (o) => `<span class="src ${srcOf(o) === "App" ? "app" : ""}">${srcOf(o)}</span>`;
+  const EXECT = { Trade: "Operación", Funding: "Financiamiento", AdlTrade: "ADL", BustTrade: "Liquidación", Settle: "Liquidación diaria", BlockTrade: "Block trade" };
+  const PERIODS = [[0, "Hoy"], [7, "7 días"], [30, "30 días"], [90, "90 días"], [180, "180 días"]];
+  function histBar(kind) {
+    const q = T.hq, sel = (id, opts, v) => `<select data-hq="${id}">${opts.map(([k, l]) => `<option value="${k}" ${String(v) === String(k) ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+    return `<div class="hbar">${sel("days", PERIODS, q.days)}${kind !== "pnl" ? sel("cat", [["linear", "Perpetuos USDT"], ["spot", "Spot"], ["all", "Perpetuos y Spot"]], q.cat) : ""}${sel("sym", [["all", "Todos los pares"], ["sel", `Solo ${S.sel}`]], q.sym)}${kind !== "pnl" ? sel("src", [["all", "App y Bybit"], ["App", "Solo desde la app"], ["Bybit", "Solo desde Bybit"]], q.src) : ""}
+      <button class="mini" data-hrefresh="1" title="Volver a cargar desde Bybit">Actualizar</button><button class="mini" data-hcsv="${kind}">Exportar CSV</button></div>`;
+  }
+  function histFilter(rows, kind) {
+    const q = T.hq, from = periodStart(q.days);
+    return rows.filter((x) => {
+      const t = +(x.execTime || x.updatedTime || x.createdTime || 0);
+      if (t && t < from) return false;
+      if (q.sym === "sel" && x.symbol !== S.sel) return false;
+      if (kind !== "pnl" && q.cat !== "all" && (x.category || "linear") !== q.cat) return false;
+      if (kind !== "pnl" && q.src !== "all" && srcOf(x) !== q.src) return false;
+      return true;
+    });
+  }
+  function histView(kind) {
+    const errs = Object.entries(T.histErr).filter(([k, v]) => v && k.startsWith(kind)).map(([, v]) => `<p class="sell dock-sum">${esc(v)}</p>`).join("");
+    const per = PERIODS.find(([d]) => d === T.hq.days)?.[1].toLowerCase() || "";
+    if (kind === "hist") {
+      const L = histFilter(T.hist, kind), fill = L.filter((o) => o.orderStatus === "Filled").length;
+      return { errs, sum: L.length ? `<p class="dock-sum">${L.length} órdenes (${per}) · ${fill} ejecutadas · ${L.filter((o) => srcOf(o) === "App").length} desde la app</p>` : "",
+        head: ["Hora", "Par", "Lado", "Tipo", "Precio", "Cantidad", "Ejecutado", "Estado", "Origen"],
+        rows: L.map((o) => [when(o.updatedTime || o.createdTime), `${o.symbol}${o.category === "spot" ? ' <span class="faint">spot</span>' : ""}`, `<span class="${o.side === "Buy" ? "buy" : "sell"}">${sideTx(o.side, o.reduceOnly)}</span>`, STOPTYPE[o.stopOrderType] || (o.orderType === "Limit" ? "Límite" : "Mercado"), +o.avgPrice ? fpx(o.symbol, o.avgPrice) : +o.price ? fpx(o.symbol, o.price) : "—", o.qty, o.cumExecQty, STATUS[o.orderStatus] || o.orderStatus, srcTag(o)]),
+        empty: `No hay órdenes en este periodo (${per}).`, csv: () => L.map((o) => ({ hora: new Date(+(o.updatedTime || o.createdTime)).toISOString(), par: o.symbol, mercado: o.category || "linear", lado: o.side, tipo: o.stopOrderType || o.orderType, precio: o.avgPrice || o.price, cantidad: o.qty, ejecutado: o.cumExecQty, estado: o.orderStatus, origen: srcOf(o), orderId: o.orderId })) };
+    }
+    if (kind === "exec") {
+      const L = histFilter(T.execs, kind), trades = L.filter((x) => !x.execType || x.execType === "Trade");
+      const vol = trades.reduce((s, x) => s + (+x.execValue || +x.execPrice * +x.execQty), 0), fee = L.reduce((s, x) => s + +x.execFee, 0);
+      return { errs, sum: L.length ? `<p class="dock-sum">${trades.length} operaciones (${per}) · volumen <b>${f2(vol)} USDT</b> · comisiones <b class="sell">${f2(fee, 4)}</b> · ${trades.filter((x) => srcOf(x) === "App").length} desde la app</p>` : "",
+        head: ["Hora", "Par", "Lado", "Precio", "Cantidad", "Valor", "Comisión", "Rol", "Tipo", "Origen"],
+        rows: L.map((x) => [when(x.execTime), `${x.symbol}${x.category === "spot" ? ' <span class="faint">spot</span>' : ""}`, `<span class="${x.side === "Buy" ? "buy" : "sell"}">${x.side === "Buy" ? "Compra" : "Venta"}</span>`, fpx(x.symbol, x.execPrice), x.execQty, f2(+x.execValue || +x.execPrice * +x.execQty), f2(+x.execFee, 4), x.isMaker ? "Maker" : "Taker", EXECT[x.execType] || x.execType || "Operación", srcTag(x)]),
+        empty: `No hay operaciones en este periodo (${per}).`, csv: () => L.map((x) => ({ hora: new Date(+x.execTime).toISOString(), par: x.symbol, mercado: x.category || "linear", lado: x.side, precio: x.execPrice, cantidad: x.execQty, valor: x.execValue, comision: x.execFee, rol: x.isMaker ? "maker" : "taker", tipo: x.execType, origen: srcOf(x), execId: x.execId, orderId: x.orderId })) };
+    }
+    const L = histFilter(T.pnl, kind), tot = L.reduce((s, x) => s + +x.closedPnl, 0), win = L.filter((x) => +x.closedPnl > 0).length;
+    return { errs, sum: L.length ? `<p class="dock-sum">${L.length} cierres (${per}) · PnL <b class="${cls(tot)}">${sgn(tot)} USDT</b> · ganadores ${win} / perdedores ${L.length - win} (${f2((win / L.length) * 100, 0)} %)</p>` : "",
+      head: ["Cierre", "Par", "Posición", "Cantidad", "Entrada", "Salida", "Apal.", "PnL"],
+      rows: L.map((x) => [when(x.updatedTime), x.symbol, x.side === "Sell" ? '<span class="buy">Long</span>' : '<span class="sell">Short</span>', x.closedSize || x.qty, fpx(x.symbol, x.avgEntryPrice), fpx(x.symbol, x.avgExitPrice), x.leverage ? x.leverage + "x" : "—", `<b class="${cls(+x.closedPnl)}">${sgn(+x.closedPnl, 4)}</b>`]),
+      empty: `No hay posiciones cerradas en este periodo (${per}).`, csv: () => L.map((x) => ({ cierre: new Date(+x.updatedTime).toISOString(), par: x.symbol, posicion: x.side === "Sell" ? "long" : "short", cantidad: x.closedSize || x.qty, entrada: x.avgEntryPrice, salida: x.avgExitPrice, apalancamiento: x.leverage, pnl: x.closedPnl })) };
+  }
+  function exportCsv(kind) {
+    const rows = histView(kind).csv(); if (!rows.length) { toast("No hay datos para exportar con estos filtros.", "info"); return; }
+    const cols = Object.keys(rows[0]), q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = "\ufeff" + [cols.join(","), ...rows.map((r) => cols.map((c) => q(r[c])).join(","))].join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `bybit-${{ hist: "ordenes", exec: "operaciones", pnl: "pnl-cerrado" }[kind]}-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  async function reloadHist() {
+    T.histBusy = true; T.histShow = 200; renderDock();
+    try { await loadHistory(); } finally { T.histBusy = false; renderDock(); }
+  }
+
   function table(head, rows, empty) {
     if (!rows.length) return `<p class="faint dock-empty">${empty}</p>`;
     return `<div class="tscroll"><table class="dtab"><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
@@ -3613,7 +3709,10 @@ if (typeof module !== "undefined") module.exports = SSP;
   async function onDock(e) {
     const g = (a) => e.target.closest(`[data-${a}]`);
     let b;
-    if ((b = g("dock"))) { T.dock = b.dataset.dock; LS.set("trade:dock", T.dock); renderDock(); if (["hist", "exec", "pnl"].includes(T.dock)) loadHistory().then(renderDock).catch(() => null); return; }
+    if ((b = g("dock"))) { T.dock = b.dataset.dock; LS.set("trade:dock", T.dock); renderDock(); if (["hist", "exec", "pnl"].includes(T.dock)) (T.histLoaded && Date.now() - T.histLoaded < 120000 ? loadHistory(true).then(renderDock) : reloadHist()).catch(() => null); return; }
+    if (g("hrefresh")) { reloadHist(); return; }
+    if ((b = g("hcsv"))) { exportCsv(b.dataset.hcsv); return; }
+    if (g("hmore")) { T.histShow = (T.histShow || 200) + 200; renderDock(); return; }
     if ((b = g("gosym"))) { const s = b.dataset.gosym; if (S.symbols.includes(s)) A.selectSymbol(s); else toast(`${s} no está en tu lista de pares: agrégalo en «Pares» para ver su gráfico.`, "info"); return; }
     try {
       if ((b = g("cancel"))) { const o = T.orders.find((x) => x.orderId === b.dataset.cancel); if (!o) return; await api("POST", "/v5/order/cancel", { category: "linear", symbol: o.symbol, orderId: o.orderId }); toast(`Orden de ${o.symbol} cancelada`, "info"); T.orders = T.orders.filter((x) => x !== o); renderAll(); }
@@ -3761,6 +3860,12 @@ if (typeof module !== "undefined") module.exports = SSP;
   }
 
   $("dock")?.addEventListener("click", onDock);
+  $("dock")?.addEventListener("change", (e) => {
+    const el = e.target.closest("[data-hq]"); if (!el) return;
+    const k = el.dataset.hq, v = k === "days" ? +el.value : el.value, wider = (k === "days" && v > T.hq.days) || (k === "cat" && v !== T.hq.cat);
+    T.hq[k] = v; LS.set("trade:hq", T.hq); T.histShow = 200;
+    if (wider) reloadHist(); else renderDock();   // filtrar por par u origen no necesita volver a pedir datos
+  });
   window.__trade = {
     onTab(tab) { if (tab === "operar") { renderTrade(); if (T.on) instr(S.sel).then(renderTrade).catch(() => null); } syncPublic(); },
     T, api, connect, disconnect, ENV,
