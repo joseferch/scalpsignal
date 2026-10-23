@@ -41,6 +41,8 @@ input,select{background:var(--night);border:1px solid var(--rule2);border-radius
 .quote{display:flex;align-items:baseline;gap:8px}
 #price{font-size:22px;font-weight:600;letter-spacing:-.01em}
 #chg{font-size:13px}
+.hilo24{font-size:12px;color:var(--ink3);white-space:nowrap}.hilo24 b{color:var(--ink2);font-weight:600}
+@media(max-width:900px){.hilo24{display:none}}
 .trend-chips{display:flex;gap:6px}
 .tchip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--deck);font-size:12.5px;color:var(--ink2)}
 .tchip b{font-weight:600}
@@ -327,7 +329,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   <div class="top-row">
     <span class="brand">Scalp<b>Signal</b></span>
     <select id="symSel" aria-label="Par"></select>
-    <span class="quote"><span id="price">—</span><span id="chg" class="muted"></span></span>
+    <span class="quote"><span id="price">—</span><span id="chg" class="muted"></span><span id="hilo24" class="hilo24"></span></span>
     <span class="trend-chips" id="trendChips"></span>
     <span class="top-right">
       <span id="conn" class="conn"><i></i><span id="connTx">Conectando…</span></span>
@@ -2072,7 +2074,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const COL = { buy: "#2fd3a0", sell: "#ff6170", info: "#62a8ff", gold: "#f0c75e", violet: "#b69cff", ink: "#e6ebf2", ink2: "#a5b3c7", ink3: "#6f819b", night: "#0e1522", rule: "#1a2640" };
   // [clave, etiqueta, {c: color, w: grosor, v: visible}] — solo se muestran los controles de las propiedades definidas
   const STYLE_DEF = {
-    candles: [["candles.up", "Vela alcista", { c: "#2fd3a0" }], ["candles.down", "Vela bajista", { c: "#ff6170" }], ["candles.border", "Borde de las velas", { v: false }]],
+    candles: [["candles.up", "Vela alcista", { c: "#2fd3a0" }], ["candles.down", "Vela bajista", { c: "#ff6170" }], ["candles.border", "Borde de las velas", { v: false }], ["candles.hilo", "Máximo y mínimo de lo visible", { c: "#e6ebf2", v: true }]],
     bb: [["bb.upper", "Banda superior", { c: "#62a8ff", w: 1, v: true, s: 0, lt: 0, lb: false, pl: false }], ["bb.mid", "Media", { c: "#ff6170", w: 1, v: true, s: 2, lt: 0, lb: false, pl: false }], ["bb.lower", "Banda inferior", { c: "#62a8ff", w: 1, v: true, s: 0, lt: 0, lb: false, pl: false }],
       ["bb.fill", "Relleno entre bandas", { c: "#62a8ff", o: 6, v: true }]],
     vwap: [["vwap.line", "Línea VWAP", { c: "#f0c75e", w: 2, v: true, s: 0, lt: 0, lb: false, pl: false }], ["vwap.b1", "Bandas 1", { c: "#f0c75e", w: 1, v: false, s: 2, lt: 0, lb: false, pl: false }], ["vwap.b2", "Bandas 2", { c: "#c79b3a", w: 1, v: false, s: 1, lt: 0, lb: false, pl: false }],
@@ -2428,6 +2430,28 @@ if (typeof module !== "undefined") module.exports = SSP;
           }
         }
       }
+      // máximo y mínimo de las velas visibles (como las etiquetas de TradingView)
+      if (vis("candles.hilo") && data.candles.length) {
+        const r = ts.getVisibleLogicalRange();
+        if (r) {
+          const C = data.candles, a = Math.max(0, Math.ceil(r.from)), b = Math.min(C.length - 1, Math.floor(r.to));
+          let hi = -1, lo = -1;
+          for (let i = a; i <= b; i++) { if (hi < 0 || C[i].high > C[hi].high) hi = i; if (lo < 0 || C[i].low < C[lo].low) lo = i; }
+          const col = st("candles.hilo").c;
+          const mark = (i, price, up) => {
+            const x = ts.timeToCoordinate(C[i].time), y = Y(price); if (x === null || y === null) return;
+            const txt = `${up ? "Máx" : "Mín"} ${fp(price)}`, tw = g.measureText(txt).width, left = x > W * 0.6, dx = left ? -1 : 1;
+            const x2 = x + dx * 26, yy = y + (up ? -1 : 1) * 2;
+            g.strokeStyle = hexA(col, 0.7); g.lineWidth = 1; g.beginPath(); g.moveTo(x + dx * 3, yy); g.lineTo(x2, yy); g.stroke();
+            const bx = left ? x2 - tw - 10 : x2, by = yy - 8;
+            g.fillStyle = "rgba(14,21,34,.85)"; g.fillRect(bx, by, tw + 10, 16);
+            g.strokeStyle = hexA(col, 0.5); g.strokeRect(bx + 0.5, by + 0.5, tw + 9, 15);
+            g.fillStyle = col; g.fillText(txt, bx + 5, by + 12);
+          };
+          if (hi >= 0) mark(hi, C[hi].high, true);
+          if (lo >= 0) mark(lo, C[lo].low, false);
+        }
+      }
       const p = profile;
       if (shw("vrvp") && p && p.rows.length) {
         const maxV = Math.max(...p.rows.map((r) => r.volume)) || 1, maxW = W * 0.2, labels = vis("vrvp.labels");
@@ -2613,6 +2637,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     $("price").textContent = fp(price);
     const ch = q.price24hPcnt !== undefined ? +q.price24hPcnt * 100 : null;
     $("chg").textContent = ch === null ? "" : `${pct(ch)} en 24 h`; $("chg").className = ch === null ? "muted" : ch >= 0 ? "buy" : "sell";
+    const hi24 = +q.highPrice24h, lo24 = +q.lowPrice24h;
+    $("hilo24").innerHTML = hi24 > 0 && lo24 > 0 ? `Máx 24 h <b>${fp(hi24)}</b> · Mín 24 h <b>${fp(lo24)}</b>` : "";
     $("trendChips").innerHTML = ["1h", "15m", "5m"].map((tf) => { const t = trendOf(S.sel, tf); return `<span class="tchip ${t}" title="Tendencia en ${tf}">${tf.toUpperCase()} <b>${TREND_ICON[t] || "·"} ${t}</b></span>`; }).join("") +
       (S.show.sess ? (() => { const ss = sessionStatus(); return `<span class="tchip sess" title="Sesiones de mercado abiertas ahora${ss.next ? ". Próxima: " + ss.next.s.name + " en " + dur(ss.next.start - Date.now()) : ""}">Sesión <b>${ss.active.length ? ss.active.map((x) => x.name).join(" + ") : "ninguna"}</b></span>`; })() : "");
     renderLadderNow(price);
