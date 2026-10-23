@@ -4215,8 +4215,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       const long = p.side === "Buy", hasTp = +p.takeProfit > 0, hasSl = +p.stopLoss > 0, size = +p.size, entry = +p.avgPrice, k = long ? 1 : -1;
       const pnlAt = (px) => (px - entry) * size * k;
       // etiqueta con el PnL no realizado en vivo sobre la línea de la posición (como en Bybit)
-      const tag = () => { const mk = markOf(p.symbol, p.markPrice), upl = pnlAt(mk), im = +p.positionIM || (size * entry) / (+p.leverage || 1); return { text: `${long ? "Long" : "Short"} ${p.size} · ${sgn(upl)} USDT (${sgn(im ? (upl / im) * 100 : NaN)} %)`, pos: upl >= 0, live: true }; };
-      L.push({ price: entry, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: `${long ? "Long" : "Short"}${!hasTp || !hasSl ? " · arrastra para TP/SL" : ""}`, drag: { kind: "entry", p }, tag });
+      const tag = () => { const mk = markOf(p.symbol, p.markPrice), upl = pnlAt(mk), im = +p.positionIM || (size * entry) / (+p.leverage || 1); return { text: `${long ? "Long" : "Short"} ${p.size} · ${sgn(upl)} USDT (${sgn(im ? (upl / im) * 100 : NaN)} %)${!hasTp || !hasSl ? "  ⇕ TP/SL" : ""}`, pos: upl >= 0, live: true }; };
+      L.push({ price: entry, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: "", drag: { kind: "entry", p }, tag });
       if (+p.liqPrice) L.push({ price: +p.liqPrice, color: "#ff9f5a", dash: true, title: "Liquidación", tag: { text: `Liquidación · ${sgn(pnlAt(+p.liqPrice))} USDT`, color: "#ff9f5a" } });
       if (hasTp) L.push({ price: +p.takeProfit, color: "#2fd3a0", dash: true, title: "TP", drag: { kind: "tp", p }, tag: { text: `TP · ${sgn(pnlAt(+p.takeProfit))} USDT`, color: "#2fd3a0" } });
       if (hasSl) L.push({ price: +p.stopLoss, color: "#ff6170", dash: true, title: "SL", drag: { kind: "sl", p }, tag: { text: `SL · ${sgn(pnlAt(+p.stopLoss))} USDT`, color: "#ff6170" } });
