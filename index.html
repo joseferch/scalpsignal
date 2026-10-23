@@ -2464,6 +2464,19 @@ if (typeof module !== "undefined") module.exports = SSP;
           g.fillStyle = "#06121d"; g.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; g.fillText(txt, bx + 5, by + 11.5); g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
         }
       }
+      // etiquetas de la cuenta (PnL de la posición en vivo, PnL estimado en TP/SL/liquidación)
+      if (lastTrade) for (const it of lastTrade) {
+        if (!it.tag) continue;
+        const t = typeof it.tag === "function" ? it.tag() : it.tag; if (!t || !t.text) continue;
+        const y = Y(it.price); if (y === null || y < 6 || y > H - 6) continue;
+        g.font = '600 11px "IBM Plex Sans", system-ui, sans-serif';
+        const tw = g.measureText(t.text).width, bw = tw + 12, bx = Math.max(4, W - bw - 74), by = y - 9;
+        const bg = t.live ? (t.pos ? st("candles.up").c : st("candles.down").c) : "rgba(14,21,34,.92)";
+        g.fillStyle = bg; g.fillRect(bx, by, bw, 18);
+        if (!t.live) { g.strokeStyle = t.color || "#8a98ad"; g.strokeRect(bx + 0.5, by + 0.5, bw - 1, 17); }
+        g.fillStyle = t.live ? "#06121d" : (t.color || COL.ink); g.fillText(t.text, bx + 6, by + 13);
+        g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
+      }
       const p = profile;
       if (shw("vrvp") && p && p.rows.length) {
         const maxV = Math.max(...p.rows.map((r) => r.volume)) || 1, maxW = W * 0.2, labels = vis("vrvp.labels");
@@ -4199,16 +4212,23 @@ if (typeof module !== "undefined") module.exports = SSP;
     const sym = S.sel, L = [];
     if (!T.on) return L;
     for (const p of T.positions.filter((x) => x.symbol === sym)) {
-      const long = p.side === "Buy", hasTp = +p.takeProfit > 0, hasSl = +p.stopLoss > 0;
-      L.push({ price: +p.avgPrice, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: `${long ? "Long" : "Short"} ${p.size}${!hasTp || !hasSl ? " · arrastra para TP/SL" : ""}`, drag: { kind: "entry", p } });
-      if (+p.liqPrice) L.push({ price: +p.liqPrice, color: "#ff9f5a", dash: true, title: "Liquidación" });
-      if (hasTp) L.push({ price: +p.takeProfit, color: "#2fd3a0", dash: true, title: "TP", drag: { kind: "tp", p } });
-      if (hasSl) L.push({ price: +p.stopLoss, color: "#ff6170", dash: true, title: "SL", drag: { kind: "sl", p } });
+      const long = p.side === "Buy", hasTp = +p.takeProfit > 0, hasSl = +p.stopLoss > 0, size = +p.size, entry = +p.avgPrice, k = long ? 1 : -1;
+      const pnlAt = (px) => (px - entry) * size * k;
+      // etiqueta con el PnL no realizado en vivo sobre la línea de la posición (como en Bybit)
+      const tag = () => { const mk = markOf(p.symbol, p.markPrice), upl = pnlAt(mk), im = +p.positionIM || (size * entry) / (+p.leverage || 1); return { text: `${long ? "Long" : "Short"} ${p.size} · ${sgn(upl)} USDT (${sgn(im ? (upl / im) * 100 : NaN)} %)`, pos: upl >= 0, live: true }; };
+      L.push({ price: entry, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: `${long ? "Long" : "Short"}${!hasTp || !hasSl ? " · arrastra para TP/SL" : ""}`, drag: { kind: "entry", p }, tag });
+      if (+p.liqPrice) L.push({ price: +p.liqPrice, color: "#ff9f5a", dash: true, title: "Liquidación", tag: { text: `Liquidación · ${sgn(pnlAt(+p.liqPrice))} USDT`, color: "#ff9f5a" } });
+      if (hasTp) L.push({ price: +p.takeProfit, color: "#2fd3a0", dash: true, title: "TP", drag: { kind: "tp", p }, tag: { text: `TP · ${sgn(pnlAt(+p.takeProfit))} USDT`, color: "#2fd3a0" } });
+      if (hasSl) L.push({ price: +p.stopLoss, color: "#ff6170", dash: true, title: "SL", drag: { kind: "sl", p }, tag: { text: `SL · ${sgn(pnlAt(+p.stopLoss))} USDT`, color: "#ff6170" } });
     }
     for (const o of T.orders.filter((x) => x.symbol === sym)) {
       if (["TakeProfit", "StopLoss", "tpslOrder"].includes(o.stopOrderType)) continue;   // ya dibujados con la posición
       const part = /^Partial/.test(o.stopOrderType || ""), tpP = o.stopOrderType === "PartialTakeProfit";
-      if (part) { L.push({ price: +o.triggerPrice, color: tpP ? "#2fd3a0" : "#ff6170", dash: true, title: `${tpP ? "TP" : "SL"} parcial ${o.qty}`, drag: { kind: "trig", o } }); continue; }
+      if (part) {
+        const pp = T.positions.find((x) => x.symbol === sym), pv = pp ? (+o.triggerPrice - +pp.avgPrice) * +o.qty * (pp.side === "Buy" ? 1 : -1) : NaN;
+        L.push({ price: +o.triggerPrice, color: tpP ? "#2fd3a0" : "#ff6170", dash: true, title: `${tpP ? "TP" : "SL"} parcial ${o.qty}`, drag: { kind: "trig", o }, tag: Number.isFinite(pv) ? { text: `${tpP ? "TP" : "SL"} parcial ${o.qty} · ${sgn(pv)} USDT`, color: tpP ? "#2fd3a0" : "#ff6170" } : null });
+        continue;
+      }
       if (+o.triggerPrice) L.push({ price: +o.triggerPrice, color: "#b69cff", dash: true, title: `${o.side === "Buy" ? "Compra" : "Venta"} ${o.qty} cond.`, drag: { kind: "trig", o } });
       else if (o.orderType === "Limit") L.push({ price: +o.price, color: "#62a8ff", dash: true, title: `${o.side === "Buy" ? "Compra" : "Venta"} ${o.qty}${o.reduceOnly ? " (cierre)" : ""}`, drag: { kind: "price", o } });
     }
