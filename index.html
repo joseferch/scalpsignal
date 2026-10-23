@@ -154,7 +154,9 @@ label.f{font-size:12px;color:var(--ink2);display:block}
 .sheet.open{transform:none}
 .sheet-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--rule)}
 .sheet-hd h2{margin:0;font-size:17px}
-.sheet-body{overflow-y:auto;overflow-x:hidden;padding:6px 16px 16px;flex:1;min-width:0}
+.sheet-body{overflow-y:auto;overflow-x:hidden;overflow-x:clip;padding:6px 16px 16px;flex:1;min-width:0}
+.sheet-body .ind,.sheet-body .ibody,.sheet-body .srow,.sheet-body .srow2{min-width:0;max-width:100%}
+.srow label{min-width:0}.srow label span{overflow:hidden;text-overflow:ellipsis}
 .sheet-ft{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--rule)}
 .ind{border-bottom:1px solid var(--rule);padding:12px 0}
 .ind-hd{display:flex;align-items:center;gap:10px}
@@ -3015,7 +3017,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (focus) { indOpen.key = focus; if (STYLE_DEF[focus] && !IND_DEF.find((d) => d.key === focus).params.length) indOpen.tab[focus] = "style"; }
     renderIndPanel();
     $("indPanel").classList.add("open"); $("indPanel").setAttribute("aria-hidden", "false"); $("scrim").hidden = false;
-    if (focus) { const el = $(`ind-${focus}`); if (el) { el.scrollIntoView({ block: "start" }); el.classList.add("flash"); } }
+    if (focus) { const el = $(`ind-${focus}`); if (el) { el.scrollIntoView({ block: "start", inline: "nearest" }); el.classList.add("flash"); } }
     else $("indClose").focus();
   }
   function closeInd() { $("indPanel").classList.remove("open"); $("indPanel").setAttribute("aria-hidden", "true"); $("scrim").hidden = true; }
@@ -3764,8 +3766,16 @@ if (typeof module !== "undefined") module.exports = SSP;
       const r = await ask({ title: `Apalancamiento · ${sym}`, body: `<label class="f">Apalancamiento (1–${I.maxLev}x)<input id="dlgLev" type="number" min="1" max="${I.maxLev}" step="${I.levStep}" value="${cur}"></label>
         <input id="dlgLevR" type="range" min="1" max="${I.maxLev}" step="1" value="${cur}" style="width:100%">
         <label class="f">Modo de margen de la cuenta<select id="dlgMm"><option value="REGULAR_MARGIN" ${mm === "REGULAR_MARGIN" ? "selected" : ""}>Cruzado</option><option value="ISOLATED_MARGIN" ${mm === "ISOLATED_MARGIN" ? "selected" : ""}>Aislado</option>${mm === "PORTFOLIO_MARGIN" ? '<option value="PORTFOLIO_MARGIN" selected>Cartera</option>' : ""}</select></label>
-        <p class="faint">En la cuenta unificada, el modo de margen se aplica a toda la cuenta. Bybit no permite cambiarlo con posiciones u órdenes abiertas.</p>`, ok: "Guardar", onOpen: (d) => { const a = d.querySelector("#dlgLev"), b = d.querySelector("#dlgLevR"); b.oninput = () => (a.value = b.value); a.oninput = () => (b.value = a.value); }, read: (d) => ({ lev: +d.querySelector("#dlgLev").value, mm: d.querySelector("#dlgMm").value }) });
+        <p class="faint">En la cuenta unificada, el modo de margen se aplica a toda la cuenta. Bybit no permite cambiarlo con posiciones u órdenes abiertas.</p>
+        <label class="f">Modo de posición (perpetuos USDT)<select id="dlgPm"><option value="0" ${!T.hedge[sym] ? "selected" : ""}>Unidireccional (una posición por par)</option><option value="3" ${T.hedge[sym] ? "selected" : ""}>Cobertura (long y short a la vez)</option></select></label>
+        <p class="faint">El modo de posición solo cambia en los pares sin posiciones ni órdenes abiertas.</p>`, ok: "Guardar", onOpen: (d) => { const a = d.querySelector("#dlgLev"), b = d.querySelector("#dlgLevR"); b.oninput = () => (a.value = b.value); a.oninput = () => (b.value = a.value); }, read: (d) => ({ lev: +d.querySelector("#dlgLev").value, mm: d.querySelector("#dlgMm").value, pm: +d.querySelector("#dlgPm").value }) });
       if (!r) return;
+      if ((r.pm === 3) !== !!T.hedge[sym]) {
+        await api("POST", "/v5/position/switch-mode", { category: "linear", coin: "USDT", mode: r.pm });
+        await loadMode(sym);
+        if ((r.pm === 3) !== !!T.hedge[sym]) toast(`${sym} tiene posiciones u órdenes abiertas: su modo de posición no cambió.`, "invalidada");
+        else toast(`Modo de posición: ${r.pm === 3 ? "cobertura" : "unidireccional"}`, "info");
+      }
       if (r.mm !== mm) { await api("POST", "/v5/account/set-margin-mode", { setMarginMode: r.mm }); T.acct = Object.assign({}, T.acct, { marginMode: r.mm }); toast(`Modo de margen: ${r.mm === "ISOLATED_MARGIN" ? "aislado" : "cruzado"}`, "info"); }
       const lev = Math.min(I.maxLev, Math.max(1, Math.round(r.lev / I.levStep) * I.levStep));
       if (lev !== cur) { await api("POST", "/v5/position/set-leverage", { category: "linear", symbol: sym, buyLeverage: String(lev), sellLeverage: String(lev) }, { ok: [110043] }); T.levOf = T.levOf || {}; T.levOf[sym] = lev; toast(`Apalancamiento de ${sym}: ${lev}x`, "info"); }
@@ -3852,7 +3862,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         const long = p.side === "Buy", size = +p.size, entry = +p.avgPrice, mark = markOf(p.symbol, p.markPrice), upl = (mark - entry) * size * (long ? 1 : -1), im = +p.positionIM || (size * entry) / (+p.leverage || 1), roi = im ? (upl / im) * 100 : NaN;
         return `<div class="pcard ${long ? "long" : "short"}"><div class="pc-hd"><button class="link" data-gosym="${p.symbol}">${p.symbol}</button><span class="tag ${long ? "buy" : "sell"}">${long ? "Long" : "Short"} ${p.leverage}x</span><span class="faint">${p.tradeMode === 1 ? "Aislado" : "Cruzado"}</span><b class="${cls(upl)} pc-pnl">${sgn(upl)} USDT <small>(${sgn(roi)}%)</small></b></div>
           <div class="pc-grid">${cell("Tamaño", `${p.size}`)}${cell("Valor", f2(size * mark))}${cell("Entrada", fpx(p.symbol, entry))}${cell("Marca", fpx(p.symbol, mark))}${cell("Liquidación", fpx(p.symbol, +p.liqPrice), "warn")}${cell("Margen", f2(im))}${cell("PnL realizado", sgn(+p.curRealisedPnl), cls(+p.curRealisedPnl))}${cell("TP / SL", `${+p.takeProfit ? fpx(p.symbol, +p.takeProfit) : "—"} / ${+p.stopLoss ? fpx(p.symbol, +p.stopLoss) : "—"}`)}${+p.trailingStop ? cell("Stop dinámico", fpx(p.symbol, +p.trailingStop)) : ""}${(() => { const n = T.orders.filter((o) => o.symbol === p.symbol && /^Partial/.test(o.stopOrderType || "")).length; return n ? cell("TP/SL parciales", n) : ""; })()}</div>
-          <div class="pc-act"><button class="mini" data-tpsl="${p.symbol}|${p.positionIdx}">TP/SL</button><button class="mini" data-closel="${p.symbol}|${p.positionIdx}">Cerrar límite</button><button class="mini danger" data-closem="${p.symbol}|${p.positionIdx}">Cerrar a mercado</button></div></div>`;
+          <div class="pc-act"><button class="mini" data-tpsl="${p.symbol}|${p.positionIdx}">TP/SL</button>${isIso(p) ? `<button class="mini" data-margin="${p.symbol}|${p.positionIdx}">Margen</button>` : ""}<button class="mini" data-reverse="${p.symbol}|${p.positionIdx}" title="Cerrar y abrir la posición contraria del mismo tamaño">Invertir</button><button class="mini" data-closel="${p.symbol}|${p.positionIdx}">Cerrar límite</button><button class="mini danger" data-closem="${p.symbol}|${p.positionIdx}">Cerrar a mercado</button></div></div>`;
       }).join("") : '<p class="faint dock-empty">No tienes posiciones abiertas.</p>';
     } else if (T.dock === "ord" || T.dock === "cond") {
       const list = T.orders.filter((o) => (T.dock === "cond" ? isCond(o) : !isCond(o)));
@@ -3951,6 +3961,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       else if ((b = g("tpsl"))) await tpslDialog(findPos(b.dataset.tpsl));
       else if ((b = g("closem"))) await closePos(findPos(b.dataset.closem), "Market");
       else if ((b = g("closel"))) await closePos(findPos(b.dataset.closel), "Limit");
+      else if ((b = g("reverse"))) await reversePos(findPos(b.dataset.reverse));
+      else if ((b = g("margin"))) await marginDialog(findPos(b.dataset.margin));
       else if ((b = g("closeall"))) {
         if (!(await ask({ title: "Cerrar todas las posiciones", body: `<p>Se cierran a mercado ${T.positions.length} posiciones${E().real ? " de tu cuenta REAL" : ""}.</p>`, ok: "Cerrar todas", danger: true }))) return;
         for (const p of [...T.positions]) await sendClose(p, "Market").catch((er) => toast(`${p.symbol}: ${er.message}`, "invalidada"));
@@ -3959,23 +3971,68 @@ if (typeof module !== "undefined") module.exports = SSP;
     } catch (er) { toast(er.message, "invalidada"); }
   }
   const findPos = (k) => { const [s, i] = k.split("|"); return T.positions.find((p) => p.symbol === s && String(p.positionIdx) === i); };
-  async function sendClose(p, type, price) {
-    const I = await instr(p.symbol), o = { category: "linear", symbol: p.symbol, side: p.side === "Buy" ? "Sell" : "Buy", orderType: type, qty: p.size, reduceOnly: true, positionIdx: +p.positionIdx, orderLinkId: "ssp-c-" + Date.now().toString(36) };
+  const isIso = (p) => +p.tradeMode === 1 || T.acct?.marginMode === "ISOLATED_MARGIN";
+  async function sendClose(p, type, price, qty) {
+    const I = await instr(p.symbol), q = qty ? rq(I, qty) : p.size;
+    const o = { category: "linear", symbol: p.symbol, side: p.side === "Buy" ? "Sell" : "Buy", orderType: type, qty: q, reduceOnly: true, positionIdx: +p.positionIdx, orderLinkId: "ssp-c-" + Date.now().toString(36) };
     if (type === "Limit") o.price = rp(I, price);
-    if (type === "Market" && +p.size > I.maxMkt) o.qty = rq(I, I.maxMkt);
+    if (type === "Market" && +o.qty > I.maxMkt) o.qty = rq(I, I.maxMkt);
     return api("POST", "/v5/order/create", o);
   }
+  // cerrar todo o una parte (25/50/75 %), a mercado o con límite
   async function closePos(p, type) {
     if (!p) return;
-    const I = await instr(p.symbol), mark = markOf(p.symbol, p.markPrice), long = p.side === "Buy";
-    const r = await ask({ title: `Cerrar ${long ? "long" : "short"} · ${p.symbol}`, body: `${E().real ? '<p class="tr-warn">Cuenta REAL</p>' : ""}<p>Tamaño ${p.size} · entrada ${fpx(p.symbol, p.avgPrice)} · marca ${fpx(p.symbol, mark)}</p>` +
-      (type === "Limit" ? `<label class="f">Precio límite<input id="dlgPx" inputmode="decimal" value="${rp(I, lastOf(p.symbol) || mark)}"></label>` : `<p>Se cierra a mercado (orden «solo reducir»).</p>`),
-      ok: type === "Limit" ? "Poner orden de cierre" : "Cerrar a mercado", danger: true, read: (d) => ({ px: num((d.querySelector("#dlgPx")?.value || "").replace(",", ".")) }) });
+    const I = await instr(p.symbol), mark = markOf(p.symbol, p.markPrice), long = p.side === "Buy", size = +p.size, entry = +p.avgPrice;
+    const r = await ask({ title: `Cerrar ${long ? "long" : "short"} · ${p.symbol}`, body: `${E().real ? '<p class="tr-warn">Cuenta REAL</p>' : ""}<p>Tamaño ${p.size} · entrada ${fpx(p.symbol, entry)} · marca ${fpx(p.symbol, mark)}</p>` +
+      (type === "Limit" ? `<label class="f">Precio límite<input id="dlgPx" inputmode="decimal" value="${rp(I, lastOf(p.symbol) || mark)}"></label>` : "") +
+      `<label class="f">Cantidad a cerrar (${I.base})<input id="dlgQ" inputmode="decimal" value="${p.size}"></label>
+       <div class="tr-pcts">${[25, 50, 75, 100].map((x) => `<button type="button" data-cp="${x}">${x}%</button>`).join("")}</div><p id="dlgEst" class="faint"></p>
+       <p class="faint">${type === "Limit" ? "Orden límite «solo reducir»: se ejecuta si el precio llega." : "Se cierra a mercado (orden «solo reducir»)."}</p>`,
+      ok: type === "Limit" ? "Poner orden de cierre" : "Cerrar a mercado", danger: true,
+      onOpen: (d) => {
+        const q = d.querySelector("#dlgQ"), px = d.querySelector("#dlgPx");
+        const upd = () => { const qq = num(rq(I, num(q.value.replace(",", ".")))), pp = px ? num(px.value.replace(",", ".")) : mark; d.querySelector("#dlgEst").textContent = qq > 0 && pp > 0 ? `${f2((qq / size) * 100, 0)} % de la posición · PnL aprox. ${sgn((pp - entry) * qq * (long ? 1 : -1))} USDT` : ""; };
+        d.querySelectorAll("[data-cp]").forEach((b) => (b.onclick = () => { q.value = rq(I, (size * b.dataset.cp) / 100) || p.size; upd(); }));
+        q.oninput = upd; if (px) px.oninput = upd; upd();
+      },
+      read: (d) => ({ px: num((d.querySelector("#dlgPx")?.value || "").replace(",", ".")), q: num(rq(I, num(d.querySelector("#dlgQ").value.replace(",", ".")))) }),
+      check: (v) => (!(v.q > 0) ? "Escribe la cantidad a cerrar." : v.q < I.minQty ? `Mínimo ${I.minQty} ${I.base}.` : v.q > size + 1e-12 ? "No puedes cerrar más que el tamaño de la posición." : type === "Limit" && !(v.px > 0) ? "Escribe el precio límite." : "") });
     if (!r) return;
-    if (type === "Limit" && !(r.px > 0)) throw new Error("Escribe el precio límite.");
-    await sendClose(p, type, r.px);
-    toast(`Orden de cierre enviada: ${p.symbol}`, "info");
+    await sendClose(p, type, r.px, r.q >= size ? null : r.q);
+    toast(`Orden de cierre enviada: ${r.q >= size ? "todo" : r.q} ${p.symbol}`, "info");
     setTimeout(() => refreshAll(false).catch(() => null), 1200);
+  }
+  // invertir: pasa de long a short (o al revés) con el mismo tamaño
+  async function reversePos(p) {
+    if (!p) return;
+    const I = await instr(p.symbol), long = p.side === "Buy", hedge = +p.positionIdx > 0, size = +p.size;
+    if (!hedge && size * 2 > I.maxMkt) throw new Error(`Para invertir hace falta una orden a mercado de ${size * 2} ${I.base} y el máximo es ${I.maxMkt}. Cierra y abre por partes.`);
+    const ok = await ask({ title: `Invertir posición · ${p.symbol}`, body: `${E().real ? '<p class="tr-warn">Cuenta REAL</p>' : ""}<p>Se cierra el <b>${long ? "long" : "short"}</b> de ${p.size} y se abre un <b>${long ? "short" : "long"}</b> de ${p.size} a mercado.</p><p class="faint">Los TP/SL de la posición actual se quitan; pon los nuevos después.</p>`, ok: `Invertir a ${long ? "short" : "long"}`, side: long ? "Sell" : "Buy" });
+    if (!ok) return;
+    const side = long ? "Sell" : "Buy", id = Date.now().toString(36);
+    if (hedge) {
+      await sendClose(p, "Market");
+      await api("POST", "/v5/order/create", { category: "linear", symbol: p.symbol, side, orderType: "Market", qty: p.size, positionIdx: long ? 2 : 1, orderLinkId: "ssp-r-" + id });
+    } else await api("POST", "/v5/order/create", { category: "linear", symbol: p.symbol, side, orderType: "Market", qty: rq(I, size * 2), positionIdx: 0, orderLinkId: "ssp-r-" + id });
+    toast(`Posición invertida: ${long ? "short" : "long"} ${p.size} ${p.symbol}`, "info");
+    setTimeout(() => refreshAll(false).catch(() => null), 1200);
+  }
+  // margen aislado: agregar o quitar y margen automático
+  async function marginDialog(p) {
+    if (!p) return;
+    const im = +p.positionIM || 0, auto = +p.autoAddMargin === 1;
+    const r = await ask({ title: `Margen de la posición · ${p.symbol}`, body: `<p>Margen actual <b>${f2(im)} USDT</b> · liquidación <b class="warn">${fpx(p.symbol, +p.liqPrice)}</b> · disponible ${f2(T.wallet?.avail)} USDT</p>
+      <div class="seg tr-types sm"><button type="button" data-mm="add" class="on">Agregar</button><button type="button" data-mm="rem">Quitar</button></div>
+      <label class="f">Cantidad (USDT)<input id="dlgM" inputmode="decimal" placeholder="Ej. 10"></label>
+      <label class="chk"><input type="checkbox" id="dlgAuto" ${auto ? "checked" : ""}> Agregar margen automáticamente antes de la liquidación</label>
+      <p class="faint">Más margen aleja el precio de liquidación; quitar margen lo acerca.</p>`, ok: "Aplicar",
+      onOpen: (d) => d.querySelectorAll("[data-mm]").forEach((b) => (b.onclick = () => { d.querySelectorAll("[data-mm]").forEach((x) => x.classList.toggle("on", x === b)); d.dataset.mm = b.dataset.mm; })),
+      read: (d) => ({ dir: d.dataset.mm || "add", m: num(d.querySelector("#dlgM").value.replace(",", ".")), auto: d.querySelector("#dlgAuto").checked }),
+      check: (v) => (v.m < 0 || (v.m > 0 && v.dir === "rem" && v.m >= im) ? "No puedes quitar todo el margen." : "") });
+    if (!r) return;
+    if (r.m > 0) { const res = await api("POST", "/v5/position/add-margin", { category: "linear", symbol: p.symbol, margin: (r.dir === "rem" ? "-" : "") + r.m.toFixed(4).replace(/\.?0+$/, ""), positionIdx: +p.positionIdx }); toast(`Margen ${r.dir === "rem" ? "quitado" : "agregado"}: ${r.m} USDT · liquidación ${fpx(p.symbol, +res.liqPrice || +p.liqPrice)}`, "info"); }
+    if (r.auto !== auto) { await api("POST", "/v5/position/set-auto-add-margin", { category: "linear", symbol: p.symbol, autoAddMargin: r.auto ? 1 : 0, positionIdx: +p.positionIdx }); toast(`Margen automático ${r.auto ? "activado" : "desactivado"}`, "info"); }
+    setTimeout(() => refreshAll(false).catch(() => null), 800);
   }
   // ------------------------------------------------------------ TP/SL por precio, por ROI % o por PnL (como en Bybit)
   // kind "tp" = ganancia, "sl" = pérdida; el valor de ROI/PnL se toma en positivo; long = compra
