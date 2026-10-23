@@ -1,7 +1,7 @@
 /* Service worker de ScalpSignal Pro.
    Guarda la interfaz para que abra rápido y funcione como app, pero NUNCA guarda datos de mercado:
    las peticiones a Bybit y Telegram van siempre directo a la red. */
-const VERSION = "a5f8be65cb";
+const VERSION = "d758dec1e3";
 const CACHE = `scalpsignal-${VERSION}`;
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png",
   "https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"];
