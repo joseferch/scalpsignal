@@ -2074,7 +2074,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const COL = { buy: "#2fd3a0", sell: "#ff6170", info: "#62a8ff", gold: "#f0c75e", violet: "#b69cff", ink: "#e6ebf2", ink2: "#a5b3c7", ink3: "#6f819b", night: "#0e1522", rule: "#1a2640" };
   // [clave, etiqueta, {c: color, w: grosor, v: visible}] — solo se muestran los controles de las propiedades definidas
   const STYLE_DEF = {
-    candles: [["candles.up", "Vela alcista", { c: "#2fd3a0" }], ["candles.down", "Vela bajista", { c: "#ff6170" }], ["candles.border", "Borde de las velas", { v: false }], ["candles.hilo", "Máximo y mínimo de lo visible", { c: "#e6ebf2", v: true }]],
+    candles: [["candles.up", "Vela alcista", { c: "#2fd3a0" }], ["candles.down", "Vela bajista", { c: "#ff6170" }], ["candles.border", "Borde de las velas", { v: false }], ["candles.hilo", "Máximo y mínimo de lo visible", { c: "#e6ebf2", v: true }], ["candles.cd", "Cuenta regresiva del cierre de vela", { v: true }]],
     bb: [["bb.upper", "Banda superior", { c: "#62a8ff", w: 1, v: true, s: 0, lt: 0, lb: false, pl: false }], ["bb.mid", "Media", { c: "#ff6170", w: 1, v: true, s: 2, lt: 0, lb: false, pl: false }], ["bb.lower", "Banda inferior", { c: "#62a8ff", w: 1, v: true, s: 0, lt: 0, lb: false, pl: false }],
       ["bb.fill", "Relleno entre bandas", { c: "#62a8ff", o: 6, v: true }]],
     vwap: [["vwap.line", "Línea VWAP", { c: "#f0c75e", w: 2, v: true, s: 0, lt: 0, lb: false, pl: false }], ["vwap.b1", "Bandas 1", { c: "#f0c75e", w: 1, v: false, s: 2, lt: 0, lb: false, pl: false }], ["vwap.b2", "Bandas 2", { c: "#c79b3a", w: 1, v: false, s: 1, lt: 0, lb: false, pl: false }],
@@ -2450,6 +2450,18 @@ if (typeof module !== "undefined") module.exports = SSP;
           };
           if (hi >= 0) mark(hi, C[hi].high, true);
           if (lo >= 0) mark(lo, C[lo].low, false);
+        }
+      }
+      // cuenta regresiva hasta el cierre de la vela actual, bajo el precio (como TradingView)
+      if (vis("candles.cd") && data.candles.length) {
+        const step = SSP.TF_MS[data.tf], now = Date.now(), left = step - (now % step), C = data.candles, lastC = C[C.length - 1];
+        const q = S.quotes[data.symbol] || {}, px = +q.lastPrice || lastC.close, y = Y(px);
+        if (y !== null && y > 0 && y < H) {
+          const sec = Math.floor(left / 1000), h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), ss = sec % 60, p2 = (v) => String(v).padStart(2, "0");
+          const txt = h ? `${p2(h)}:${p2(m)}:${p2(ss)}` : `${p2(m)}:${p2(ss)}`, up = px >= lastC.open, tw = g.measureText(txt).width;
+          const bx = W - tw - 12, by = Math.min(H - 17, y + 11);
+          g.fillStyle = up ? st("candles.up").c : st("candles.down").c; g.fillRect(bx, by, tw + 10, 15);
+          g.fillStyle = "#06121d"; g.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; g.fillText(txt, bx + 5, by + 11.5); g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
         }
       }
       const p = profile;
