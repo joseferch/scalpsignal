@@ -62,6 +62,12 @@ main{display:grid;gap:14px;padding:14px;grid-template-columns:1fr}
 .chartwrap{position:relative;height:58vh;min-height:430px;border:1px solid var(--rule);border-radius:var(--r-lg);overflow:hidden;background:var(--night)}
 #chart{position:absolute;inset:0}
 #overlay{position:absolute;left:0;top:0;pointer-events:none;z-index:3}
+.chartwrap.candrag #chart{cursor:ns-resize}
+.chartwrap.dragging,.chartwrap.dragging *{cursor:ns-resize!important;user-select:none}
+.tr-tpsl2{display:flex;flex-direction:column;gap:6px}
+.inl.sm select,.inl.sm input{font-size:12px;padding:4px 6px}
+.usel{max-width:42%}
+.dlg-tabs{margin-bottom:4px}
 #chartMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink3);padding:24px;text-align:center;z-index:4}
 .legend{position:absolute;left:10px;top:8px;z-index:5;display:flex;flex-wrap:wrap;gap:4px;font-size:12px;max-width:calc(100% - 140px)}
 .legend .li{display:flex;align-items:center;gap:5px;background:rgba(14,21,34,.8);border:1px solid var(--rule);border-radius:999px;padding:2px 4px 2px 9px;color:var(--ink2)}
@@ -148,7 +154,7 @@ label.f{font-size:12px;color:var(--ink2);display:block}
 .sheet.open{transform:none}
 .sheet-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--rule)}
 .sheet-hd h2{margin:0;font-size:17px}
-.sheet-body{overflow:auto;padding:6px 16px 16px;flex:1}
+.sheet-body{overflow-y:auto;overflow-x:hidden;padding:6px 16px 16px;flex:1;min-width:0}
 .sheet-ft{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--rule)}
 .ind{border-bottom:1px solid var(--rule);padding:12px 0}
 .ind-hd{display:flex;align-items:center;gap:10px}
@@ -166,6 +172,19 @@ label.f{font-size:12px;color:var(--ink2);display:block}
 .srow .nochk{width:13px;display:inline-block}
 .srow input[type=color]{width:38px;height:28px;padding:2px;border-radius:6px;background:var(--night);cursor:pointer}
 .srow select{width:auto;padding:4px 6px}
+.srow2{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:4px 0 7px 21px;border-bottom:1px dashed var(--rule);font-size:12px;color:var(--ink2)}
+.srow2 select{width:auto;max-width:48%;padding:3px 6px;font-size:12px}
+.srow2 label{display:flex;gap:5px;align-items:center}
+.srow2 input[type=checkbox]{width:auto;accent-color:var(--buy)}
+.srow:has(+ .srow2){border-bottom:0}
+.tfv{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}
+.tfv label.chk{margin-top:0}
+.addrow{display:flex;gap:8px}
+.addrow .addbig{flex:1}
+.addbig.tplb{flex:0 0 auto;padding-inline:16px;border-color:var(--rule2);color:var(--ink2);background:none}
+.tplrow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--rule);font-size:13px}
+.tplrow b{font-weight:600}
+.tplrow .faint{flex:1;font-size:11.5px}
 label.chk{display:flex;gap:6px;align-items:center;margin-top:18px}
 .resetbtn{margin-top:10px;font-size:12.5px}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap}
@@ -1532,6 +1551,39 @@ const SSP = (() => {
     }
     return out;
   }
+  function vwma(a, v, n) {
+    const out = new Array(a.length).fill(NaNv);
+    for (let i = n - 1; i < a.length; i++) { let pv = 0, vv = 0, ok = true; for (let k = i - n + 1; k <= i; k++) { if (!isNum(a[k])) { ok = false; break; } pv += a[k] * v[k]; vv += v[k]; } if (ok) out[i] = vv ? pv / vv : a[i]; }
+    return out;
+  }
+  function hma(a, n) {
+    const h = Math.max(1, Math.floor(n / 2)), r = Math.max(1, Math.round(Math.sqrt(n))), w1 = wma(a, h), w2 = wma(a, n);
+    return wma(w1.map((x, i) => (isNum(x) && isNum(w2[i]) ? 2 * x - w2[i] : NaNv)), r);
+  }
+  const MA_OPTS = [["sma", "SMA"], ["ema", "EMA"], ["wma", "WMA"], ["rma", "RMA (SMMA)"], ["vwma", "VWMA"], ["hma", "Hull (HMA)"]];
+  function maOf(type, a, n, vol) {
+    return type === "ema" ? ema(a, n) : type === "wma" ? wma(a, n) : type === "rma" ? rma(a, n) : type === "vwma" ? vwma(a, vol || a.map(() => 1), n) : type === "hma" ? hma(a, n) : sma(a, n);
+  }
+  /* VWAP anclado: se reinicia por día UTC, día de Costa Rica (00:00 = 06:00 UTC), semana (lunes UTC) o mes UTC.
+     Devuelve el VWAP y la desviación estándar ponderada por volumen (para las bandas). */
+  const ANCHOR_OPTS = [["utc", "Sesión (00:00 UTC)"], ["cr", "Día de Costa Rica"], ["week", "Semana"], ["month", "Mes"]];
+  function anchorKey(t, a) {
+    if (a === "cr") return Math.floor((t - 6 * 3600e3) / 86400e3);
+    if (a === "week") return Math.floor((t - 4 * 86400e3) / (7 * 86400e3));   // 1970-01-05 fue lunes
+    if (a === "month") { const d = new Date(t); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+    return Math.floor(t / 86400e3);
+  }
+  function vwapAnchored(d, anchor = "utc", src = "hlc3") {
+    const p = srcOf(d, src), vw = new Array(d.n).fill(NaNv), sd = new Array(d.n).fill(NaNv);
+    let key = null, pv = 0, vv = 0, p2 = 0;
+    for (let i = 0; i < d.n; i++) {
+      const k = anchorKey(d.openTime[i], anchor);
+      if (k !== key) { key = k; pv = 0; vv = 0; p2 = 0; }
+      const v = d.volume[i] || 0; pv += p[i] * v; vv += v; p2 += p[i] * p[i] * v;
+      if (vv > 0) { vw[i] = pv / vv; sd[i] = Math.sqrt(Math.max(0, p2 / vv - vw[i] * vw[i])); } else { vw[i] = p[i]; sd[i] = 0; }
+    }
+    return { vwap: vw, sd };
+  }
   function rsi(a, n) {
     const up = a.map((v, i) => (i === 0 || !isNum(v) || !isNum(a[i - 1]) ? NaNv : Math.max(v - a[i - 1], 0)));
     const dn = a.map((v, i) => (i === 0 || !isNum(v) || !isNum(a[i - 1]) ? NaNv : Math.max(a[i - 1] - v, 0)));
@@ -1591,11 +1643,24 @@ const SSP = (() => {
     wma: { name: "Media móvil ponderada (WMA)", pane: "price", short: (p) => `WMA ${p.length}`, desc: "Media con pesos lineales hacia las velas recientes.",
       params: [["length", "Longitud", "int", 20], ["source", "Fuente", "src", "close"]], lines: [["ma", "WMA", "line", { c: "#a78bfa", w: 2, v: true }]],
       calc: (d, p) => ({ ma: wma(srcOf(d, p.source), p.length) }) },
-    keltner: { name: "Canales de Keltner", pane: "price", short: (p) => `KC ${p.length} ${p.mult}`, desc: "EMA con bandas a N veces el ATR.",
+    ma: { name: "Media móvil (tipo a elegir)", pane: "price", short: (p) => `${(MA_OPTS.find((m) => m[0] === p.type) || ["", "MA"])[1].split(" ")[0]} ${p.length}`, desc: "SMA, EMA, WMA, RMA, VWMA o Hull, con la fuente que elijas.",
+      params: [["length", "Longitud", "int", 9], ["source", "Fuente", "src", "close"], ["type", "Tipo de media", "ma", "ema"]], lines: [["ma", "Media", "line", { c: "#fbbf24", w: 2, v: true, s: 0 }]],
+      calc: (d, p) => ({ ma: maOf(p.type, srcOf(d, p.source), p.length, d.volume) }) },
+    bb: { name: "Bandas de Bollinger (otra)", pane: "price", short: (p) => `BB ${p.length} ${p.mult}`, desc: "Bollinger adicional con tipo de media y fuente configurables (no afecta a las estrategias).",
+      params: [["length", "Longitud", "int", 20], ["mult", "Desviaciones", "dec", 2], ["source", "Fuente", "src", "close"], ["type", "Tipo de media de la base", "ma", "sma"]],
+      lines: [["upper", "Banda superior", "line", { c: "#2962ff", w: 1, v: true, s: 0 }], ["basis", "Base", "line", { c: "#ff6d00", w: 1, v: true, s: 0 }], ["lower", "Banda inferior", "line", { c: "#2962ff", w: 1, v: true, s: 0 }]],
+      fills: [["upper", "lower", "Relleno entre bandas", { c: "#2196f3", o: 8, v: true }]],
+      calc: (d, p) => { const s = srcOf(d, p.source), b = maOf(p.type, s, p.length, d.volume), sd = stdev(s, p.length); return { basis: b, upper: b.map((v, i) => v + p.mult * sd[i]), lower: b.map((v, i) => v - p.mult * sd[i]) }; } },
+    vwap: { name: "VWAP anclado", pane: "price", short: (p) => `VWAP ${(ANCHOR_OPTS.find((a) => a[0] === p.anchor) || ["", ""])[1].split(" ")[0]}`, desc: "VWAP que se reinicia por sesión, día de Costa Rica, semana o mes, con bandas de desviación.",
+      params: [["anchor", "Reinicio", "sel", "week", ANCHOR_OPTS], ["source", "Fuente", "src", "hlc3"], ["b1", "Bandas 1 (×desv.)", "dec", 1], ["b2", "Bandas 2 (×desv.)", "dec", 2]],
+      lines: [["vwap", "VWAP", "line", { c: "#e040fb", w: 2, v: true, s: 0 }], ["u1", "Banda superior 1", "line", { c: "#4caf50", w: 1, v: true, s: 2 }], ["l1", "Banda inferior 1", "line", { c: "#4caf50", w: 1, v: true, s: 2 }], ["u2", "Banda superior 2", "line", { c: "#808000", w: 1, v: false, s: 2 }], ["l2", "Banda inferior 2", "line", { c: "#808000", w: 1, v: false, s: 2 }]],
+      fills: [["u1", "l1", "Relleno bandas 1", { c: "#4caf50", o: 6, v: true }]],
+      calc: (d, p) => { const r = vwapAnchored(d, p.anchor, p.source); const b = (m, sg) => r.vwap.map((v, i) => v + sg * m * r.sd[i]); return { vwap: r.vwap, u1: b(p.b1, 1), l1: b(p.b1, -1), u2: b(p.b2, 1), l2: b(p.b2, -1) }; } },
+    keltner: { name: "Canales de Keltner", pane: "price", fills: [["upper", "lower", "Relleno", { c: "#38bdf8", o: 6, v: true }]], short: (p) => `KC ${p.length} ${p.mult}`, desc: "EMA con bandas a N veces el ATR.",
       params: [["length", "Longitud EMA", "int", 20], ["atr", "Longitud ATR", "int", 10], ["mult", "Multiplicador", "dec", 2]],
       lines: [["upper", "Banda superior", "line", { c: "#38bdf8", w: 1, v: true }], ["mid", "Media", "line", { c: "#38bdf8", w: 1, v: true }], ["lower", "Banda inferior", "line", { c: "#38bdf8", w: 1, v: true }]],
       calc: (d, p) => { const m = ema(d.close, p.length), a = atr(d, p.atr); return { mid: m, upper: m.map((v, i) => v + p.mult * a[i]), lower: m.map((v, i) => v - p.mult * a[i]) }; } },
-    donchian: { name: "Canales de Donchian", pane: "price", short: (p) => `DC ${p.length}`, desc: "Máximo y mínimo de las últimas N velas.",
+    donchian: { name: "Canales de Donchian", pane: "price", fills: [["upper", "lower", "Relleno", { c: "#60a5fa", o: 6, v: true }]], short: (p) => `DC ${p.length}`, desc: "Máximo y mínimo de las últimas N velas.",
       params: [["length", "Longitud", "int", 20]],
       lines: [["upper", "Superior", "line", { c: "#60a5fa", w: 1, v: true }], ["basis", "Media", "line", { c: "#f97316", w: 1, v: true }], ["lower", "Inferior", "line", { c: "#60a5fa", w: 1, v: true }]],
       calc: (d, p) => { const u = highest(d.high, p.length), l = lowest(d.low, p.length); return { upper: u, lower: l, basis: u.map((v, i) => (v + l[i]) / 2) }; } },
@@ -1706,7 +1771,7 @@ const SSP = (() => {
   function sessionsAt(ms, list = SESSIONS) { return list.filter((s) => sessionWindows(ms, ms + 1, s).some((w) => w.start <= ms && ms < w.end)); }
 
   return {
-    TF_MS, floorTime, wma, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
+    TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
   };
@@ -2006,11 +2071,13 @@ if (typeof module !== "undefined") module.exports = SSP;
   // [clave, etiqueta, {c: color, w: grosor, v: visible}] — solo se muestran los controles de las propiedades definidas
   const STYLE_DEF = {
     candles: [["candles.up", "Vela alcista", { c: "#2fd3a0" }], ["candles.down", "Vela bajista", { c: "#ff6170" }], ["candles.border", "Borde de las velas", { v: false }]],
-    bb: [["bb.upper", "Banda superior", { c: "#62a8ff", w: 1, v: true }], ["bb.mid", "Media", { c: "#ff6170", w: 1, v: true }], ["bb.lower", "Banda inferior", { c: "#62a8ff", w: 1, v: true }]],
-    vwap: [["vwap.line", "Línea VWAP", { c: "#f0c75e", w: 2, v: true }], ["vwap.b1", "Bandas ±1 desviación", { c: "#f0c75e", w: 1, v: false }], ["vwap.b2", "Bandas ±2 desviaciones", { c: "#c79b3a", w: 1, v: false }]],
+    bb: [["bb.upper", "Banda superior", { c: "#62a8ff", w: 1, v: true, s: 0, lt: 0, lb: false, pl: false }], ["bb.mid", "Media", { c: "#ff6170", w: 1, v: true, s: 2, lt: 0, lb: false, pl: false }], ["bb.lower", "Banda inferior", { c: "#62a8ff", w: 1, v: true, s: 0, lt: 0, lb: false, pl: false }],
+      ["bb.fill", "Relleno entre bandas", { c: "#62a8ff", o: 6, v: true }]],
+    vwap: [["vwap.line", "Línea VWAP", { c: "#f0c75e", w: 2, v: true, s: 0, lt: 0, lb: false, pl: false }], ["vwap.b1", "Bandas 1", { c: "#f0c75e", w: 1, v: false, s: 2, lt: 0, lb: false, pl: false }], ["vwap.b2", "Bandas 2", { c: "#c79b3a", w: 1, v: false, s: 1, lt: 0, lb: false, pl: false }],
+      ["vwap.b3", "Bandas 3", { c: "#8a6d2a", w: 1, v: false, s: 1, lt: 0, lb: false, pl: false }], ["vwap.fill", "Relleno de las bandas 1", { c: "#f0c75e", o: 5, v: false }]],
     sqz: [["sqz.lime", "Positivo creciendo", { c: "#2fd3a0" }], ["sqz.green", "Positivo decreciendo", { c: "#1d7a60" }], ["sqz.red", "Negativo creciendo", { c: "#ff6170" }], ["sqz.maroon", "Negativo decreciendo", { c: "#8c3340" }],
       ["sqz.on", "Punto: compresión activa", { c: "#e6ebf2", v: true }], ["sqz.off", "Punto: compresión liberada", { c: "#3a4a66", v: true }], ["sqz.none", "Punto: sin compresión", { c: "#62a8ff", v: true }]],
-    dmi: [["dmi.plus", "+DI", { c: "#4dd0e1", w: 1, v: true }], ["dmi.minus", "−DI", { c: "#ff9f5a", w: 1, v: true }], ["dmi.adx", "ADX", { c: "#e6ebf2", w: 2, v: true }], ["dmi.key", "Nivel clave", { c: "#8a98ad", v: true }]],
+    dmi: [["dmi.plus", "+DI", { c: "#4dd0e1", w: 1, v: true, s: 0, lt: 0, lb: true, pl: false }], ["dmi.minus", "−DI", { c: "#ff9f5a", w: 1, v: true, s: 0, lt: 0, lb: true, pl: false }], ["dmi.adx", "ADX", { c: "#e6ebf2", w: 2, v: true, s: 0, lt: 0, lb: true, pl: false }], ["dmi.key", "Nivel clave", { c: "#8a98ad", v: true }]],
     ob: [["ob.bull", "Zonas alcistas", { c: "#2fd3a0", v: true }], ["ob.bear", "Zonas bajistas", { c: "#ff6170", v: true }], ["ob.mitigated", "Mostrar zonas ya mitigadas", { v: true }], ["ob.labels", "Etiquetas", { v: true }]],
     vrvp: [["vrvp.bars", "Barras de volumen", { c: "#8a98ad", v: true }], ["vrvp.poc", "POC", { c: "#ff6170", v: true }], ["vrvp.va", "VAH y VAL", { c: "#b69cff", v: true }], ["vrvp.labels", "Etiquetas", { v: true }]],
     fib: [["fib.levels", "Niveles de retroceso", { c: "#e8d8a8", v: true }], ["fib.zone", "Zona de entrada", { c: "#f0c75e", v: true }], ["fib.ext", "Extensiones", { c: "#b69cff", v: true }],
@@ -2038,6 +2105,17 @@ if (typeof module !== "undefined") module.exports = SSP;
   };
   const NARROW = () => window.matchMedia("(max-width: 700px)").matches;
 
+  // ------------------------------------------------------------ entradas de dibujo (no cambian las estrategias) y visibilidad por temporalidad
+  const DISP_DEF = { bb_src: "close", bb_ma: "sma", bb_off: 0, vwap_anchor: "utc", vwap_src: "hlc3", vwap_m1: 1, vwap_m2: 2, vwap_m3: 3 };
+  const DISP = Object.assign({}, DISP_DEF, LS.get("disp", {}));
+  const TFV = LS.get("tfvis", {});            // {clave: [temporalidades donde se ve]}; sin entrada = en todas
+  const tfOk = (k) => !TFV[k] || TFV[k].includes(S.tf);
+  const shw = (k) => !!S.show[k] && tfOk(k);
+  const cOn = (x) => x.v !== false && tfOk("c:" + x.id);
+  const LSTYLE = [[0, "Sólida"], [2, "Discontinua"], [1, "Punteada"], [3, "Guiones largos"], [4, "Puntos espaciados"]];
+  const LTYPE = [[0, "Línea"], [1, "Escalones"], [2, "Curva"]];
+  const shift = (arr, n) => (!n ? arr : arr.map((_, i) => (i - n >= 0 && i - n < arr.length ? arr[i - n] : NaN)));
+
   // ------------------------------------------------------------ sesiones de mercado (horario local de cada plaza, editable)
   const SESS_DEF = Object.fromEntries(SSP.SESSIONS.flatMap((x) => [[x.key + "_start", x.start], [x.key + "_end", x.end]]));
   const SESSP = Object.assign({}, SESS_DEF, LS.get("sess", {}));
@@ -2060,6 +2138,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const cParams = (x) => Object.fromEntries(CDEF[x.type].params.map(([k, , , dv]) => [k, x.params && x.params[k] !== undefined ? x.params[k] : dv]));
   const cSt = (x, k) => { const L = CDEF[x.type].lines.find((l) => l[0] === k); return Object.assign({}, L ? L[3] : {}, (x.style || {})[k] || {}); };
   const cVis = (x, k) => cSt(x, k).v !== false;
+  const cFill = (x, i) => Object.assign({}, (CDEF[x.type].fills || [])[i]?.[3] || {}, (x.style || {})["fill" + i] || {});
   const cMainColor = (x) => { const L = CDEF[x.type].lines.find((l) => l[2] !== "hline"); return L ? cSt(x, L[0]).c : "#888"; };
   function addCustom(type) {
     const x = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), type, params: {}, style: {}, v: true };
@@ -2070,7 +2149,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   // ------------------------------------------------------------ gráfico
   const chart = (() => {
     const LC = window.LightweightCharts;
-    if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {}, info() { return {}; }, setTradeLines() {} }; }
+    if (!LC) { $("chartMsg").textContent = "No se pudo cargar la librería de gráficos. Revisa tu conexión a internet y recarga la página."; return { setData() {}, updateLive() {}, setLevels() {}, draw() {}, applyTz() {}, setKey() {}, calcProfile() {}, info() { return {}; }, setTradeLines() {}, coord: null }; }
     const c = LC.createChart($("chart"), {
       autoSize: true,
       layout: { background: { type: LC.ColorType.Solid, color: COL.night }, textColor: "#8fa0b8", fontSize: 11, fontFamily: '"IBM Plex Sans", system-ui, sans-serif', panes: { separatorColor: "#22314d", enableResize: true } },
@@ -2083,7 +2162,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const candles = c.addSeries(LC.CandlestickSeries, { borderVisible: false });
     const line = (style = LC.LineStyle.Solid) => c.addSeries(LC.LineSeries, { lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
     const bbU = line(), bbM = line(LC.LineStyle.Dashed), bbL = line(), vw = line();
-    const vwU1 = line(LC.LineStyle.Dashed), vwL1 = line(LC.LineStyle.Dashed), vwU2 = line(LC.LineStyle.Dotted), vwL2 = line(LC.LineStyle.Dotted);
+    const vwU1 = line(LC.LineStyle.Dashed), vwL1 = line(LC.LineStyle.Dashed), vwU2 = line(LC.LineStyle.Dotted), vwL2 = line(LC.LineStyle.Dotted), vwU3 = line(LC.LineStyle.Dotted), vwL3 = line(LC.LineStyle.Dotted);
     const sqz = c.addSeries(LC.HistogramSeries, { priceLineVisible: false, lastValueVisible: true, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } }, 1);
     const dots = c.addSeries(LC.LineSeries, { lineVisible: false, pointMarkersVisible: true, pointMarkersRadius: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 1);
     const dmiLine = (title) => c.addSeries(LC.LineSeries, { priceScaleId: "left", title, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false }, 1);
@@ -2114,7 +2193,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     // ---- series de los indicadores agregados: precio → panel 0; "panel aparte" → un panel nuevo cada uno (desde el 2)
     let cSeries = [], cSig = "";
     function buildCustom() {
-      const want = CUST.filter((x) => x.v !== false);
+      const want = CUST.filter(cOn);
       const sig = want.map((x) => x.id + ":" + x.type).join(",");
       if (sig === cSig) return;
       cSig = sig;
@@ -2143,7 +2222,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     function styleCustom() {
       for (const g of cSeries) {
         const x = CUST.find((y) => y.id === g.id); if (!x) continue;
-        for (const s of g.series) if (s.kind !== "hist") s.api.applyOptions({ color: cSt(x, s.key).c, lineWidth: cSt(x, s.key).w || 1, visible: cVis(x, s.key) });
+        const price = CDEF[x.type].pane === "price";
+        for (const s of g.series) if (s.kind !== "hist") { const y = cSt(x, s.key); s.api.applyOptions(Object.assign({ color: y.c, lineWidth: y.w || 1, visible: cVis(x, s.key), lineStyle: y.s ?? 0, lineType: y.lt ?? 0, priceLineVisible: !!y.pl, priceLineColor: y.c }, s.kind === "line" ? { lastValueVisible: y.lb ?? !price } : {})); }
       }
     }
     function dataCustom(d) {
@@ -2169,12 +2249,12 @@ if (typeof module !== "undefined") module.exports = SSP;
     function styleSeries() {
       const up = st("candles.up").c, dn = st("candles.down").c;
       candles.applyOptions({ upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn, borderVisible: vis("candles.border"), borderUpColor: up, borderDownColor: dn });
-      const ln = (s, k, on) => s.applyOptions({ color: st(k).c, lineWidth: st(k).w || 1, visible: on && vis(k) });
-      ln(bbU, "bb.upper", S.show.bb); ln(bbM, "bb.mid", S.show.bb); ln(bbL, "bb.lower", S.show.bb);
-      ln(vw, "vwap.line", S.show.vwap); ln(vwU1, "vwap.b1", S.show.vwap); ln(vwL1, "vwap.b1", S.show.vwap); ln(vwU2, "vwap.b2", S.show.vwap); ln(vwL2, "vwap.b2", S.show.vwap);
-      ln(diP, "dmi.plus", S.show.dmi); ln(diM, "dmi.minus", S.show.dmi); ln(adxS, "dmi.adx", S.show.dmi);
-      sqz.applyOptions({ visible: S.show.sqz }); dots.applyOptions({ visible: S.show.sqz });
-      c.applyOptions({ leftPriceScale: { visible: S.show.dmi && !NARROW() } });   // en teléfono el ADX va sin eje para no quitar ancho
+      const ln = (s, k, on) => { const y = st(k); s.applyOptions({ color: y.c, lineWidth: y.w || 1, visible: on && vis(k), lineStyle: y.s ?? 0, lineType: y.lt ?? 0, lastValueVisible: !!y.lb, priceLineVisible: !!y.pl, priceLineColor: y.c }); };
+      ln(bbU, "bb.upper", shw("bb")); ln(bbM, "bb.mid", shw("bb")); ln(bbL, "bb.lower", shw("bb"));
+      ln(vw, "vwap.line", shw("vwap")); ln(vwU1, "vwap.b1", shw("vwap")); ln(vwL1, "vwap.b1", shw("vwap")); ln(vwU2, "vwap.b2", shw("vwap")); ln(vwL2, "vwap.b2", shw("vwap")); ln(vwU3, "vwap.b3", shw("vwap")); ln(vwL3, "vwap.b3", shw("vwap"));
+      ln(diP, "dmi.plus", shw("dmi")); ln(diM, "dmi.minus", shw("dmi")); ln(adxS, "dmi.adx", shw("dmi"));
+      sqz.applyOptions({ visible: shw("sqz") }); dots.applyOptions({ visible: shw("sqz") });
+      c.applyOptions({ leftPriceScale: { visible: shw("dmi") && !NARROW() } });   // en teléfono el ADX va sin eje para no quitar ancho
       setKey();
       buildCustom(); styleCustom();
     }
@@ -2186,7 +2266,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       candles.setData(d.candles);
       lastBarTime = d.candles.length ? d.candles[d.candles.length - 1].time : 0;
       bbU.setData(d.bbU); bbM.setData(d.bbM); bbL.setData(d.bbL);
-      vw.setData(d.vwap); vwU1.setData(d.vwU1); vwL1.setData(d.vwL1); vwU2.setData(d.vwU2); vwL2.setData(d.vwL2);
+      vw.setData(d.vwap); vwU1.setData(d.vwU1); vwL1.setData(d.vwL1); vwU2.setData(d.vwU2); vwL2.setData(d.vwL2); vwU3.setData(d.vwU3); vwL3.setData(d.vwL3);
       sqz.setData(d.sqz); dots.setData(d.dots);
       diP.setData(d.diP); diM.setData(d.diM); adxS.setData(d.adx);
       dataCustom(d);
@@ -2219,7 +2299,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     }
     function calcProfile() {
       profile = null;
-      if (!data || !S.show.vrvp) { draw(); return; }
+      if (!data || !shw("vrvp")) { draw(); return; }
       const r = c.timeScale().getVisibleRange(), a = S.an[k2(data.symbol, data.tf)];
       if (!r || !a) { draw(); return; }
       const ot = a.d.openTime;
@@ -2235,14 +2315,39 @@ if (typeof module !== "undefined") module.exports = SSP;
       const cv = $("overlay");
       if (!data) return;
       const pane = c.panes()[0], H = pane ? pane.getHeight() : 0, W = c.timeScale().width(), dpr = window.devicePixelRatio || 1;
-      const LW = S.show.dmi && !NARROW() ? c.priceScale("left").width() : 0;
+      const LW = shw("dmi") && !NARROW() ? c.priceScale("left").width() : 0;
       cv.style.left = LW + "px"; cv.style.width = W + "px"; cv.style.height = H + "px";
       $("legend").style.left = (LW + 10) + "px";
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       const g = cv.getContext("2d");
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); g.font = '11px "IBM Plex Sans", system-ui, sans-serif';
       const ts = c.timeScale(), X = (ms) => { const x = ts.timeToCoordinate(ms / 1000); return x === null ? 0 : x; }, Y = (p) => candles.priceToCoordinate(p);
-      if (S.show.sess && data.sess) for (const w of data.sess) {
+      // rellenos entre bandas (debajo de todo lo demás)
+      const fillBetween = (A, B, col, op) => {
+        if (!A || !B || !A.length) return;
+        const m = new Map(B.map((p) => [p.time, p.value]));
+        let seg = [];
+        const flush = () => {
+          if (seg.length > 1) { g.beginPath(); seg.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); for (let i = seg.length - 1; i >= 0; i--) g.lineTo(seg[i][0], seg[i][2]); g.closePath(); g.fillStyle = hexA(col, op / 100); g.fill(); }
+          seg = [];
+        };
+        for (const p of A) {
+          const b = m.get(p.time);
+          if (p.value === undefined || b === undefined || !isFinite(p.value) || !isFinite(b)) { flush(); continue; }
+          const x = ts.timeToCoordinate(p.time), y1 = Y(p.value), y2 = Y(b);
+          if (x === null || y1 === null || y2 === null) { flush(); continue; }
+          seg.push([x, y1, y2]);
+        }
+        flush();
+      };
+      if (shw("bb") && vis("bb.fill")) fillBetween(data.bbU, data.bbL, st("bb.fill").c, st("bb.fill").o ?? 6);
+      if (shw("vwap") && vis("vwap.fill")) fillBetween(data.vwU1, data.vwL1, st("vwap.fill").c, st("vwap.fill").o ?? 5);
+      for (const x of CUST) {
+        const D = CDEF[x.type]; if (!cOn(x) || D.pane !== "price" || !D.fills) continue;
+        const cd = data.custom[x.id]; if (!cd) continue;
+        D.fills.forEach(([a, b], i) => { const fs = cFill(x, i); if (fs.v !== false && cVis(x, a) && cVis(x, b)) fillBetween(cd[a], cd[b], fs.c, fs.o ?? 6); });
+      }
+      if (shw("sess") && data.sess) for (const w of data.sess) {
         const hb = (ts.options().barSpacing || 6) / 2, ca = ts.timeToCoordinate(data.candles[w.i0].time), cb = ts.timeToCoordinate(data.candles[w.i1].time);
         if (ca === null || cb === null) continue;
         const xa = ca - hb, xb = cb + hb;
@@ -2254,7 +2359,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         if (box) { g.strokeStyle = hexA(col, 0.45); g.setLineDash(w.open ? [4, 3] : []); g.strokeRect(xa, yt, xb - xa, yb - yt); g.setLineDash([]); }
         if (vis("sess.labels") && xb - xa > 30) { g.fillStyle = hexA(col, 0.9); g.fillText(w.name + (w.open ? " · abierta" : ""), Math.max(xa, 0) + 4, box ? yt - 4 : 14); }
       }
-      if (S.show.ob) for (const ob of data.obs) {
+      if (shw("ob")) for (const ob of data.obs) {
         const bull = ob.direction === "alcista", mit = ob.status === "mitigada", key = bull ? "ob.bull" : "ob.bear";
         if (!vis(key) || (mit && !vis("ob.mitigated"))) continue;
         const y1 = Y(ob.top), y2 = Y(ob.bottom);
@@ -2265,7 +2370,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         if (vis("ob.labels")) { g.fillStyle = COL.ink2; g.fillText(`OB ${bull ? "alcista" : "bajista"}${mit ? " · mitigado" : ""}`, x + 4, y1 + 12); }
       }
       const fb = data.fib;
-      if (S.show.fib && fb && !fb.running) {
+      if (shw("fib") && fb && !fb.running) {
         const x1 = X(fb.p1.time), x2 = X(fb.p2.time), showP = vis("fib.prices");
         const yz1 = Y(fb.zone.near), yz2 = Y(fb.zone.far);
         if (vis("fib.zone") && yz1 !== null && yz2 !== null) {
@@ -2292,7 +2397,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         }
       }
       const ew = data.ew;
-      if (S.show.ew && ew) {
+      if (shw("ew") && ew) {
         const pts = ew.labels.map((l) => ({ ...l, x: X(l.time), y: Y(l.price) })).filter((p) => p.y !== null);
         if (vis("ew.line")) {
           g.strokeStyle = st("ew.line").c; g.lineWidth = st("ew.line").w || 2; g.beginPath();
@@ -2322,7 +2427,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         }
       }
       const p = profile;
-      if (S.show.vrvp && p && p.rows.length) {
+      if (shw("vrvp") && p && p.rows.length) {
         const maxV = Math.max(...p.rows.map((r) => r.volume)) || 1, maxW = W * 0.2, labels = vis("vrvp.labels");
         if (vis("vrvp.bars")) for (const r of p.rows) {
           const yt = Y(r.high), yb = Y(r.low);
@@ -2340,24 +2445,33 @@ if (typeof module !== "undefined") module.exports = SSP;
         if (vis("vrvp.va")) { hl(p.vah, st("vrvp.va").c, "VAH"); hl(p.val, st("vrvp.va").c, "VAL"); }
       }
     }
-    const info = () => ({ panes: c.panes().length, heights: c.panes().map((p) => p.getHeight()), sess: data && data.sess ? data.sess.length : -1, sess0: data && data.sess && data.sess[0], custom: cSeries.map((g) => ({ id: g.id, type: g.type, pane: g.pane, series: g.series.length, levels: g.plines.length })) });
-    return { setData, updateLive, setLevels, draw, applyTz, calcProfile, setKey, info, setTradeLines };
+    const info = () => ({ bbMid: { lineStyle: bbM.options().lineStyle, lineType: bbM.options().lineType, visible: bbM.options().visible, lastValueVisible: bbM.options().lastValueVisible, last: data && data.bbM.length ? data.bbM[data.bbM.length - 1].value : null },
+      vwap: { last: data && data.vwap.length ? data.vwap[data.vwap.length - 1].value : null, firstOfDay: data ? data.vwap.length : 0 }, panes: c.panes().length, heights: c.panes().map((p) => p.getHeight()), sess: data && data.sess ? data.sess.length : -1, sess0: data && data.sess && data.sess[0], custom: cSeries.map((g) => ({ id: g.id, type: g.type, pane: g.pane, series: g.series.length, levels: g.plines.length })) });
+    const coord = { y: (p) => candles.priceToCoordinate(p), price: (y) => candles.coordinateToPrice(y), paneH: () => (c.panes()[0] ? c.panes()[0].getHeight() : 0), plotW: () => c.timeScale().width(), leftW: () => (shw("dmi") && !NARROW() ? c.priceScale("left").width() : 0) };
+    return { setData, updateLive, setLevels, draw, applyTz, calcProfile, setKey, info, setTradeLines, coord };
   })();
 
   function chartData(sym, tf) {
     const a = S.an[k2(sym, tf)];
     if (!a || !a.n) return null;
     const N = 600, i0 = Math.max(0, a.n - N), d = a.d, I = a.ind, tLast = d.closeTime[a.n - 1];
-    const candles = [], bbU = [], bbM = [], bbL = [], vwap = [], vwU1 = [], vwL1 = [], vwU2 = [], vwL2 = [], sqz = [], dots = [], diP = [], diM = [], adx = [];
+    const candles = [], bbU = [], bbM = [], bbL = [], vwap = [], vwU1 = [], vwL1 = [], vwU2 = [], vwL2 = [], vwU3 = [], vwL3 = [], sqz = [], dots = [], diP = [], diM = [], adx = [];
+    // Bollinger del gráfico: con fuente cierre, SMA y sin desplazamiento son los mismos valores que usa la estrategia
+    let BU = I.bb_upper, BM = I.bb_mid, BL = I.bb_lower;
+    if (DISP.bb_src !== "close" || DISP.bb_ma !== "sma" || DISP.bb_off) {
+      const src = SSP.srcOf(d, DISP.bb_src), m = SSP.maOf(DISP.bb_ma, src, IND.bb_length, d.volume), sdv = SSP.stdev(src, IND.bb_length);
+      BM = shift(m, DISP.bb_off); BU = shift(m.map((v, i) => v + IND.bb_mult * sdv[i]), DISP.bb_off); BL = shift(m.map((v, i) => v - IND.bb_mult * sdv[i]), DISP.bb_off);
+    }
+    const VW = SSP.vwapAnchored(d, DISP.vwap_anchor, DISP.vwap_src);
     const ok = (v) => typeof v === "number" && !Number.isNaN(v);
     const sqzCol = { lime: st("sqz.lime").c, green: st("sqz.green").c, red: st("sqz.red").c, maroon: st("sqz.maroon").c };
     for (let i = i0; i < a.n; i++) {
       const t = d.openTime[i] / 1000;
       candles.push({ time: t, open: d.open[i], high: d.high[i], low: d.low[i], close: d.close[i] });
-      if (ok(I.bb_upper[i])) { bbU.push({ time: t, value: I.bb_upper[i] }); bbM.push({ time: t, value: I.bb_mid[i] }); bbL.push({ time: t, value: I.bb_lower[i] }); }
-      if (ok(I.vwap[i])) {
-        const v = I.vwap[i], sd = I.vwap_sd[i] || 0;
-        vwap.push({ time: t, value: v }); vwU1.push({ time: t, value: v + sd }); vwL1.push({ time: t, value: v - sd }); vwU2.push({ time: t, value: v + 2 * sd }); vwL2.push({ time: t, value: v - 2 * sd });
+      if (ok(BU[i])) { bbU.push({ time: t, value: BU[i] }); bbM.push({ time: t, value: BM[i] }); bbL.push({ time: t, value: BL[i] }); }
+      if (ok(VW.vwap[i])) {
+        const v = VW.vwap[i], sd = VW.sd[i] || 0, m1 = DISP.vwap_m1, m2 = DISP.vwap_m2, m3 = DISP.vwap_m3;
+        vwap.push({ time: t, value: v }); vwU1.push({ time: t, value: v + m1 * sd }); vwL1.push({ time: t, value: v - m1 * sd }); vwU2.push({ time: t, value: v + m2 * sd }); vwL2.push({ time: t, value: v - m2 * sd }); vwU3.push({ time: t, value: v + m3 * sd }); vwL3.push({ time: t, value: v - m3 * sd });
       }
       if (ok(I.di_plus[i])) { diP.push({ time: t, value: I.di_plus[i] }); diM.push({ time: t, value: I.di_minus[i] }); }
       if (ok(I.adx[i])) adx.push({ time: t, value: I.adx[i] });
@@ -2380,8 +2494,9 @@ if (typeof module !== "undefined") module.exports = SSP;
     // indicadores agregados: se calculan sobre todo el historial cargado y se recortan a lo que se dibuja
     const custom = {};
     for (const x of CUST) {
-      if (x.v === false) continue;
-      let out; try { out = SSP.customCalc(x.type, d, cParams(x)); } catch (e) { console.warn("indicador", x.type, e); continue; }
+      if (!cOn(x)) continue;
+      let out; try { out = customOut(x, sym, tf, a); } catch (e) { console.warn("indicador", x.type, e); continue; }
+      if (!out) continue;
       const D = CDEF[x.type], r = {};
       for (const [k, , kind] of D.lines) if (kind === "line" || kind === "dots") {
         const arr = out[k] || [], o = [];
@@ -2414,8 +2529,33 @@ if (typeof module !== "undefined") module.exports = SSP;
         sess.push({ key: x.key, name: x.name, i0: j0, i1: j1, high: hi, low: lo, open: w.end > to - SSP.TF_MS[tf] && w.start <= ct[ct.length - 1] });
       }
     }
-    return { symbol: sym, tf, candles, bbU, bbM, bbL, vwap, vwU1, vwL1, vwU2, vwL2, sqz, dots, diP, diM, adx, obs, markers, last: a.rowAt(a.n - 1), custom, sess,
+    return { symbol: sym, tf, candles, bbU, bbM, bbL, vwap, vwU1, vwL1, vwU2, vwL2, vwU3, vwL3, sqz, dots, diP, diM, adx, obs, markers, last: a.rowAt(a.n - 1), custom, sess,
       fib: SSP.fibSetup(a, tLast, trend1h(sym, tLast), FIBP), ew: SSP.elliottAsof(a, tLast, IND.ew_depth, IND.ew_min_atr) };
+  }
+  // cálculo de un indicador agregado en su propia temporalidad (como request.security de TradingView, sin mirar al futuro):
+  // cada vela del gráfico toma el valor de la última vela CERRADA de la temporalidad elegida; luego se aplica el desplazamiento.
+  const htfLoading = new Set();
+  function customOut(x, sym, tf, a) {
+    const P = cParams(x), ctf = (x.params || {})._tf || "chart", off = Math.round(+((x.params || {})._off || 0));
+    let out;
+    if (ctf !== "chart" && SSP.TF_MS[ctf] > SSP.TF_MS[tf]) {
+      const h = S.an[k2(sym, ctf)];
+      if (!h || !h.n) {
+        const key = sym + "|" + ctf;
+        if (!htfLoading.has(key)) { htfLoading.add(key); bootstrap(sym, null, [ctf]).finally(() => { htfLoading.delete(key); refreshChart(); }); }
+        return null;
+      }
+      const ho = SSP.customCalc(x.type, h.d, P), ct = h.d.closeTime;
+      out = {};
+      for (const [k, arr] of Object.entries(ho)) {
+        if (!Array.isArray(arr)) continue;
+        const o = new Array(a.n).fill(NaN); let j = -1;
+        for (let i = 0; i < a.n; i++) { const t = a.d.closeTime[i]; while (j + 1 < ct.length && ct[j + 1] <= t) j++; o[i] = j >= 0 ? arr[j] : NaN; }
+        out[k] = o;
+      }
+    } else out = SSP.customCalc(x.type, a.d, P);
+    if (off) for (const k of Object.keys(out)) if (Array.isArray(out[k])) out[k] = shift(out[k], off);
+    return out;
   }
   function trend1h(sym, t) { const h = S.an[k2(sym, "1h")]; return h ? h.trendAsof(t) : null; }
   let lastChartKey = "";
@@ -2439,12 +2579,12 @@ if (typeof module !== "undefined") module.exports = SSP;
     const folded = LS.get("legendFolded", NARROW());
     $("indCount").textContent = Object.keys(LEG).filter((k) => S.show[k]).length + CUST.filter((x) => x.v !== false).length;
     if (folded) { $("legend").innerHTML = `<button class="fold" data-fold="0" aria-label="Mostrar la leyenda">Leyenda ▸</button>`; return; }
-    $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).map(([k, L]) => `<div class="li${S.show[k] ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
-      `<span>${L.name} <span class="faint">${esc(L.sub())}</span></span>` +
+    $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).map(([k, L]) => `<div class="li${shw(k) ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
+      `<span>${L.name} <span class="faint">${S.show[k] && !tfOk(k) ? "no visible en " + TF_LABEL(S.tf) : esc(L.sub())}</span></span>` +
       `<button data-eye="${k}" aria-label="${S.show[k] ? "Ocultar" : "Mostrar"} ${L.name}" title="${S.show[k] ? "Ocultar" : "Mostrar"}">${S.show[k] ? "◉" : "○"}</button>` +
       `<button data-edit="${k}" aria-label="Ajustar ${L.name}" title="Ajustar">⚙</button></div>`).join("") +
-      CUST.map((x) => { const D = CDEF[x.type], on = x.v !== false, nm = esc(D.short(cParams(x))); return `<div class="li${on ? "" : " off"}"><span class="sw" style="background:${cMainColor(x)}"></span>` +
-        `<span>${nm} <span class="faint">${D.pane === "price" ? "precio" : "panel"}</span></span>` +
+      CUST.map((x) => { const D = CDEF[x.type], on = x.v !== false, nm = esc(D.short(cParams(x))); return `<div class="li${cOn(x) ? "" : " off"}"><span class="sw" style="background:${cMainColor(x)}"></span>` +
+        `<span>${nm} <span class="faint">${on && !tfOk("c:" + x.id) ? "no visible en " + TF_LABEL(S.tf) : (D.pane === "price" ? "precio" : "panel") + (x.params?._tf && x.params._tf !== "chart" ? " · " + TF_LABEL(x.params._tf) : "")}</span></span>` +
         `<button data-ceye="${x.id}" aria-label="${on ? "Ocultar" : "Mostrar"} ${nm}" title="${on ? "Ocultar" : "Mostrar"}">${on ? "◉" : "○"}</button>` +
         `<button data-cedit="${x.id}" aria-label="Ajustar ${nm}" title="Ajustar">⚙</button>` +
         `<button data-cdel="${x.id}" aria-label="Quitar ${nm}" title="Quitar">✕</button></div>`; }).join("") +
@@ -2735,8 +2875,9 @@ if (typeof module !== "undefined") module.exports = SSP;
   const IND_DEF = [
     { key: "candles", name: "Velas", noSwitch: true, desc: "Colores de las velas del gráfico.", params: [] },
     { key: "bb", name: "Bandas de Bollinger", desc: "Miden la volatilidad con bandas a N desviaciones de la media. La Estrategia 1 las usa como filtro.",
-      params: [["ind.bb_length", "Longitud", "int"], ["ind.bb_mult", "Desviaciones", "dec"]] },
-    { key: "vwap", name: "VWAP de la sesión", desc: "Precio promedio del día ponderado por volumen (se reinicia a las 18:00 de Costa Rica, 00:00 UTC). Las bandas de desviación están ocultas por defecto.", params: [] },
+      params: [["ind.bb_length", "Longitud", "int"], ["ind.bb_mult", "Desviaciones", "dec"], ["disp.bb_src", "Fuente (solo dibujo)", "src"], ["disp.bb_ma", "Tipo de media (solo dibujo)", "ma"], ["disp.bb_off", "Desplazamiento (solo dibujo)", "int0"]] },
+    { key: "vwap", name: "VWAP", desc: "Precio promedio ponderado por volumen desde el inicio del periodo elegido. Las estrategias usan siempre el VWAP de la sesión (00:00 UTC = 18:00 de Costa Rica); estas entradas solo cambian el dibujo. Las bandas están ocultas por defecto (actívalas en Estilo).",
+      params: [["disp.vwap_anchor", "Reinicio", "anchor"], ["disp.vwap_src", "Fuente", "src"], ["disp.vwap_m1", "Bandas 1 (×desv.)", "dec"], ["disp.vwap_m2", "Bandas 2 (×desv.)", "dec"], ["disp.vwap_m3", "Bandas 3 (×desv.)", "dec"]] },
     { key: "sqz", name: "Squeeze Momentum (LazyBear)", desc: "Histograma de impulso. Los puntos indican si la volatilidad está comprimida.",
       params: [["ind.sqz_bb_length", "Longitud BB", "int"], ["ind.sqz_bb_mult", "Multiplicador BB", "dec"], ["ind.sqz_kc_length", "Longitud Keltner", "int"], ["ind.sqz_kc_mult", "Multiplicador Keltner", "dec"], ["ind.sqz_use_tr", "Usar True Range", "bool"], ["ind.sqz_lb_compat", "Igual que TradingView", "bool"]] },
     { key: "dmi", name: "DMI + ADX", desc: "El ADX mide la fuerza de la tendencia; +DI y −DI dicen quién domina. Por encima del nivel clave hay tendencia.",
@@ -2753,8 +2894,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       params: SSP.SESSIONS.flatMap((x) => [[`sess.${x.key}_start`, `${x.name}: apertura`, "time"], [`sess.${x.key}_end`, `${x.name}: cierre`, "time"]]) },
     { key: "sig", name: "Señales y niveles", noSwitch: true, desc: "Flechas de las señales confirmadas y líneas de entrada, stop loss y objetivos.", params: [] },
   ];
-  const OBJ = () => ({ ind: IND, cfg: CFG, fib: FIBP, sess: SESSP });
-  const DEF = { ind: SSP.DEFAULT_IND, cfg: { adxKey: 23 }, fib: SSP.DEFAULT_FIB, sess: SESS_DEF };
+  const OBJ = () => ({ ind: IND, cfg: CFG, fib: FIBP, sess: SESSP, disp: DISP });
+  const DEF = { ind: SSP.DEFAULT_IND, cfg: { adxKey: 23 }, fib: SSP.DEFAULT_FIB, sess: SESS_DEF, disp: DISP_DEF };
   const getP = (path) => { const [g, k] = path.split("."); return OBJ()[g][k]; };
   const indOpen = { key: null, tab: {} };
   function paramsHtml(d) {
@@ -2763,19 +2904,33 @@ if (typeof module !== "undefined") module.exports = SSP;
       const v = getP(path);
       if (type === "bool") return `<label class="f chk"><input type="checkbox" data-p="${path}" data-t="bool" ${v ? "checked" : ""}>${label}</label>`;
       if (type === "time") return `<label class="f">${label}<input type="time" data-p="${path}" data-t="time" value="${v}"></label>`;
+      const list = type === "src" ? SSP.SRC_OPTS.map((o) => [o, o]) : type === "ma" ? SSP.MA_OPTS : type === "anchor" ? SSP.ANCHOR_OPTS : null;
+      if (list) return `<label class="f">${label}<select data-p="${path}" data-t="${type}">${list.map(([o, l]) => `<option value="${o}" ${String(v) === o ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
       return `<label class="f">${label}<input data-p="${path}" data-t="${type}" inputmode="decimal" value="${type === "pct" ? +(v * 100).toFixed(2) : v}"></label>`;
     }).join("")}</div><p class="faint" style="margin:8px 0 0;font-size:12px">Los parámetros se aplican con “Aplicar cambios”.</p>`;
   }
+  // fila de estilo: visible, color, grosor, opacidad; y para líneas: tipo de trazo, línea/escalones/curva, etiqueta en la escala y línea de precio
+  function styleRow(attr, k, label, def, cur, line) {
+    const A = `${attr}="${k}"`, opt = (p, list, sfx = "") => list.map(([v, l]) => `<option value="${v}" ${+cur[p] === +v ? "selected" : ""}>${l}${sfx}</option>`).join("");
+    const chk = "v" in def ? `<input type="checkbox" ${A} data-sp="v" ${cur.v !== false ? "checked" : ""} aria-label="Mostrar ${label}">` : '<span class="nochk"></span>';
+    const col = "c" in def ? `<input type="color" ${A} data-sp="c" value="${cur.c}" aria-label="Color de ${label}">` : "";
+    const wid = "w" in def ? `<select ${A} data-sp="w" aria-label="Grosor de ${label}">${opt("w", [[1, "1"], [2, "2"], [3, "3"], [4, "4"]], " px")}</select>` : "";
+    const opa = "o" in def ? `<select ${A} data-sp="o" aria-label="Opacidad de ${label}">${opt("o", [3, 5, 8, 10, 15, 20, 30, 40, 60].map((x) => [x, x]), " %")}</select>` : "";
+    const ext = line ? `<div class="srow2"><select ${A} data-sp="s" aria-label="Trazo de ${label}">${opt("s", LSTYLE)}</select><select ${A} data-sp="lt" aria-label="Tipo de ${label}">${opt("lt", LTYPE)}</select>
+      <label><input type="checkbox" ${A} data-sp="lb" ${cur.lb ? "checked" : ""}>Etiqueta en escala</label><label><input type="checkbox" ${A} data-sp="pl" ${cur.pl ? "checked" : ""}>Línea de precio</label></div>` : "";
+    return `<div class="srow"><label>${chk}<span>${label}</span></label>${col}${wid}${opa}</div>${ext}`;
+  }
+  const STYLE_NOTE = '<p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios de estilo se ven al instante.</p>';
   function styleHtml(d) {
     const rows = STYLE_DEF[d.key] || [];
     if (!rows.length) return '<p class="faint">Sin opciones de estilo.</p>';
-    return rows.map(([k, label, def]) => {
-      const cur = STY[k];
-      const chk = "v" in def ? `<input type="checkbox" data-s="${k}" data-sp="v" ${cur.v !== false ? "checked" : ""} aria-label="Mostrar ${label}">` : '<span class="nochk"></span>';
-      const col = "c" in def ? `<input type="color" data-s="${k}" data-sp="c" value="${cur.c}" aria-label="Color de ${label}">` : "";
-      const wid = "w" in def ? `<select data-s="${k}" data-sp="w" aria-label="Grosor de ${label}">${[1, 2, 3, 4].map((w) => `<option value="${w}" ${cur.w === w ? "selected" : ""}>${w} px</option>`).join("")}</select>` : "";
-      return `<div class="srow"><label>${chk}<span>${label}</span></label>${col}${wid}</div>`;
-    }).join("") + '<p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios de estilo se ven al instante.</p>';
+    return rows.map(([k, label, def]) => styleRow("data-s", k, label, def, STY[k], "s" in def)).join("") + STYLE_NOTE;
+  }
+  // visibilidad por temporalidad (como la pestaña «Visibilidad» de TradingView)
+  function tfvHtml(key) {
+    const cur = TFV[key] || TFS;
+    return `<p class="faint" style="margin:4px 0 8px">Marca las temporalidades en las que se dibuja este indicador.</p><div class="tfv">${TFS.map((t) => `<label class="chk"><input type="checkbox" data-tfv="${key}|${t}" ${cur.includes(t) ? "checked" : ""}>${TF_LABEL(t)}</label>`).join("")}</div>
+      <div class="rowbtns"><button class="resetbtn" data-tfvall="${key}">Todas</button><button class="resetbtn" data-tfvscalp="${key}">Solo 1m–15m</button></div>`;
   }
   // ---- biblioteca y secciones de los indicadores agregados
   const lib = { open: false, q: "" };
@@ -2791,30 +2946,57 @@ if (typeof module !== "undefined") module.exports = SSP;
   function custParamsHtml(x) {
     const D = CDEF[x.type], p = cParams(x);
     if (!D.params.length) return '<p class="faint" style="margin:6px 0">Este indicador no tiene parámetros.</p>';
-    return `<div class="grid3">${D.params.map(([k, label, type]) => type === "src"
-      ? `<label class="f">${label}<select data-cp="${x.id}|${k}" data-t="src">${SSP.SRC_OPTS.map((o) => `<option ${p[k] === o ? "selected" : ""}>${o}</option>`).join("")}</select></label>`
-      : `<label class="f">${label}<input data-cp="${x.id}|${k}" data-t="${type}" inputmode="decimal" value="${p[k]}"></label>`).join("")}</div><p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios se aplican al salir del campo.</p>`;
+    const sel = (k, t, list, v) => `<select data-cp="${x.id}|${k}" data-t="${t}">${list.map(([o, l]) => `<option value="${o}" ${String(v) === String(o) ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+    const xp = x.params || {};
+    return `<div class="grid3">${D.params.map(([k, label, type, , opts]) => `<label class="f">${label}${
+      type === "src" ? sel(k, "src", SSP.SRC_OPTS.map((o) => [o, o]), p[k]) : type === "ma" ? sel(k, "src", SSP.MA_OPTS, p[k]) : type === "sel" ? sel(k, "src", opts, p[k])
+      : `<input data-cp="${x.id}|${k}" data-t="${type}" inputmode="decimal" value="${p[k]}">`}</label>`).join("")}
+      <label class="f">Temporalidad${sel("_tf", "src", [["chart", "La del gráfico"], ...TFS.map((t) => [t, TF_LABEL(t)])], xp._tf || "chart")}</label>
+      <label class="f">Desplazamiento (velas)<input data-cp="${x.id}|_off" data-t="int0" inputmode="numeric" value="${xp._off || 0}"></label></div>
+      <p class="faint" style="margin:8px 0 0;font-size:12px">Con otra temporalidad, cada vela toma el valor de la última vela cerrada de esa temporalidad (sin mirar al futuro). Los cambios se aplican al salir del campo.</p>`;
   }
   function custStyleHtml(x) {
-    return CDEF[x.type].lines.map(([k, label, kind, def]) => {
-      const cur = cSt(x, k);
-      const wid = "w" in def ? `<select data-cs="${x.id}|${k}" data-sp="w" aria-label="Grosor de ${label}">${[1, 2, 3, 4].map((w) => `<option value="${w}" ${cur.w === w ? "selected" : ""}>${w} px</option>`).join("")}</select>` : "";
-      return `<div class="srow"><label><input type="checkbox" data-cs="${x.id}|${k}" data-sp="v" ${cur.v !== false ? "checked" : ""} aria-label="Mostrar ${label}"><span>${label}</span></label><input type="color" data-cs="${x.id}|${k}" data-sp="c" value="${cur.c}" aria-label="Color de ${label}">${wid}</div>`;
-    }).join("") + '<p class="faint" style="margin:8px 0 0;font-size:12px">Los cambios de estilo se ven al instante.</p>';
+    const D = CDEF[x.type];
+    return D.lines.map(([k, label, kind, def]) => styleRow("data-cs", `${x.id}|${k}`, label, Object.assign({ v: true, c: "#888" }, def), cSt(x, k), kind === "line")).join("") +
+      (D.fills || []).map(([, , label, def], i) => styleRow("data-cs", `${x.id}|fill${i}`, label, def, cFill(x, i), false)).join("") + STYLE_NOTE;
   }
   function custSectionHtml(x) {
     const D = CDEF[x.type], key = "c:" + x.id, open = indOpen.key === key, tab = indOpen.tab[key] || (D.params.length ? "params" : "style"), nm = esc(D.short(cParams(x)));
     return `<section class="ind${open ? " open" : ""}" id="ind-${key}"><div class="ind-hd">` +
       `<button class="ind-name" data-open="${key}" aria-expanded="${open}"><span class="chev">${open ? "▾" : "▸"}</span><span class="sw" style="background:${cMainColor(x)}"></span>${nm}</button>` +
       `<label class="switch" title="Mostrar en el gráfico"><input type="checkbox" data-cshow="${x.id}" ${x.v !== false ? "checked" : ""} aria-label="Mostrar ${nm}"><span></span></label></div>` +
-      (open ? `<p>${D.name}. ${D.desc}</p><div class="seg itabs"><button data-itab="params" class="${tab === "params" ? "on" : ""}" data-k="${key}">Parámetros</button><button data-itab="style" class="${tab === "style" ? "on" : ""}" data-k="${key}">Estilo</button></div>` +
-        `<div class="ibody">${tab === "params" ? custParamsHtml(x) : custStyleHtml(x)}</div><div class="rowbtns"><button data-creset="${x.id}" class="resetbtn">Valores por defecto</button><button data-cdel="${x.id}" class="resetbtn danger">Quitar del gráfico</button></div>` : "") + `</section>`;
+      (open ? `<p>${D.name}. ${D.desc}</p><div class="seg itabs"><button data-itab="params" class="${tab === "params" ? "on" : ""}" data-k="${key}">Parámetros</button><button data-itab="style" class="${tab === "style" ? "on" : ""}" data-k="${key}">Estilo</button><button data-itab="vis" class="${tab === "vis" ? "on" : ""}" data-k="${key}">Visibilidad</button></div>` +
+        `<div class="ibody">${tab === "params" ? custParamsHtml(x) : tab === "style" ? custStyleHtml(x) : tfvHtml(key)}</div><div class="rowbtns"><button data-creset="${x.id}" class="resetbtn">Valores por defecto</button><button data-cdel="${x.id}" class="resetbtn danger">Quitar del gráfico</button></div>` : "") + `</section>`;
+  }
+  // ---- plantillas: guardan y cargan toda la configuración de indicadores (como las plantillas de TradingView)
+  const tpl = { open: false };
+  const TPLS = () => LS.get("templates", {});
+  function tplSnapshot() { return JSON.parse(JSON.stringify({ ind: IND, adxKey: CFG.adxKey, fib: { fast_speed: FIBP.fast_speed, min_leg_atr: FIBP.min_leg_atr }, sess: SESSP, disp: DISP, style: STY, show: S.show, custom: CUST, tfvis: TFV })); }
+  function tplApply(t) {
+    const before = JSON.stringify(IND);
+    Object.assign(IND, SSP.DEFAULT_IND, t.ind || {}); if (t.adxKey) CFG.adxKey = t.adxKey; Object.assign(FIBP, t.fib || {});
+    Object.assign(SESSP, SESS_DEF, t.sess || {}); Object.assign(DISP, DISP_DEF, t.disp || {});
+    for (const k of Object.keys(STY)) STY[k] = Object.assign({}, STYLE_DEFAULTS[k], (t.style || {})[k] || {});
+    Object.assign(S.show, t.show || {});
+    CUST.splice(0, CUST.length, ...(t.custom || []).filter((x) => x && CDEF[x.type]));
+    for (const k of Object.keys(TFV)) delete TFV[k]; Object.assign(TFV, t.tfvis || {});
+    LS.set("ind", IND); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("sess", SESSP); LS.set("disp", DISP); LS.set("style", STY); LS.set("show", S.show); saveCust(); LS.set("tfvis", TFV);
+    engine2.strategy.p = Object.assign({}, FIBP);
+    if (JSON.stringify(IND) !== before) for (const key of Object.keys(S.closed)) { const [s2, tf2] = key.split("|"); reanalyze(s2, tf2); }
+    renderIndPanel(); renderLegend(); refreshChart();
+  }
+  function tplHtml() {
+    const all = TPLS(), names = Object.keys(all).sort();
+    return `<div class="lib"><div class="libtop"><input id="tplName" placeholder="Nombre de la plantilla" maxlength="40"><button data-tplsave="1" class="resetbtn">Guardar la actual</button><button data-tplclose="1" class="resetbtn">Cerrar</button></div>
+      <p class="faint" style="margin:6px 0">Guarda todos los indicadores con sus parámetros, estilos, visibilidad y los indicadores agregados. Al cargar una plantilla que cambia Bollinger, SQZMOM, estructura o ATR también cambian las señales de las estrategias.</p>
+      ${names.length ? names.map((n) => `<div class="tplrow"><b>${esc(n)}</b><span class="faint">${(all[n].custom || []).length} agregados · ${new Date(all[n].at || 0).toLocaleDateString("es-CR")}</span><button class="mini" data-tplload="${esc(n)}">Cargar</button><button class="mini danger" data-tpldel="${esc(n)}" aria-label="Borrar ${esc(n)}">✕</button></div>`).join("") : '<p class="faint">Todavía no tienes plantillas guardadas.</p>'}
+      <div class="tplrow"><b>Predeterminada</b><span class="faint">la configuración original de la app</span><button class="mini" data-tplload="__default">Cargar</button></div></div>`;
   }
   function renderIndPanel() {
     const libHtml = lib.open
       ? `<div class="lib"><div class="libtop"><input id="libQ" type="search" placeholder="Buscar indicador (RSI, MACD, EMA…)" value="${esc(lib.q)}" aria-label="Buscar indicador"><button data-libclose="1" class="resetbtn">Cerrar</button></div><div id="libList">${libListHtml()}</div></div>`
-      : `<button class="addbig" data-addlib="1">＋ Agregar indicador</button>`;
-    $("indBody").innerHTML = libHtml +
+      : `<div class="addrow"><button class="addbig" data-addlib="1">＋ Agregar indicador</button><button class="addbig tplb" data-tpl="1">Plantillas</button></div>`;
+    $("indBody").innerHTML = (tpl.open ? tplHtml() : "") + libHtml +
       (CUST.length ? `<h5 class="libh">Tus indicadores (${CUST.length})</h5>` + CUST.map(custSectionHtml).join("") : "") +
       '<h5 class="libh">Indicadores de la app</h5><p class="muted" style="margin:4px 0">Toca un indicador para ajustar sus parámetros y su estilo. Los cambios en Bollinger, SQZMOM, estructura y ATR también cambian las señales de las estrategias.</p>' +
       IND_DEF.map((d) => {
@@ -2822,8 +3004,8 @@ if (typeof module !== "undefined") module.exports = SSP;
         return `<section class="ind${open ? " open" : ""}" id="ind-${d.key}"><div class="ind-hd">` +
           `<button class="ind-name" data-open="${d.key}" aria-expanded="${open}"><span class="chev">${open ? "▾" : "▸"}</span>${d.name}</button>` +
           (d.noSwitch ? "" : `<label class="switch" title="Mostrar en el gráfico"><input type="checkbox" data-show="${d.key}" ${S.show[d.key] ? "checked" : ""} aria-label="Mostrar ${d.name}"><span></span></label>`) + `</div>` +
-          (open ? `<p>${d.desc}</p><div class="seg itabs"><button data-itab="params" class="${tab === "params" ? "on" : ""}" data-k="${d.key}">Parámetros</button><button data-itab="style" class="${tab === "style" ? "on" : ""}" data-k="${d.key}">Estilo</button></div>` +
-            `<div class="ibody">${tab === "params" ? paramsHtml(d) : styleHtml(d)}</div><button data-reset="${d.key}" class="resetbtn">Valores por defecto</button>` : "") + `</section>`;
+          (open ? `<p>${d.desc}</p><div class="seg itabs"><button data-itab="params" class="${tab === "params" ? "on" : ""}" data-k="${d.key}">Parámetros</button><button data-itab="style" class="${tab === "style" ? "on" : ""}" data-k="${d.key}">Estilo</button>${d.key === "candles" ? "" : `<button data-itab="vis" class="${tab === "vis" ? "on" : ""}" data-k="${d.key}">Visibilidad</button>`}</div>` +
+            `<div class="ibody">${tab === "params" ? paramsHtml(d) : tab === "style" ? styleHtml(d) : tfvHtml(d.key)}</div><button data-reset="${d.key}" class="resetbtn">Valores por defecto</button>` : "") + `</section>`;
       }).join("");
   }
   // lee los parámetros escritos (aunque el usuario cambie de pestaña antes de aplicar)
@@ -2844,7 +3026,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   function onStyleInput(e) {
     const el = e.target.closest("[data-s]"); if (!el) return;
     const k = el.dataset.s, prop = el.dataset.sp;
-    STY[k][prop] = prop === "v" ? el.checked : prop === "w" ? +el.value : el.value;
+    STY[k][prop] = ["v", "lb", "pl"].includes(prop) ? el.checked : ["w", "s", "lt", "o"].includes(prop) ? +el.value : el.value;
     LS.set("style", STY);
     clearTimeout(styleT); styleT = setTimeout(() => { renderLegend(); refreshChart(); }, 40);
   }
@@ -2853,7 +3035,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const cs = e.target.closest("[data-cs]");
     if (cs) {
       const [id, k] = cs.dataset.cs.split("|"), x = CUST.find((y) => y.id === id), prop = cs.dataset.sp; if (!x) return;
-      x.style = x.style || {}; x.style[k] = Object.assign({}, x.style[k] || {}, { [prop]: prop === "v" ? cs.checked : prop === "w" ? +cs.value : cs.value });
+      x.style = x.style || {}; x.style[k] = Object.assign({}, x.style[k] || {}, { [prop]: ["v", "lb", "pl"].includes(prop) ? cs.checked : ["w", "s", "lt", "o"].includes(prop) ? +cs.value : cs.value });
       saveCust(); clearTimeout(styleT); styleT = setTimeout(() => { renderLegend(); refreshChart(); }, 40); return;
     }
     onStyleInput(e);
@@ -2862,13 +3044,20 @@ if (typeof module !== "undefined") module.exports = SSP;
     onStyleInput(e);
     const sw = e.target.closest("[data-show]");
     if (sw) { S.show[sw.dataset.show] = sw.checked; LS.set("show", S.show); refreshChart(); }
+    const tv = e.target.closest("[data-tfv]");
+    if (tv) {
+      const [key, t] = tv.dataset.tfv.split("|"), cur = new Set(TFV[key] || TFS);
+      tv.checked ? cur.add(t) : cur.delete(t);
+      if (cur.size === TFS.length) delete TFV[key]; else TFV[key] = TFS.filter((x) => cur.has(x));
+      LS.set("tfvis", TFV); renderLegend(); refreshChart(); return;
+    }
     const cs = e.target.closest("[data-cshow]");
     if (cs) { const x = CUST.find((y) => y.id === cs.dataset.cshow); if (x) { x.v = cs.checked; saveCust(); refreshChart(); } }
     const cp = e.target.closest("[data-cp]");
     if (cp) {
       const [id, k] = cp.dataset.cp.split("|"), x = CUST.find((y) => y.id === id), t = cp.dataset.t; if (!x) return;
       let v = cp.value;
-      if (t !== "src") { v = parseFloat(String(v).replace(",", ".")); if (Number.isNaN(v)) { cp.value = cParams(x)[k]; return; } if (t === "int") v = Math.max(1, Math.min(1000, Math.round(v))); }
+      if (t !== "src") { v = parseFloat(String(v).replace(",", ".")); if (Number.isNaN(v)) { cp.value = k.startsWith("_") ? 0 : cParams(x)[k]; return; } if (t === "int") v = Math.max(1, Math.min(1000, Math.round(v))); if (t === "int0") v = Math.max(-500, Math.min(500, Math.round(v))); }
       x.params = Object.assign({}, x.params, { [k]: v }); cp.value = v; saveCust();
       const nm = $(`ind-c:${id}`)?.querySelector(".ind-name"); if (nm) nm.lastChild.textContent = CDEF[x.type].short(cParams(x));
       refreshChart();
@@ -2876,6 +3065,22 @@ if (typeof module !== "undefined") module.exports = SSP;
   });
   $("indBody").addEventListener("click", (e) => {
     if (e.target.closest("[data-addlib]")) { lib.open = true; lib.q = ""; renderIndPanel(); $("libQ")?.focus(); return; }
+    const tva = e.target.closest("[data-tfvall]"), tvs = e.target.closest("[data-tfvscalp]");
+    if (tva || tvs) { const key = (tva || tvs).dataset.tfvall || (tva || tvs).dataset.tfvscalp; if (tva) delete TFV[key]; else TFV[key] = ["1m", "3m", "5m", "15m"]; LS.set("tfvis", TFV); renderIndPanel(); renderLegend(); refreshChart(); return; }
+    if (e.target.closest("[data-tpl]")) { tpl.open = true; renderIndPanel(); $("tplName")?.focus(); return; }
+    if (e.target.closest("[data-tplclose]")) { tpl.open = false; renderIndPanel(); return; }
+    if (e.target.closest("[data-tplsave]")) {
+      const n = ($("tplName").value || "").trim(); if (!n) { toast("Escribe un nombre para la plantilla.", "info"); return; }
+      captureParams(); applyIndicators(true);
+      const all = TPLS(); all[n] = Object.assign(tplSnapshot(), { at: Date.now() }); LS.set("templates", all); toast(`Plantilla «${n}» guardada`, "info"); renderIndPanel(); return;
+    }
+    const tl = e.target.closest("[data-tplload]");
+    if (tl) {
+      const n = tl.dataset.tplload, t = n === "__default" ? { custom: [], show: { bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true } } : TPLS()[n];
+      if (t) { tplApply(t); toast(n === "__default" ? "Configuración original cargada" : `Plantilla «${n}» cargada`, "info"); } return;
+    }
+    const td = e.target.closest("[data-tpldel]");
+    if (td) { const all = TPLS(); delete all[td.dataset.tpldel]; LS.set("templates", all); renderIndPanel(); return; }
     if (e.target.closest("[data-libclose]")) { lib.open = false; renderIndPanel(); return; }
     const ad = e.target.closest("[data-addc]");
     if (ad) { const x = addCustom(ad.dataset.addc); lib.open = false; indOpen.key = "c:" + x.id; renderIndPanel(); refreshChart(); toast(`${CDEF[x.type].name} agregado`, "info"); $(`ind-c:${x.id}`)?.scrollIntoView({ block: "nearest" }); return; }
@@ -2903,6 +3108,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       for (const [path, raw] of Object.entries(pendingParams)) {
         const [g, k] = path.split("."), obj = OBJ()[g], def = IND_DEF.flatMap((d) => d.params).find((x) => x[0] === path), t = def ? def[2] : "dec";
         if (t === "bool") { obj[k] = !!raw; continue; }
+        if (["src", "ma", "anchor"].includes(t)) { obj[k] = String(raw); continue; }
+        if (t === "int0") { const n0 = Math.round(parseFloat(String(raw).replace(",", "."))); if (!Number.isNaN(n0)) obj[k] = Math.max(-500, Math.min(500, n0)); continue; }
         if (t === "time") { const m = /^(\d{1,2}):(\d{2})/.exec(String(raw)); if (m && +m[1] < 24 && +m[2] < 60) obj[k] = `${m[1].padStart(2, "0")}:${m[2]}`; continue; }
         let n = parseFloat(String(raw).replace(",", "."));
         if (Number.isNaN(n)) continue;
@@ -2912,14 +3119,14 @@ if (typeof module !== "undefined") module.exports = SSP;
       }
     }
     for (const k of Object.keys(pendingParams)) delete pendingParams[k];
-    LS.set("ind", IND); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("sess", SESSP);
+    LS.set("ind", IND); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("sess", SESSP); LS.set("disp", DISP);
     engine2.strategy.p = Object.assign({}, FIBP);
     if (JSON.stringify(IND) !== before) for (const key of Object.keys(S.closed)) { const [s, tf] = key.split("|"); reanalyze(s, tf); }
     refreshChart();
   }
   $("indApply").onclick = () => { applyIndicators(); closeInd(); toast("Indicadores actualizados", "info"); };
   $("indReset").onclick = () => {
-    Object.assign(IND, SSP.DEFAULT_IND); Object.assign(SESSP, SESS_DEF); CFG.adxKey = 23; FIBP.fast_speed = SSP.DEFAULT_FIB.fast_speed; FIBP.min_leg_atr = SSP.DEFAULT_FIB.min_leg_atr;
+    Object.assign(IND, SSP.DEFAULT_IND); Object.assign(SESSP, SESS_DEF); Object.assign(DISP, DISP_DEF); for (const k of Object.keys(TFV)) delete TFV[k]; LS.set("tfvis", TFV); CFG.adxKey = 23; FIBP.fast_speed = SSP.DEFAULT_FIB.fast_speed; FIBP.min_leg_atr = SSP.DEFAULT_FIB.min_leg_atr;
     for (const k of Object.keys(STY)) STY[k] = Object.assign({}, STYLE_DEFAULTS[k]);
     LS.set("style", STY);
     applyIndicators(false); renderIndPanel(); renderLegend(); toast("Indicadores y colores restablecidos", "info");
@@ -3048,7 +3255,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const T = {
     env: LS.get("trade:env", "demo"), key: "", secret: "", hkey: null, offset: 0, on: false, busy: false,
     wallet: null, acct: null, positions: [], orders: [], hist: [], execs: [], pnl: [], instr: {}, hedge: {},
-    dock: LS.get("trade:dock", "pos"), form: Object.assign({ type: "Limit", unit: "base", tpsl: false, reduce: false, post: false, tif: "GTC", trigBy: "LastPrice", condType: "Market", tpBy: "LastPrice" }, LS.get("trade:form", {})),
+    dock: LS.get("trade:dock", "pos"), form: Object.assign({ type: "Limit", unit: "base", tpsl: false, reduce: false, post: false, tif: "GTC", trigBy: "LastPrice", condType: "Market", tpBy: "LastPrice", tpslMode: "Full", tpU: "price", slU: "price", tpOT: "Market", slOT: "Market" }, LS.get("trade:form", {})),
     confirm: LS.get("trade:confirm", true), ws: null, pub: null, book: { b: new Map(), a: new Map(), sym: "" }, trades: [], pubSubs: new Set(), lastSel: "",
   };
   const E = () => ENV[T.env] || ENV.demo;
@@ -3392,7 +3599,12 @@ if (typeof module !== "undefined") module.exports = SSP;
           <div class="tr-pcts">${[10, 25, 50, 75, 100].map((p) => `<button data-pct="${p}">${p}%</button>`).join("")}</div>
           <div id="trCalc" class="tr-calc"></div>
           <label class="chk"><input type="checkbox" id="trTpsl" ${F.tpsl ? "checked" : ""} ${F.reduce ? "disabled" : ""}> TP/SL</label>
-          ${F.tpsl && !F.reduce ? `<div class="grid2 tr-tpsl"><label class="f">Take profit<input id="trTp" inputmode="decimal" value="${esc(F.tp || "")}" placeholder="Precio"></label><label class="f">Stop loss<input id="trSl" inputmode="decimal" value="${esc(F.sl || "")}" placeholder="Precio"></label>
+          ${F.tpsl && !F.reduce ? `<div class="tr-tpsl2">
+            <div class="seg tr-types sm">${[["Full", "Completo"], ["Partial", "Parcial"]].map(([k, l]) => `<button data-tpm="${k}" class="${F.tpslMode === k ? "on" : ""}">${l}</button>`).join("")}</div>
+            <label class="f">Take profit<span class="inl"><input id="trTp" inputmode="decimal" value="${esc(F.tp || "")}" placeholder="${F.tpU === "price" ? "Precio" : F.tpU === "roi" ? "ROI %" : "Ganancia USDT"}">${unitSel("trTpU", F.tpU)}</span></label>
+            ${F.tpslMode === "Partial" ? `<div class="inl sm"><select id="trTpOT" aria-label="Tipo de orden del TP"><option value="Market" ${F.tpOT === "Market" ? "selected" : ""}>TP a mercado</option><option value="Limit" ${F.tpOT === "Limit" ? "selected" : ""}>TP límite</option></select>${F.tpOT === "Limit" ? `<input id="trTpL" inputmode="decimal" placeholder="Precio límite" value="${esc(F.tpL || "")}">` : ""}</div>` : ""}
+            <label class="f">Stop loss<span class="inl"><input id="trSl" inputmode="decimal" value="${esc(F.sl || "")}" placeholder="${F.slU === "price" ? "Precio" : F.slU === "roi" ? "ROI %" : "Pérdida USDT"}">${unitSel("trSlU", F.slU)}</span></label>
+            ${F.tpslMode === "Partial" ? `<div class="inl sm"><select id="trSlOT" aria-label="Tipo de orden del SL"><option value="Market" ${F.slOT === "Market" ? "selected" : ""}>SL a mercado</option><option value="Limit" ${F.slOT === "Limit" ? "selected" : ""}>SL límite</option></select>${F.slOT === "Limit" ? `<input id="trSlL" inputmode="decimal" placeholder="Precio límite" value="${esc(F.slL || "")}">` : ""}</div>` : ""}
             <label class="f">Activar por<select id="trTpBy">${[["LastPrice", "Último"], ["MarkPrice", "Marca"], ["IndexPrice", "Índice"]].map(([k, l]) => `<option value="${k}" ${F.tpBy === k ? "selected" : ""}>${l}</option>`).join("")}</select></label><div id="trTpslEst" class="faint tr-est"></div></div>` : ""}
           <div class="tr-opts">
             <label class="chk"><input type="checkbox" id="trReduce" ${F.reduce ? "checked" : ""}> Solo reducir</label>
@@ -3408,7 +3620,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   function saveForm() { const keep = Object.assign({}, T.form); delete keep.qty; delete keep.price; delete keep.tp; delete keep.sl; delete keep.trig; LS.set("trade:form", keep); }
   function readForm() {
     const F = T.form, v = (id) => { const el = $(id); return el ? el.value.trim().replace(",", ".") : undefined; };
-    for (const [id, k] of [["trPrice", "price"], ["trQty", "qty"], ["trTp", "tp"], ["trSl", "sl"], ["trTrig", "trig"]]) { const x = v(id); if (x !== undefined) F[k] = x; }
+    for (const [id, k] of [["trPrice", "price"], ["trQty", "qty"], ["trTp", "tp"], ["trSl", "sl"], ["trTrig", "trig"], ["trTpL", "tpL"], ["trSlL", "slL"]]) { const x = v(id); if (x !== undefined) F[k] = x; }
   }
   function bindForm() {
     const box = PANEL(), F = T.form;
@@ -3424,6 +3636,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     on("trTif", (e) => { F.tif = e.target.value; saveForm(); });
     on("trTrigBy", (e) => { F.trigBy = e.target.value; saveForm(); });
     on("trTpBy", (e) => { F.tpBy = e.target.value; saveForm(); });
+    for (const [id, k] of [["trTpU", "tpU"], ["trSlU", "slU"], ["trTpOT", "tpOT"], ["trSlOT", "slOT"]]) on(id, (e) => { readForm(); F[k] = e.target.value; if (k === "tpU") F.tp = ""; if (k === "slU") F.sl = ""; saveForm(); renderTrade(); });
+    PANEL().querySelectorAll("[data-tpm]").forEach((b) => (b.onclick = () => { readForm(); F.tpslMode = b.dataset.tpm; saveForm(); renderTrade(); }));
     const last = $("trLast"); if (last) last.onclick = () => { readForm(); F.price = rp(T.instr[S.sel], lastOf(S.sel)); renderTrade(); };
     $("trBuy").onclick = () => submit("Buy");
     $("trSell").onclick = () => submit("Sell");
@@ -3453,9 +3667,12 @@ if (typeof module !== "undefined") module.exports = SSP;
       : `<span class="faint">Disponible ${f2(T.wallet?.avail)} USDT · Máx. ${rq(I, maxQty()) || "—"} ${I ? I.base : ""} con ${lev}x</span>`;
     const est = $("trTpslEst");
     if (est) {
-      const tp = num(T.form.tp), sl = num(T.form.sl), entry = px, txt = [];
-      if (q > 0 && tp > 0) txt.push(`TP: long ${sgn((tp - entry) * qR)} / short ${sgn((entry - tp) * qR)} USDT`);
-      if (q > 0 && sl > 0) txt.push(`SL: long ${sgn((sl - entry) * qR)} / short ${sgn((entry - sl) * qR)} USDT`);
+      const F = T.form, entry = px, txt = [], I2 = T.instr[S.sel];
+      for (const [kind, val, unit, nm] of [["tp", F.tp, F.tpU, "TP"], ["sl", F.sl, F.slU, "SL"]]) {
+        if (!(q > 0) || !(Math.abs(num(val)) > 0)) continue;
+        const pl = tpslPrice(kind, val, unit, true, entry, qR, lev), ps = tpslPrice(kind, val, unit, false, entry, qR, lev);
+        txt.push(unit === "price" ? `${nm}: long ${sgn((pl - entry) * qR)} / short ${sgn((entry - pl) * qR)} USDT` : `${nm}: long a ${rp(I2, pl)} / short a ${rp(I2, ps)}`);
+      }
       est.textContent = txt.join(" · ");
     }
   }
@@ -3486,10 +3703,17 @@ if (typeof module !== "undefined") module.exports = SSP;
       const posIdx = T.hedge[sym] ? (F.reduce ? (side === "Buy" ? 2 : 1) : side === "Buy" ? 1 : 2) : 0;
       o.positionIdx = posIdx;
       if (F.tpsl && !F.reduce) {
-        const tp = rp(I, num(F.tp)), sl = rp(I, num(F.sl)), ref = num(o.price) || num(o.triggerPrice) || last;
-        if (tp) { if (side === "Buy" ? +tp <= ref : +tp >= ref) throw new Error(`El take profit de un ${side === "Buy" ? "long debe estar por encima" : "short debe estar por debajo"} del precio de entrada.`); o.takeProfit = tp; o.tpTriggerBy = F.tpBy; }
-        if (sl) { if (side === "Buy" ? +sl >= ref : +sl <= ref) throw new Error(`El stop loss de un ${side === "Buy" ? "long debe estar por debajo" : "short debe estar por encima"} del precio de entrada.`); o.stopLoss = sl; o.slTriggerBy = F.tpBy; }
-        if (tp || sl) o.tpslMode = "Full";
+        const ref = num(o.price) || num(o.triggerPrice) || last, long = side === "Buy", lv = curLev();
+        const tp = rp(I, tpslPrice("tp", F.tp, F.tpU, long, ref, +qty, lv)), sl = rp(I, tpslPrice("sl", F.sl, F.slU, long, ref, +qty, lv));
+        if (tp) { if (long ? +tp <= ref : +tp >= ref) throw new Error(`El take profit de un ${long ? "long debe estar por encima" : "short debe estar por debajo"} del precio de entrada.`); o.takeProfit = tp; o.tpTriggerBy = F.tpBy; }
+        if (sl) { if (long ? +sl >= ref : +sl <= ref) throw new Error(`El stop loss de un ${long ? "long debe estar por debajo" : "short debe estar por encima"} del precio de entrada.`); o.stopLoss = sl; o.slTriggerBy = F.tpBy; }
+        if (tp || sl) {
+          o.tpslMode = F.tpslMode === "Partial" ? "Partial" : "Full";
+          if (o.tpslMode === "Partial") {
+            if (tp) { o.tpOrderType = F.tpOT; if (F.tpOT === "Limit") { const lp = rp(I, num(F.tpL)); if (!(+lp > 0)) throw new Error("Escribe el precio límite del TP."); o.tpLimitPrice = lp; } }
+            if (sl) { o.slOrderType = F.slOT; if (F.slOT === "Limit") { const lp = rp(I, num(F.slL)); if (!(+lp > 0)) throw new Error("Escribe el precio límite del SL."); o.slLimitPrice = lp; } }
+          }
+        }
       }
       const px = num(o.price) || num(o.triggerPrice) || last, val = +qty * px, lev = curLev();
       if (I.minNotional && val < I.minNotional) throw new Error(`El valor mínimo por orden es ${I.minNotional} USDT.`);
@@ -3498,7 +3722,8 @@ if (typeof module !== "undefined") module.exports = SSP;
       const rows = [["Par", sym], ["Dirección", side === "Buy" ? (F.reduce ? "Compra (solo reducir)" : "Long / compra") : (F.reduce ? "Venta (solo reducir)" : "Short / venta")], ["Tipo", typeTx],
         o.triggerPrice ? ["Activación", `${o.triggerPrice} (${o.triggerDirection === 1 ? "al subir" : "al bajar"}, ${F.trigBy === "MarkPrice" ? "marca" : F.trigBy === "IndexPrice" ? "índice" : "último"})`] : null,
         ["Precio", o.price || `mercado (≈ ${fpx(sym, last)})`], ["Cantidad", `${qty} ${I.base}`], ["Valor", `${f2(val)} USDT`], ["Margen aprox.", `${f2(val / lev)} USDT con ${lev}x`],
-        o.takeProfit ? ["Take profit", `${o.takeProfit} (≈ +${f2(gainAtTp)} USDT)`] : null, o.stopLoss ? ["Stop loss", `${o.stopLoss} (≈ −${f2(lossAtSl)} USDT)`] : null,
+        o.takeProfit ? ["Take profit", `${o.takeProfit} (≈ +${f2(gainAtTp)} USDT)${o.tpOrderType === "Limit" ? ` · límite ${o.tpLimitPrice}` : ""}`] : null, o.stopLoss ? ["Stop loss", `${o.stopLoss} (≈ −${f2(lossAtSl)} USDT)${o.slOrderType === "Limit" ? ` · límite ${o.slLimitPrice}` : ""}`] : null,
+        o.tpslMode ? ["TP/SL", o.tpslMode === "Partial" ? "Parcial (solo esta orden)" : "Toda la posición"] : null,
         !o.stopLoss && !F.reduce ? ["Aviso", "<span class='sell'>Sin stop loss</span>"] : null].filter(Boolean);
       if (T.confirm || E().real) {
         const okd = await ask({ title: `Confirmar ${side === "Buy" ? "compra" : "venta"}`, body: `${E().real ? '<p class="tr-warn">Cuenta REAL de Bybit</p>' : `<p class="faint">${E().name}</p>`}<table class="tr-sum">${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>`, ok: side === "Buy" ? "Confirmar compra" : "Confirmar venta", side, extra: E().real ? "" : `<label class="chk"><input type="checkbox" id="dlgNoAsk"> No volver a preguntar en ${E().name}</label>` });
@@ -3626,7 +3851,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       body = T.positions.length ? `<div class="dock-tools"><button data-closeall="1" class="mini danger">Cerrar todas a mercado</button></div>` + T.positions.map((p) => {
         const long = p.side === "Buy", size = +p.size, entry = +p.avgPrice, mark = markOf(p.symbol, p.markPrice), upl = (mark - entry) * size * (long ? 1 : -1), im = +p.positionIM || (size * entry) / (+p.leverage || 1), roi = im ? (upl / im) * 100 : NaN;
         return `<div class="pcard ${long ? "long" : "short"}"><div class="pc-hd"><button class="link" data-gosym="${p.symbol}">${p.symbol}</button><span class="tag ${long ? "buy" : "sell"}">${long ? "Long" : "Short"} ${p.leverage}x</span><span class="faint">${p.tradeMode === 1 ? "Aislado" : "Cruzado"}</span><b class="${cls(upl)} pc-pnl">${sgn(upl)} USDT <small>(${sgn(roi)}%)</small></b></div>
-          <div class="pc-grid">${cell("Tamaño", `${p.size}`)}${cell("Valor", f2(size * mark))}${cell("Entrada", fpx(p.symbol, entry))}${cell("Marca", fpx(p.symbol, mark))}${cell("Liquidación", fpx(p.symbol, +p.liqPrice), "warn")}${cell("Margen", f2(im))}${cell("PnL realizado", sgn(+p.curRealisedPnl), cls(+p.curRealisedPnl))}${cell("TP / SL", `${+p.takeProfit ? fpx(p.symbol, +p.takeProfit) : "—"} / ${+p.stopLoss ? fpx(p.symbol, +p.stopLoss) : "—"}`)}</div>
+          <div class="pc-grid">${cell("Tamaño", `${p.size}`)}${cell("Valor", f2(size * mark))}${cell("Entrada", fpx(p.symbol, entry))}${cell("Marca", fpx(p.symbol, mark))}${cell("Liquidación", fpx(p.symbol, +p.liqPrice), "warn")}${cell("Margen", f2(im))}${cell("PnL realizado", sgn(+p.curRealisedPnl), cls(+p.curRealisedPnl))}${cell("TP / SL", `${+p.takeProfit ? fpx(p.symbol, +p.takeProfit) : "—"} / ${+p.stopLoss ? fpx(p.symbol, +p.stopLoss) : "—"}`)}${+p.trailingStop ? cell("Stop dinámico", fpx(p.symbol, +p.trailingStop)) : ""}${(() => { const n = T.orders.filter((o) => o.symbol === p.symbol && /^Partial/.test(o.stopOrderType || "")).length; return n ? cell("TP/SL parciales", n) : ""; })()}</div>
           <div class="pc-act"><button class="mini" data-tpsl="${p.symbol}|${p.positionIdx}">TP/SL</button><button class="mini" data-closel="${p.symbol}|${p.positionIdx}">Cerrar límite</button><button class="mini danger" data-closem="${p.symbol}|${p.positionIdx}">Cerrar a mercado</button></div></div>`;
       }).join("") : '<p class="faint dock-empty">No tienes posiciones abiertas.</p>';
     } else if (T.dock === "ord" || T.dock === "cond") {
@@ -3752,17 +3977,88 @@ if (typeof module !== "undefined") module.exports = SSP;
     toast(`Orden de cierre enviada: ${p.symbol}`, "info");
     setTimeout(() => refreshAll(false).catch(() => null), 1200);
   }
-  async function tpslDialog(p) {
+  // ------------------------------------------------------------ TP/SL por precio, por ROI % o por PnL (como en Bybit)
+  // kind "tp" = ganancia, "sl" = pérdida; el valor de ROI/PnL se toma en positivo; long = compra
+  function tpslPrice(kind, val, unit, long, entry, qty, lev) {
+    const v = Math.abs(num(val)); if (!(v > 0)) return NaN;
+    if (unit === "price") return num(val);
+    if (!(entry > 0) || !(qty > 0)) return NaN;
+    const pnl = unit === "roi" ? (v / 100) * ((entry * qty) / lev) : v, d = pnl / qty, up = (kind === "tp") === long;
+    return up ? entry + d : entry - d;
+  }
+  const UNITS = [["price", "Precio"], ["roi", "ROI %"], ["pnl", "PnL USDT"]];
+  const unitSel = (id, cur) => `<select id="${id}" class="usel" aria-label="Unidad">${UNITS.map(([k, l]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+
+  async function tpslDialog(p, tab0 = "full") {
     if (!p) return;
-    const I = await instr(p.symbol), long = p.side === "Buy", entry = +p.avgPrice, size = +p.size;
-    const r = await ask({ title: `TP/SL de la posición · ${p.symbol}`, body: `<p>${long ? "Long" : "Short"} ${p.size} · entrada ${fpx(p.symbol, entry)}</p>
-      <div class="grid2"><label class="f">Take profit<input id="dlgTp" inputmode="decimal" value="${+p.takeProfit ? p.takeProfit : ""}" placeholder="vacío = sin TP"></label><label class="f">Stop loss<input id="dlgSl" inputmode="decimal" value="${+p.stopLoss ? p.stopLoss : ""}" placeholder="vacío = sin SL"></label></div><p id="dlgEst" class="faint"></p>
-      <p class="faint">Se aplica a toda la posición y se cierra a mercado al activarse.</p>`, ok: "Guardar TP/SL",
-      onOpen: (d) => { const upd = () => { const tp = num(d.querySelector("#dlgTp").value), sl = num(d.querySelector("#dlgSl").value), k = long ? 1 : -1, t = []; if (tp > 0) t.push(`En el TP: ${sgn((tp - entry) * size * k)} USDT`); if (sl > 0) t.push(`En el SL: ${sgn((sl - entry) * size * k)} USDT`); d.querySelector("#dlgEst").textContent = t.join(" · "); }; d.querySelectorAll("input").forEach((x) => (x.oninput = upd)); upd(); },
-      read: (d) => ({ tp: d.querySelector("#dlgTp").value.trim().replace(",", "."), sl: d.querySelector("#dlgSl").value.trim().replace(",", ".") }) });
+    const I = await instr(p.symbol), long = p.side === "Buy", entry = +p.avgPrice, size = +p.size, lev = +p.leverage || curLev(), k = long ? 1 : -1;
+    const partials = T.orders.filter((o) => o.symbol === p.symbol && /^Partial/.test(o.stopOrderType || ""));
+    const trigSel = (id) => `<select id="${id}">${[["LastPrice", "Último"], ["MarkPrice", "Marca"], ["IndexPrice", "Índice"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>`;
+    const body = `<p>${long ? "Long" : "Short"} ${p.size} · entrada ${fpx(p.symbol, entry)} · ${lev}x${+p.trailingStop ? ` · stop dinámico ${p.trailingStop}` : ""}</p>
+      <div class="seg tr-types sm dlg-tabs">${[["full", "Toda la posición"], ["partial", "Parcial"], ["trail", "Stop dinámico"]].map(([t, l]) => `<button data-dtab="${t}">${l}</button>`).join("")}</div>
+      <div data-dpane="full">
+        <label class="f">Take profit<span class="inl"><input id="fTp" inputmode="decimal" value="${+p.takeProfit ? p.takeProfit : ""}" placeholder="vacío = sin TP">${unitSel("fTpU", "price")}</span></label>
+        <label class="f">Stop loss<span class="inl"><input id="fSl" inputmode="decimal" value="${+p.stopLoss ? p.stopLoss : ""}" placeholder="vacío = sin SL">${unitSel("fSlU", "price")}</span></label>
+        <label class="f">Activar por${trigSel("fBy")}</label>
+        <p class="faint">Cierra toda la posición a mercado al activarse. Deja un campo vacío para quitar ese TP o SL.</p></div>
+      <div data-dpane="partial" hidden>
+        <label class="f">Cantidad a cerrar<span class="inl"><input id="pPct" type="range" min="5" max="100" step="5" value="50"><b id="pPctL" style="min-width:110px;text-align:right">50 %</b></span></label>
+        <label class="f">Take profit<span class="inl"><input id="pTp" inputmode="decimal" placeholder="opcional">${unitSel("pTpU", "price")}</span></label>
+        <div class="inl sm"><select id="pTpOT"><option value="Market">TP a mercado</option><option value="Limit">TP límite</option></select><input id="pTpL" inputmode="decimal" placeholder="Precio límite del TP" hidden></div>
+        <label class="f">Stop loss<span class="inl"><input id="pSl" inputmode="decimal" placeholder="opcional">${unitSel("pSlU", "price")}</span></label>
+        <div class="inl sm"><select id="pSlOT"><option value="Market">SL a mercado</option><option value="Limit">SL límite</option></select><input id="pSlL" inputmode="decimal" placeholder="Precio límite del SL" hidden></div>
+        <p class="faint">Puedes poner varios TP/SL parciales (por ejemplo 50 % en TP1 y 50 % en TP2). ${partials.length ? `Ya hay ${partials.length} parcial(es); se ven en «TP/SL y condicionales».` : ""}</p></div>
+      <div data-dpane="trail" hidden>
+        <label class="f">Distancia del stop<span class="inl"><input id="tDist" inputmode="decimal" value="${+p.trailingStop || ""}" placeholder="0 = quitar"><select id="tU"><option value="price">USDT de precio</option><option value="pct">% del precio</option></select></span></label>
+        <label class="f">Activar cuando el precio llegue a (opcional)<input id="tAct" inputmode="decimal" placeholder="vacío = activo ya"></label>
+        <p class="faint">El stop sigue al precio a esa distancia cuando va a tu favor y cierra toda la posición si el precio retrocede esa distancia.</p></div>
+      <p id="dlgEst" class="faint"></p>`;
+    const r = await ask({ title: `TP/SL · ${p.symbol}`, body, ok: "Guardar",
+      onOpen: (d) => {
+        const $d = (sel) => d.querySelector(sel);
+        const qtyP = () => num(rq(I, (size * +$d("#pPct").value) / 100));
+        const upd = () => {
+          const t = d.dataset.tab, out = [];
+          if (t === "full") for (const [kind, id, nm] of [["tp", "fTp", "TP"], ["sl", "fSl", "SL"]]) { const px = tpslPrice(kind, $d("#" + id).value, $d("#" + id + "U").value, long, entry, size, lev); if (px > 0) out.push(`${nm} en ${rp(I, px)}: ${sgn((px - entry) * size * k)} USDT`); }
+          if (t === "partial") {
+            $d("#pPctL").textContent = `${$d("#pPct").value} % · ${rq(I, (size * +$d("#pPct").value) / 100)}`;
+            for (const [kind, id, nm] of [["tp", "pTp", "TP"], ["sl", "pSl", "SL"]]) { const px = tpslPrice(kind, $d("#" + id).value, $d("#" + id + "U").value, long, entry, qtyP(), lev); if (px > 0) out.push(`${nm} en ${rp(I, px)}: ${sgn((px - entry) * qtyP() * k)} USDT`); }
+            $d("#pTpL").hidden = $d("#pTpOT").value !== "Limit"; $d("#pSlL").hidden = $d("#pSlOT").value !== "Limit";
+          }
+          if (t === "trail") { const dist = num($d("#tDist").value), dd = $d("#tU").value === "pct" ? (entry * dist) / 100 : dist; if (dd > 0) out.push(`Distancia ${rp(I, dd)} USDT · pérdida máx. desde el mejor precio ≈ ${f2(dd * size)} USDT`); }
+          $d("#dlgEst").textContent = out.join(" · ");
+        };
+        const show = (t) => { d.dataset.tab = t; d.querySelectorAll("[data-dpane]").forEach((x) => (x.hidden = x.dataset.dpane !== t)); d.querySelectorAll("[data-dtab]").forEach((x) => x.classList.toggle("on", x.dataset.dtab === t)); upd(); };
+        d.querySelectorAll("[data-dtab]").forEach((b) => (b.onclick = () => show(b.dataset.dtab)));
+        d.querySelectorAll(".dlg-body input, .dlg-body select").forEach((x) => { x.addEventListener("input", upd); x.addEventListener("change", upd); });
+        show(tab0);
+      },
+      read: (d) => { const v = (sel) => (d.querySelector(sel)?.value || "").trim().replace(",", "."); return { tab: d.dataset.tab, fTp: v("#fTp"), fTpU: v("#fTpU"), fSl: v("#fSl"), fSlU: v("#fSlU"), fBy: v("#fBy"), pct: +v("#pPct"), pTp: v("#pTp"), pTpU: v("#pTpU"), pSl: v("#pSl"), pSlU: v("#pSlU"), pTpOT: v("#pTpOT"), pSlOT: v("#pSlOT"), pTpL: v("#pTpL"), pSlL: v("#pSlL"), tDist: v("#tDist"), tU: v("#tU"), tAct: v("#tAct") }; } });
     if (!r) return;
-    await api("POST", "/v5/position/trading-stop", { category: "linear", symbol: p.symbol, tpslMode: "Full", positionIdx: +p.positionIdx, takeProfit: r.tp ? rp(I, +r.tp) : "0", stopLoss: r.sl ? rp(I, +r.sl) : "0", tpTriggerBy: "LastPrice", slTriggerBy: "LastPrice" }, { ok: [34040] });
-    toast(`TP/SL de ${p.symbol} actualizado`, "info");
+    const base = { category: "linear", symbol: p.symbol, positionIdx: +p.positionIdx };
+    if (r.tab === "full") {
+      const tp = r.fTp ? rp(I, tpslPrice("tp", r.fTp, r.fTpU, long, entry, size, lev)) : "0", sl = r.fSl ? rp(I, tpslPrice("sl", r.fSl, r.fSlU, long, entry, size, lev)) : "0";
+      if ((r.fTp && !(+tp > 0)) || (r.fSl && !(+sl > 0))) throw new Error("Revisa los valores de TP/SL.");
+      await api("POST", "/v5/position/trading-stop", Object.assign({}, base, { tpslMode: "Full", takeProfit: tp, stopLoss: sl, tpTriggerBy: r.fBy, slTriggerBy: r.fBy }), { ok: [34040] });
+      toast(`TP/SL de ${p.symbol} actualizado`, "info");
+    } else if (r.tab === "partial") {
+      const q = rq(I, (size * r.pct) / 100);
+      if (!(+q > 0) || +q < I.minQty) throw new Error(`La cantidad parcial mínima es ${I.minQty} ${I.base}.`);
+      const tp = r.pTp ? rp(I, tpslPrice("tp", r.pTp, r.pTpU, long, entry, +q, lev)) : "", sl = r.pSl ? rp(I, tpslPrice("sl", r.pSl, r.pSlU, long, entry, +q, lev)) : "";
+      if (!tp && !sl) throw new Error("Escribe al menos un TP o un SL parcial.");
+      const b = Object.assign({}, base, { tpslMode: "Partial" });
+      if (tp) Object.assign(b, { takeProfit: tp, tpSize: q, tpOrderType: r.pTpOT, tpTriggerBy: "LastPrice" }, r.pTpOT === "Limit" ? { tpLimitPrice: rp(I, num(r.pTpL)) } : {});
+      if (sl) Object.assign(b, { stopLoss: sl, slSize: q, slOrderType: r.pSlOT, slTriggerBy: "LastPrice" }, r.pSlOT === "Limit" ? { slLimitPrice: rp(I, num(r.pSlL)) } : {});
+      if ((b.tpLimitPrice !== undefined && !(+b.tpLimitPrice > 0)) || (b.slLimitPrice !== undefined && !(+b.slLimitPrice > 0))) throw new Error("Escribe el precio límite.");
+      await api("POST", "/v5/position/trading-stop", b);
+      toast(`TP/SL parcial de ${q} ${I.base} agregado en ${p.symbol}`, "info");
+    } else {
+      const dist = num(r.tDist), dd = r.tU === "pct" ? (entry * dist) / 100 : dist;
+      const b = Object.assign({}, base, { tpslMode: "Full", trailingStop: dd > 0 ? rp(I, dd) : "0" });
+      if (dd > 0 && num(r.tAct) > 0) b.activePrice = rp(I, num(r.tAct));
+      await api("POST", "/v5/position/trading-stop", b, { ok: [34040] });
+      toast(dd > 0 ? `Stop dinámico de ${rp(I, dd)} en ${p.symbol}` : `Stop dinámico de ${p.symbol} quitado`, "info");
+    }
     setTimeout(() => refreshAll(false).catch(() => null), 800);
   }
   async function amendDialog(o) {
@@ -3803,26 +4099,127 @@ if (typeof module !== "undefined") module.exports = SSP;
 
   // ------------------------------------------------------------ líneas en el gráfico
   let lineSig = "";
-  function updLines() {
-    if (!A.chart.setTradeLines) return;
+  // elementos de la cuenta que se dibujan en el gráfico; los que llevan "drag" se pueden arrastrar
+  function lineItems() {
     const sym = S.sel, L = [];
-    if (T.on) {
-      for (const p of T.positions.filter((x) => x.symbol === sym)) {
-        const long = p.side === "Buy";
-        L.push({ price: +p.avgPrice, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: `${long ? "Long" : "Short"} ${p.size}` });
-        if (+p.liqPrice) L.push({ price: +p.liqPrice, color: "#ff9f5a", dash: true, title: "Liquidación" });
-        if (+p.takeProfit) L.push({ price: +p.takeProfit, color: "#2fd3a0", dash: true, title: "TP" });
-        if (+p.stopLoss) L.push({ price: +p.stopLoss, color: "#ff6170", dash: true, title: "SL" });
-      }
-      for (const o of T.orders.filter((x) => x.symbol === sym)) {
-        if (["TakeProfit", "StopLoss"].includes(o.stopOrderType)) continue;   // ya dibujados con la posición
-        const px = +o.triggerPrice || +o.price;
-        L.push({ price: px, color: "#62a8ff", dash: true, title: `${o.side === "Buy" ? "Compra" : "Venta"} ${o.qty}${+o.triggerPrice ? " cond." : ""}` });
-      }
+    if (!T.on) return L;
+    for (const p of T.positions.filter((x) => x.symbol === sym)) {
+      const long = p.side === "Buy", hasTp = +p.takeProfit > 0, hasSl = +p.stopLoss > 0;
+      L.push({ price: +p.avgPrice, color: long ? "#2fd3a0" : "#ff6170", width: 2, title: `${long ? "Long" : "Short"} ${p.size}${!hasTp || !hasSl ? " · arrastra para TP/SL" : ""}`, drag: { kind: "entry", p } });
+      if (+p.liqPrice) L.push({ price: +p.liqPrice, color: "#ff9f5a", dash: true, title: "Liquidación" });
+      if (hasTp) L.push({ price: +p.takeProfit, color: "#2fd3a0", dash: true, title: "TP", drag: { kind: "tp", p } });
+      if (hasSl) L.push({ price: +p.stopLoss, color: "#ff6170", dash: true, title: "SL", drag: { kind: "sl", p } });
     }
-    const sig = JSON.stringify(L);
-    if (sig !== lineSig) { lineSig = sig; A.chart.setTradeLines(L); }
+    for (const o of T.orders.filter((x) => x.symbol === sym)) {
+      if (["TakeProfit", "StopLoss", "tpslOrder"].includes(o.stopOrderType)) continue;   // ya dibujados con la posición
+      const part = /^Partial/.test(o.stopOrderType || ""), tpP = o.stopOrderType === "PartialTakeProfit";
+      if (part) { L.push({ price: +o.triggerPrice, color: tpP ? "#2fd3a0" : "#ff6170", dash: true, title: `${tpP ? "TP" : "SL"} parcial ${o.qty}`, drag: { kind: "trig", o } }); continue; }
+      if (+o.triggerPrice) L.push({ price: +o.triggerPrice, color: "#b69cff", dash: true, title: `${o.side === "Buy" ? "Compra" : "Venta"} ${o.qty} cond.`, drag: { kind: "trig", o } });
+      else if (o.orderType === "Limit") L.push({ price: +o.price, color: "#62a8ff", dash: true, title: `${o.side === "Buy" ? "Compra" : "Venta"} ${o.qty}${o.reduceOnly ? " (cierre)" : ""}`, drag: { kind: "price", o } });
+    }
+    return L;
   }
+  function updLines(force) {
+    if (!A.chart.setTradeLines || DRAG.on) return;
+    const L = lineItems(), plain = L.map(({ drag, ...x }) => x), sig = JSON.stringify(plain);
+    if (force || sig !== lineSig) { lineSig = sig; A.chart.setTradeLines(plain); }
+  }
+
+  // ------------------------------------------------------------ arrastrar líneas en el gráfico (órdenes, TP/SL y crear TP/SL desde la posición)
+  const DRAG = { on: false };
+  const WRAP = () => document.querySelector(".chartwrap");
+  function hitTest(ev) {
+    const C = A.chart.coord; if (!T.on || !C) return null;
+    const el = $("chart"), r = el.getBoundingClientRect(), pt = ev.touches ? ev.touches[0] : ev;
+    const y = pt.clientY - r.top, x = pt.clientX - r.left, lw = C.leftW();
+    if (y < 0 || y > C.paneH() || x < lw || x > lw + C.plotW()) return null;   // solo dentro del panel de precio, no sobre las escalas
+    const tol = ev.pointerType === "touch" || ev.touches ? 14 : 6;
+    let best = null;
+    for (const it of lineItems()) {
+      if (!it.drag) continue;
+      const yy = C.y(it.price); if (yy === null) continue;
+      const dd = Math.abs(yy - y); if (dd <= tol && (!best || dd < best.dd)) best = { it, dd };
+    }
+    return best ? best.it : null;
+  }
+  function dragPreview(price) {
+    const I = T.instr[S.sel], d = DRAG.it.drag, L = lineItems().map(({ drag, ...x }) => x);
+    let title = `→ ${rp(I, price)}`;
+    const p = d.p;
+    if (p) {
+      const long = p.side === "Buy", entry = +p.avgPrice, size = +p.size, pnl = (price - entry) * size * (long ? 1 : -1);
+      const kind = d.kind === "entry" ? ((price > entry) === long ? "TP" : "SL") : d.kind.toUpperCase();
+      title = `${kind} → ${rp(I, price)} (${sgn(pnl)} USDT)`;
+      DRAG.newKind = d.kind === "entry" ? kind.toLowerCase() : d.kind;
+    }
+    const idx = lineItems().findIndex((x) => x.drag === d || (x.drag && x.drag.kind === d.kind && x.drag.p === d.p && x.drag.o === d.o));
+    if (d.kind === "entry") L.push({ price, color: "#f0c75e", width: 2, dash: true, title });
+    else if (idx >= 0) Object.assign(L[idx], { price, title, width: 2 });
+    A.chart.setTradeLines(L);
+  }
+  function startDrag(ev, it) {
+    DRAG.on = true; DRAG.it = it; DRAG.y0 = (ev.touches ? ev.touches[0] : ev).clientY; DRAG.moved = false; DRAG.price = it.price;
+    WRAP().classList.add("dragging");
+  }
+  function moveDrag(ev) {
+    const C = A.chart.coord, pt = ev.touches ? ev.touches[0] : ev, r = $("chart").getBoundingClientRect();
+    if (Math.abs(pt.clientY - DRAG.y0) > 3) DRAG.moved = true;
+    if (!DRAG.moved) return;
+    const pr = C.price(pt.clientY - r.top); if (pr === null || !(pr > 0)) return;
+    DRAG.price = +rp(T.instr[S.sel], pr); dragPreview(DRAG.price);
+  }
+  async function endDrag() {
+    const it = DRAG.it, price = DRAG.price, moved = DRAG.moved, kind = DRAG.newKind;
+    DRAG.on = false; WRAP().classList.remove("dragging");
+    if (!moved || !it) { updLines(true); return; }
+    const d = it.drag, sym = S.sel;
+    try {
+      const I = await instr(sym);
+      let desc, call;
+      if (d.p) {
+        const p = d.p, long = p.side === "Buy", entry = +p.avgPrice, size = +p.size, which = d.kind === "entry" ? kind : d.kind, pnl = (price - entry) * size * (long ? 1 : -1);
+        const last = lastOf(sym) || +p.markPrice;
+        if (which === "tp" && (long ? price <= last : price >= last)) throw new Error(`El TP de un ${long ? "long debe quedar por encima" : "short debe quedar por debajo"} del precio actual (${fpx(sym, last)}).`);
+        if (which === "sl" && (long ? price >= last : price <= last)) throw new Error(`El SL de un ${long ? "long debe quedar por debajo" : "short debe quedar por encima"} del precio actual (${fpx(sym, last)}).`);
+        desc = `${which === "tp" ? "Take profit" : "Stop loss"} de la posición ${long ? "long" : "short"} en <b>${rp(I, price)}</b> (≈ ${sgn(pnl)} USDT)`;
+        call = () => api("POST", "/v5/position/trading-stop", Object.assign({ category: "linear", symbol: sym, tpslMode: "Full", positionIdx: +p.positionIdx }, which === "tp" ? { takeProfit: rp(I, price), tpTriggerBy: "LastPrice" } : { stopLoss: rp(I, price), slTriggerBy: "LastPrice" }), { ok: [34040] });
+      } else {
+        const o = d.o, field = d.kind === "price" ? "price" : "triggerPrice";
+        desc = `${field === "price" ? "Precio" : "Activación"} de la orden ${o.side === "Buy" ? "de compra" : "de venta"} ${o.qty}: ${fpx(sym, field === "price" ? o.price : o.triggerPrice)} → <b>${rp(I, price)}</b>`;
+        call = () => api("POST", "/v5/order/amend", { category: "linear", symbol: sym, orderId: o.orderId, [field]: rp(I, price) });
+      }
+      if (T.confirm || E().real) {
+        const ok = await ask({ title: "Mover en el gráfico", body: `${E().real ? '<p class="tr-warn">Cuenta REAL</p>' : ""}<p>${desc}</p>`, ok: "Confirmar" });
+        if (!ok) { updLines(true); return; }
+      }
+      await call();
+      toast("Cambio enviado a Bybit", "info");
+      setTimeout(() => refreshAll(false).catch(() => null), 700);
+    } catch (e) { toast(e.message, "invalidada"); }
+    updLines(true);
+  }
+  (function bindDrag() {
+    const w = WRAP(); if (!w) return;
+    const down = (ev) => {
+      if (DRAG.on || !$("chart").contains(ev.target)) return;
+      const it = hitTest(ev); if (!it) return;
+      ev.stopPropagation(); ev.preventDefault();      // que el gráfico no se desplace mientras se arrastra la línea
+      startDrag(ev, it);
+    };
+    const block = (ev) => { if (DRAG.on) { ev.stopPropagation(); if (ev.cancelable) ev.preventDefault(); } };
+    w.addEventListener("pointerdown", down, true);
+    w.addEventListener("mousedown", block, true);
+    w.addEventListener("touchstart", (ev) => { if (DRAG.on) block(ev); else { const it = hitTest(ev); if (it && $("chart").contains(ev.target)) { block(ev); startDrag(ev, it); } } }, { capture: true, passive: false });
+    window.addEventListener("pointermove", (ev) => {
+      if (DRAG.on) { moveDrag(ev); return; }
+      if (ev.pointerType === "mouse" && w.contains(ev.target)) w.classList.toggle("candrag", !!hitTest(ev));
+    }, true);
+    w.addEventListener("touchmove", (ev) => { if (DRAG.on) { block(ev); moveDrag(ev); } }, { capture: true, passive: false });
+    w.addEventListener("mousemove", block, true);
+    window.addEventListener("pointerup", () => { if (DRAG.on) endDrag(); }, true);
+    window.addEventListener("touchend", () => { if (DRAG.on) endDrag(); }, true);
+    window.addEventListener("pointercancel", () => { if (DRAG.on) { DRAG.on = false; WRAP().classList.remove("dragging"); updLines(true); } }, true);
+  })();
 
   // con la pestaña abierta solo se actualizan las cifras: así no se pierde lo que el usuario está escribiendo
   function updAcctBar() {
