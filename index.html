@@ -450,6 +450,15 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Stop máximo (×ATR 5m)<input data-k="fib.max_sl_atr" inputmode="decimal"></label>
     <label class="f">Margen del stop tras la zona (×ATR)<input data-k="fib.sl_buffer_atr" inputmode="decimal"></label>
   </div>
+  <h4>Estrategia 3 · Retroceso RSI(2) 1h <small>(experimental: úsela solo en Demo)</small></h4>
+  <div class="grid3">
+    <label class="f">Activa (1/0)<input data-k="rsi3.enabled" inputmode="numeric"></label>
+    <label class="f">Nivel RSI(2) (compra &lt; x · venta &gt; 100−x)<input data-k="rsi3.rsi_level" inputmode="decimal"></label>
+    <label class="f">Take profit (×ATR 1h)<input data-k="rsi3.tp_atr" inputmode="decimal"></label>
+    <label class="f">Stop loss (×ATR 1h)<input data-k="rsi3.sl_atr" inputmode="decimal"></label>
+    <label class="f">Validez de la orden límite (h)<input data-k="rsi3.limit_hours" inputmode="numeric"></label>
+    <label class="f">Cierre por tiempo (h)<input data-k="rsi3.max_hold_hours" inputmode="numeric"></label>
+  </div>
   <h4>Datos, pares y alertas</h4>
   <div class="grid2">
     <label class="f">Retraso máximo aceptado (s)<input data-k="cfg.maxDelayS" inputmode="numeric"></label>
@@ -1558,6 +1567,124 @@ const SSP = (() => {
     }
   }
 
+  // ------------------------------------------------------------ estrategia 3 (experimental): retroceso RSI(2) en 1h
+  /* Reglas probadas en el backtest (8 pares, ene–nov 2023 y abr–nov 2024):
+     al CIERRE de una vela de 1h, con tendencia EMA20 > EMA50 (1h) y RSI(2) < 5 → orden límite de compra al cierre,
+     válida 3 h. TP = entrada + 0,5·ATR(14, 1h) (límite), SL = entrada − 3·ATR, cierre a mercado a las 6 h. Venta simétrica.
+     Si el SL y el TP caen en el mismo minuto cuenta el SL; en el minuto del llenado el TP no cuenta. */
+  const DEFAULT_RSI3 = { enabled: true, rsi_len: 2, rsi_level: 5, ema_fast: 20, ema_slow: 50, tp_atr: 0.5, sl_atr: 3, limit_hours: 3, max_hold_hours: 6 };
+  const RSI3_COND_LABELS = { R0: "Datos completos y actualizados", R1: "Tendencia 1H a favor (EMA20 vs EMA50)", R2: "RSI(2) extremo al cierre de 1h", R3: "Orden límite llenada (máx. 3 h)", R4: "Límites de riesgo de la cuenta" };
+  const rcond = (id, passed, detail = "") => ({ id, label: RSI3_COND_LABELS[id], passed, detail });
+  class Rsi2Pullback {
+    constructor(params) { this.name = "retroceso_rsi2_1h"; this.label = "Retroceso RSI(2) 1h (experimental)"; this.p = Object.assign({}, DEFAULT_RSI3, params || {}); }
+    // indicadores de 1h calculados sobre las velas cerradas; se guardan mientras no cambie el número de velas
+    ind(a) {
+      const key = `${a.n}|${this.p.rsi_len}|${this.p.ema_fast}|${this.p.ema_slow}`;
+      if (a._rsi3 && a._rsi3.key === key) return a._rsi3;
+      const c = a.d.close;
+      a._rsi3 = { key, rsi: rsi(c, this.p.rsi_len), ef: ema(c, this.p.ema_fast), es: ema(c, this.p.ema_slow), atr: a.ind.atr };
+      return a._rsi3;
+    }
+  }
+  class Rsi2Engine extends SignalEngine {
+    constructor(exchange, risk, strategy, autoPaper = true, book = null) {
+      super(exchange, risk, strategy || new Rsi2Pullback(), autoPaper, book);
+      this.condLabels = RSI3_COND_LABELS;
+    }
+    _stepSlot(ctx, s) {
+      if (s.state === ST.OPEN) {          // si la operación se cierra justo al cierre de una vela de 1h, esa vela puede dar una señal nueva
+        const ev = this._manageTrade(ctx, s);
+        return s.state === ST.SIN ? ev.concat(this._signal(ctx, s)) : ev;
+      }
+      return this._signal(ctx, s);
+    }
+    _signal(ctx, s) {
+      const st = this.strategy, p = st.p, dir = s.direction, up = dir === "LONG", H = TF_MS["1h"];
+      // 1) orden límite pendiente: ¿se llenó en este minuto?
+      if (s.state === ST.OPP && s.setup) {
+        const bar = ctx.tf["1m"].row(ctx.t);
+        if (ctx.t > s.setup.expiresAt) return this._invalidate(s, ctx, `la orden límite no se llenó en ${p.limit_hours} h`);
+        if (!bar || bar.closeTime !== ctx.t) return [];
+        const filled = up ? bar.low <= s.setup.limit : bar.high >= s.setup.limit;
+        if (!filled) return [];
+        return this._fill(ctx, s, bar);
+      }
+      // 2) nueva señal: solo al cierre de cada vela de 1h
+      if (ctx.t % H !== 0) return [];
+      const a = ctx.tf["1h"], i = a.idxAsof(ctx.t);
+      if (i < Math.max(p.ema_slow, 20) || a.d.closeTime[i] !== ctx.t) return [];
+      const I = st.ind(a), c = a.d.close[i], A = I.atr[i];
+      const c0 = rcond("R0", ctx.dataOk, ctx.dataReason);
+      const trendOk = up ? I.ef[i] > I.es[i] : I.ef[i] < I.es[i];
+      const c1 = rcond("R1", trendOk, `EMA${p.ema_fast} ${fmt(I.ef[i])} ${I.ef[i] > I.es[i] ? ">" : "<"} EMA${p.ema_slow} ${fmt(I.es[i])}`);
+      const lvl = up ? p.rsi_level : 100 - p.rsi_level, r = I.rsi[i];
+      const rsiOk = isNum(r) && (up ? r < lvl : r > lvl);
+      const c2 = rcond("R2", rsiOk, `RSI(${p.rsi_len}) ${isNum(r) ? r.toFixed(1) : "—"} (${up ? "<" : ">"} ${lvl})`);
+      s.conditions = [c0, c1, c2, rcond("R3", null, ""), rcond("R4", null, "")];
+      if (!(c0.passed && trendOk && rsiOk && isNum(A) && A > 0) || ctx.t < s.cooldownUntil) return [];
+      const limit = c, sign = up ? 1 : -1;
+      s.setup = { limit, atr: A, expiresAt: ctx.t + p.limit_hours * H, touchCloseTime: ctx.t, zone: { top: limit, bottom: limit, sources: [`RSI(${p.rsi_len}) ${r.toFixed(1)} en 1h con tendencia ${up ? "alcista" : "bajista"}`] } };
+      s.levels = { entry: limit, stop_loss: limit - sign * p.sl_atr * A, tp1: limit + sign * p.tp_atr * A, tp2: limit + sign * p.tp_atr * A, tp3: limit + sign * p.tp_atr * A };
+      s.state = ST.OPP;
+      s.conditions = [c0, c1, c2, rcond("R3", false, `Orden límite en ${fmt(limit)} hasta ${new Date(s.setup.expiresAt).toISOString().slice(11, 16)} UTC`), rcond("R4", null, "")];
+      return [this._ev(s, ctx, "oportunidad", `${s.symbol} — ${dir} (${st.label}): orden límite en ${fmt(limit)} · TP ${fmt(s.levels.tp2)} · SL ${fmt(s.levels.stop_loss)}`, { zone: s.setup.zone, conditions: s.conditions })];
+    }
+    _fill(ctx, s, bar) {
+      const st = this.strategy, p = st.p, dir = s.direction, up = dir === "LONG", lv0 = s.levels, entry = s.setup.limit;
+      const day = Math.floor(ctx.t / 86400e3);
+      const plan = planPosition(dir, entry, lv0.stop_loss, lv0.tp2, Object.assign({}, this.risk, { min_rr: -Infinity }), this.realizedToday[day] || 0, this.openPositions());
+      const [g, nn] = rrNet(dir, entry, lv0.stop_loss, lv0.tp2, this.risk);
+      const c3 = rcond("R3", true, `Llenada en ${fmt(entry)}`), c4 = rcond("R4", plan.valid, plan.valid ? `Riesgo ${this.risk.risk_pct}% · cantidad ${plan.quantity.toFixed(4)}` : plan.reasons.join("; "));
+      s.conditions = [...s.conditions.slice(0, 3), c3, c4];
+      if (!ctx.dataOk) return [];
+      if (!plan.valid) return this._invalidate(s, ctx, "límites de riesgo: " + plan.reasons.join("; "));
+      const lv = Object.assign({}, lv0, { risk_per_unit: Math.abs(entry - lv0.stop_loss), rr_gross: Math.round(g * 1000) / 1000, rr_net: Math.round(nn * 1000) / 1000,
+        notes: [`Experimental: TP ${p.tp_atr}·ATR, SL ${p.sl_atr}·ATR (1h), cierre a las ${p.max_hold_hours} h. Gana poco y seguido; una pérdida equivale a ~6 ganancias.`] });
+      s.levels = lv; s.plan = plan; s.state = up ? ST.CONF_L : ST.CONF_S; s.signalId = uid();
+      const signal = {
+        id: s.signalId, symbol: s.symbol, exchange: this.exchange, strategy: st.name, strategy_label: st.label, direction: dir, created_at: ctx.t,
+        timeframes: ["1h", "1m"], activation_price: entry, reference_price: up ? ctx.ask ?? null : ctx.bid ?? null,
+        stop_loss: lv.stop_loss, tp1: lv.tp1, tp2: lv.tp2, tp3: lv.tp3, rr_net: lv.rr_net, rr_gross: lv.rr_gross,
+        conditions_met: s.conditions.filter((c) => c.passed), conditions_missing: s.conditions.filter((c) => !c.passed),
+        zone: s.setup.zone, notes: lv.notes, plan, data_status: ctx.dataReason, params: Object.assign({}, p), order: "límite",
+      };
+      const out = [this._ev(s, ctx, "confirmada", `${s.symbol} — ${dir} CONFIRMADO (${st.label}) entrada límite ${fmt(entry)} SL ${fmt(lv.stop_loss)} TP ${fmt(lv.tp2)}`, { signal })];
+      if (this.autoPaper) {
+        s.trade = { signal_id: s.signalId, direction: dir, entry, stop: lv.stop_loss, tp1: lv.tp1, tp2: lv.tp2, tp3: lv.tp3, quantity: plan.quantity, opened_at: bar.openTime, fill_bar: bar.closeTime,
+          tp1_hit: false, exit_price: null, exit_time: null, exit_reason: null, result_r: null, pnl: null, fees: null, maker_entry: true };
+        s.state = ST.OPEN;
+        out.push(this._ev(s, ctx, "operacion_abierta", `${s.symbol} — operación simulada ${dir} abierta en ${fmt(entry)} (orden límite)`));
+        // en el minuto del llenado solo puede saltar el SL (no se sabe el orden de los movimientos dentro del minuto)
+        const hitSl = up ? bar.low <= lv.stop_loss : bar.high >= lv.stop_loss;
+        if (hitSl) out.push(...this._close(ctx, s, lv.stop_loss, "Stop Loss"));
+      } else { s.setup = null; s.state = ST.SIN; }
+      return out;
+    }
+    _manageTrade(ctx, s) {
+      const tr = s.trade, bar = ctx.tf["1m"].row(ctx.t);
+      if (!bar || bar.closeTime !== ctx.t || bar.closeTime <= (tr.fill_bar || 0)) return [];
+      const up = tr.direction === "LONG";
+      const hitSl = up ? bar.low <= tr.stop : bar.high >= tr.stop, hitTp = up ? bar.high >= tr.tp2 : bar.low <= tr.tp2;
+      if (hitSl) return this._close(ctx, s, tr.stop, "Stop Loss" + (hitTp ? " (vela tocó SL y TP: se asume SL)" : ""));
+      if (hitTp) return this._close(ctx, s, tr.tp2, "Take Profit");
+      if (ctx.t - tr.opened_at >= this.strategy.p.max_hold_hours * TF_MS["1h"]) return this._close(ctx, s, bar.close, `Cierre por tiempo (${this.strategy.p.max_hold_hours} h)`);
+      return [];
+    }
+    _close(ctx, s, price, reason) {         // entrada límite (maker); el TP límite también es maker, el SL y el cierre por tiempo van a mercado
+      const tr = s.trade, sign = tr.direction === "LONG" ? 1 : -1, R = this.risk;
+      const mk = (R.maker_fee_pct ?? 0.02) / 100, tk = (R.taker_fee_pct + R.slippage_pct) / 100;
+      const feesU = tr.entry * mk + price * (reason === "Take Profit" ? mk : tk);
+      const riskU = Math.abs(tr.entry - tr.stop) + tr.entry * mk + tr.stop * tk, grossU = sign * (price - tr.entry);
+      Object.assign(tr, { exit_price: price, exit_time: ctx.t, exit_reason: reason, fees: feesU * tr.quantity, pnl: (grossU - feesU) * tr.quantity, result_r: riskU > 0 ? (grossU - feesU) / riskU : 0 });
+      const day = Math.floor(ctx.t / 86400e3);
+      this.realizedToday[day] = (this.realizedToday[day] || 0) + tr.pnl / R.account_capital * 100;
+      s.state = ST.CLOSED;
+      const e = this._ev(s, ctx, "operacion_cerrada", `${s.symbol} — ${reason} (simulación): ${tr.result_r >= 0 ? "+" : ""}${fmtR(tr.result_r, 2)}R`, { trade: Object.assign({}, tr) });
+      Object.assign(s, { state: ST.SIN, setup: null, levels: null, plan: null, trade: null, cooldownUntil: ctx.t });
+      return [e];
+    }
+  }
+
   // ------------------------------------------------------------ biblioteca de indicadores (estilo TradingView)
   /* Fórmulas estándar (las mismas que usa TradingView en sus indicadores integrados):
      RSI  = 100 − 100/(1 + RMA(subidas)/RMA(bajadas))                 (Wilder)
@@ -1801,7 +1928,7 @@ const SSP = (() => {
   function sessionsAt(ms, list = SESSIONS) { return list.filter((s) => sessionWindows(ms, ms + 1, s).some((w) => w.start <= ms && ms < w.end)); }
 
   return {
-    TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
+    DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
   };
@@ -1828,6 +1955,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const RISK = Object.assign({}, SSP.DEFAULT_RISK, LS.get("risk", {}));
   const TC = Object.assign({}, SSP.DEFAULT_TC, LS.get("tc", {}));
   const FIBP = Object.assign({}, SSP.DEFAULT_FIB, LS.get("fib", {}));
+  const RSI3P = Object.assign({}, SSP.DEFAULT_RSI3, LS.get("rsi3", {}));
   const IND = Object.assign({}, SSP.DEFAULT_IND, LS.get("ind", {}));
   const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d"], ENGINE_TFS = ["1m", "5m", "15m", "1h"];
   const BYBIT_INT = { "1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D" };
@@ -1848,9 +1976,11 @@ if (typeof module !== "undefined") module.exports = SSP;
   };
   if (!S.symbols.includes(S.sel)) S.sel = S.symbols[0];
   const engine = new SSP.SignalEngine("bybit", RISK, new SSP.TrendContinuation(TC));
-  const engine2 = new SSP.FibEngine("bybit", RISK, new SSP.FibRetracement(FIBP), true, engine.book);   // comparten pérdida diaria y nº de posiciones
+  const engine2 = new SSP.FibEngine("bybit", RISK, new SSP.FibRetracement(FIBP), true, engine.book);
+  const engine3 = new SSP.Rsi2Engine("bybit", RISK, new SSP.Rsi2Pullback(RSI3P), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
   const ENGINES = [{ key: "e1", eng: engine, title: "Estrategia 1 · Continuación de tendencia", short: "Continuación de tendencia", labels: SSP.COND_LABELS },
-    { key: "e2", eng: engine2, title: "Estrategia 2 · Retroceso Fibonacci", short: "Retroceso Fibonacci", labels: SSP.FIB_COND_LABELS }];
+    { key: "e2", eng: engine2, title: "Estrategia 2 · Retroceso Fibonacci", short: "Retroceso Fibonacci", labels: SSP.FIB_COND_LABELS },
+    { key: "e3", eng: engine3, title: "Estrategia 3 · Retroceso RSI(2) 1h (experimental)", short: "Retroceso RSI(2) 1h · exp.", labels: SSP.RSI3_COND_LABELS }];
   const allSlots = (sym) => ENGINES.flatMap((E) => ["LONG", "SHORT"].map((d) => E.eng.slot(sym, d)));
   const k2 = (s, tf) => `${s}|${tf}`;
 
@@ -2028,6 +2158,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const ctx = { symbol: sym, exchange: "bybit", t, tf: tfs, dataOk: ok, dataReason: reason, bid: q.bid1Price ? +q.bid1Price : null, ask: q.ask1Price ? +q.ask1Price : null };
     const evs = engine.step(ctx);
     if (FIBP.enabled || ["LONG", "SHORT"].some((d) => engine2.slot(sym, d).state === "OPERACION_SIMULADA_ABIERTA")) evs.push(...engine2.step(ctx));
+    if (RSI3P.enabled || ["LONG", "SHORT"].some((d) => engine3.slot(sym, d).state !== "SIN_SEÑAL")) evs.push(...engine3.step(ctx));
     evs.forEach(handleEvent);
     if (sym === S.sel) { renderSide(); $("clock").textContent = `Última evaluación: ${fmtTime(t)}`; }
     if (evs.length) renderWatch();
@@ -2574,7 +2705,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const step = SSP.TF_MS[tf] / 1000;
     const markers = S.signals.filter((s) => s.symbol === sym && s.created_at >= first).map((s) => {
       const long = s.direction === "LONG";
-      return { time: Math.floor((s.created_at / 1000 - 1) / step) * step, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : ""} ${s.rr_net.toFixed(1)}R` };
+      return { time: Math.floor((s.created_at / 1000 - 1) / step) * step, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : ""} ${s.rr_net.toFixed(1)}R` };
     }).sort((x, y) => x.time - y.time);
     // indicadores agregados: se calculan sobre todo el historial cargado y se recortan a lo que se dibuja
     const custom = {};
@@ -2742,7 +2873,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     for (const { E, slots } of groups) for (const s of slots) {
       const key = `${E.key}|${s.direction}`, open = !!openMeters[key];
       const conds = s.conditions.length ? s.conditions : Object.entries(E.labels).map(([id, label]) => ({ id, label, passed: null, detail: "" }));
-      const off = E.key === "e2" && !FIBP.enabled;
+      const off = (E.key === "e2" && !FIBP.enabled) || (E.key === "e3" && !RSI3P.enabled);
       html += `<div class="meter" data-meter="${key}" tabindex="0" role="button" aria-expanded="${open}"><div class="meter-hd"><b class="${s.direction === "LONG" ? "buy" : "sell"}">${s.direction === "LONG" ? "Compra" : "Venta"}</b>` +
         `<span class="nm">${E.short}${off ? " (apagada)" : ""}</span><span class="st">${STATE_LABEL[s.state]}</span><b>${s.passed}/${s.total}</b></div>` +
         `<div class="segs">${conds.map((c) => `<i class="${c.passed === true ? "ok" : c.passed === false ? "no" : ""}" title="${esc(c.label)}"></i>`).join("")}</div>`;
@@ -3253,19 +3384,20 @@ if (typeof module !== "undefined") module.exports = SSP;
   });
 
   // Configuración general
-  const getK = (k) => { const [g, f] = k.split("."); return ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP })[g][f]; };
+  const getK = (k) => { const [g, f] = k.split("."); return ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P })[g][f]; };
   $("cfgBtn").onclick = () => { $("cfg").querySelectorAll("[data-k]").forEach((i) => { const v = getK(i.dataset.k); i.value = typeof v === "boolean" ? (v ? 1 : 0) : v; }); $("cfg").showModal(); };
   $("cfgClose").onclick = () => $("cfg").close();
   $("cfgSave").onclick = () => {
     $("cfg").querySelectorAll("[data-k]").forEach((i) => {
-      const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP })[g], old = obj[f];
+      const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P })[g], old = obj[f];
       if (typeof old === "boolean") obj[f] = i.value === "1" || i.value.toLowerCase() === "true";
       else if (typeof old === "number") { const n = parseFloat(String(i.value).replace(",", ".")); if (!Number.isNaN(n)) obj[f] = n; }
       else obj[f] = i.value.trim();
     });
-    LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP);
+    LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("rsi3", RSI3P);
     engine.risk = Object.assign({}, RISK); engine.strategy.p = Object.assign({}, TC);
-    engine2.risk = Object.assign({}, RISK); engine2.strategy.p = Object.assign({}, FIBP); refreshChart();
+    engine2.risk = Object.assign({}, RISK); engine2.strategy.p = Object.assign({}, FIBP);
+    engine3.risk = Object.assign({}, RISK); engine3.strategy.p = Object.assign({}, RSI3P); refreshChart();
     $("cfg").close(); toast("Configuración guardada", "info"); renderRiskCalc();
   };
   $("tgTest").onclick = async () => {
@@ -3320,7 +3452,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep };   // acceso para depuración
+  window.__ssp = { S, engine, engine2, engine3, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep };   // acceso para depuración
   start();
 })();
 
