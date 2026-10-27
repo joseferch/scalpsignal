@@ -489,8 +489,9 @@ const SSP = (() => {
   "use strict";
   const NaNv = Number.NaN;
   const isNum = (x) => typeof x === "number" && !Number.isNaN(x);
-  const TF_MS = { "1m": 60e3, "3m": 180e3, "5m": 300e3, "15m": 900e3, "30m": 1800e3, "1h": 3600e3, "4h": 14400e3, "1d": 86400e3 };
-  const floorTime = (t, tf) => t - (t % TF_MS[tf]);
+  const TF_MS = { "1m": 60e3, "3m": 180e3, "5m": 300e3, "15m": 900e3, "30m": 1800e3, "1h": 3600e3, "4h": 14400e3, "1d": 86400e3, "1w": 604800e3 };
+  const TF_OFF = { "1w": 4 * 86400e3 };   // la vela semanal de Bybit abre el lunes 00:00 UTC (el 1/1/1970 fue jueves)
+  const floorTime = (t, tf) => { const st = TF_MS[tf], o = TF_OFF[tf] || 0; return t - ((((t - o) % st) + st) % st); };
 
   // ------------------------------------------------------------ primitivas
   function sma(a, n) {
@@ -584,7 +585,7 @@ const SSP = (() => {
     let cur = null, cnt = 0;
     const flush = () => { if (cur && cnt === need) out.push(cur); };
     for (const r of rows1m) {
-      const b = r.openTime - (r.openTime % step);
+      const b = floorTime(r.openTime, tf);
       if (!cur || cur.openTime !== b) {
         flush();
         cur = { openTime: b, closeTime: b + step, open: r.open, high: r.high, low: r.low, close: r.close, volume: r.volume,
@@ -1957,9 +1958,10 @@ if (typeof module !== "undefined") module.exports = SSP;
   const FIBP = Object.assign({}, SSP.DEFAULT_FIB, LS.get("fib", {}));
   const RSI3P = Object.assign({}, SSP.DEFAULT_RSI3, LS.get("rsi3", {}));
   const IND = Object.assign({}, SSP.DEFAULT_IND, LS.get("ind", {}));
-  const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d"], ENGINE_TFS = ["1m", "5m", "15m", "1h"];
-  const BYBIT_INT = { "1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D" };
-  const TF_LABEL = (tf) => (tf === "1d" ? "1D" : tf);
+  const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d", "1w"], ENGINE_TFS = ["1m", "5m", "15m", "1h"];
+  const BYBIT_INT = { "1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D", "1w": "W" };
+  const TF_LABEL = (tf) => (tf === "1d" ? "1D" : tf === "1w" ? "1S" : tf);
+  const DAILYUP = (tf) => tf === "1d" || tf === "1w";      // velas de un día o más: fechas en UTC, sin hora
   const INT_TF = Object.fromEntries(Object.entries(BYBIT_INT).map(([k, v]) => [v, k]));
   const STATE_LABEL = {
     "SIN_SEÑAL": "Sin señal", OPORTUNIDAD_DETECTADA: "Oportunidad detectada", ESPERANDO_CONFIRMACION: "Esperando confirmación",
@@ -2340,9 +2342,9 @@ if (typeof module !== "undefined") module.exports = SSP;
     let lines = [], data = null, profile = null, lastBarTime = 0, profT = null, lastLevels = null;
     const applyTz = () => c.applyOptions({
       // en velas diarias se muestra solo la fecha (la vela de Bybit abre a las 00:00 UTC = 18:00 de Costa Rica del día anterior, por eso se fecha en UTC)
-      localization: { locale: "es-CR", timeFormatter: (t) => S.tf === "1d" ? new Intl.DateTimeFormat("es-CR", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" }).format(new Date(t * 1000)) : fmtTime(t * 1000) },
+      localization: { locale: "es-CR", timeFormatter: (t) => DAILYUP(S.tf) ? new Intl.DateTimeFormat("es-CR", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" }).format(new Date(t * 1000)) : fmtTime(t * 1000) },
       timeScale: { tickMarkFormatter: (t, type) => {
-        const d = new Date(t * 1000), tz = S.tf === "1d" ? "UTC" : S.tz;
+        const d = new Date(t * 1000), tz = DAILYUP(S.tf) ? "UTC" : S.tz;
         if (type === 0) return new Intl.DateTimeFormat("es-CR", { timeZone: tz, year: "numeric" }).format(d);
         if (type === 1) return new Intl.DateTimeFormat("es-CR", { timeZone: tz, month: "short" }).format(d);
         if (type === 2) return new Intl.DateTimeFormat("es-CR", { timeZone: tz, day: "numeric", month: "short" }).format(d);
@@ -2620,11 +2622,11 @@ if (typeof module !== "undefined") module.exports = SSP;
       }
       // cuenta regresiva hasta el cierre de la vela actual, bajo el precio (como TradingView)
       if (vis("candles.cd") && data.candles.length) {
-        const step = SSP.TF_MS[data.tf], now = Date.now(), left = step - (now % step), C = data.candles, lastC = C[C.length - 1];
+        const step = SSP.TF_MS[data.tf], now = Date.now(), left = SSP.floorTime(now, data.tf) + step - now, C = data.candles, lastC = C[C.length - 1];
         const q = S.quotes[data.symbol] || {}, px = +q.lastPrice || lastC.close, y = Y(px);
         if (y !== null && y > 0 && y < H) {
-          const sec = Math.floor(left / 1000), h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), ss = sec % 60, p2 = (v) => String(v).padStart(2, "0");
-          const txt = h ? `${p2(h)}:${p2(m)}:${p2(ss)}` : `${p2(m)}:${p2(ss)}`, up = px >= lastC.open, tw = g.measureText(txt).width;
+          const sec = Math.floor(left / 1000), dd = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60), ss = sec % 60, p2 = (v) => String(v).padStart(2, "0");
+          const txt = dd ? `${dd}d ${p2(h)}:${p2(m)}:${p2(ss)}` : h ? `${p2(h)}:${p2(m)}:${p2(ss)}` : `${p2(m)}:${p2(ss)}`, up = px >= lastC.open, tw = g.measureText(txt).width;
           const bx = W - tw - 12, by = Math.min(H - 17, y + 11);
           g.fillStyle = up ? st("candles.up").c : st("candles.down").c; g.fillRect(bx, by, tw + 10, 15);
           g.fillStyle = "#06121d"; g.font = FONTB; g.fillText(txt, bx + 5, by + 11.5); g.font = FONT;
@@ -2702,10 +2704,9 @@ if (typeof module !== "undefined") module.exports = SSP;
     const first = d.openTime[i0];
     const obs = a.structure.orderBlocks.filter((o) => SSP.obStatusAt(o, tLast) !== "invalidada" && o.availableAt >= first).slice(-2 * IND.ob_max_zones)
       .map((o) => Object.assign({}, o, { status: SSP.obStatusAt(o, tLast) }));
-    const step = SSP.TF_MS[tf] / 1000;
     const markers = S.signals.filter((s) => s.symbol === sym && s.created_at >= first).map((s) => {
       const long = s.direction === "LONG";
-      return { time: Math.floor((s.created_at / 1000 - 1) / step) * step, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : ""} ${s.rr_net.toFixed(1)}R` };
+      return { time: SSP.floorTime(s.created_at - 1000, tf) / 1000, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : ""} ${s.rr_net.toFixed(1)}R` };
     }).sort((x, y) => x.time - y.time);
     // indicadores agregados: se calculan sobre todo el historial cargado y se recortan a lo que se dibuja
     const custom = {};
@@ -2907,10 +2908,10 @@ if (typeof module !== "undefined") module.exports = SSP;
     row(t1 === "alcista" ? "buy" : t1 === "bajista" ? "sell" : "gold", "Tendencia", `1H ${t1} · 15m ${t15} · 5m ${t5}`,
       agree && t1 !== "lateral" ? `Las tres temporalidades coinciden: contexto ${t1} claro.` : t1 === "lateral" ? "La tendencia principal (1H) está lateral: los rompimientos fallan más a menudo." : "Las temporalidades no coinciden: más riesgo de señales falsas.");
     const sc = r.sqz_color;
-    row(sc === "lime" || sc === "green" ? "buy" : sc === "red" || sc === "maroon" ? "sell" : "", `Momentum (SQZMOM ${S.tf})`, isFinite(r.sqz_val) ? r.sqz_val.toFixed(4) : "—",
+    row(sc === "lime" || sc === "green" ? "buy" : sc === "red" || sc === "maroon" ? "sell" : "", `Momentum (SQZMOM ${TF_LABEL(S.tf)})`, isFinite(r.sqz_val) ? r.sqz_val.toFixed(4) : "—",
       `${SSP.SQZ_LABEL[sc] || "Sin datos"}.${r.sqz_on ? " Volatilidad comprimida: suele anteceder a un movimiento fuerte." : ""}`);
     const adx = a.ind.adx[i], adx1 = a.ind.adx[i - 1], dp = a.ind.di_plus[i], dm = a.ind.di_minus[i];
-    if (adx >= 0) row(adx >= CFG.adxKey ? (dp > dm ? "buy" : "sell") : "", `Fuerza (ADX ${S.tf})`, `${adx.toFixed(1)} ${adx > adx1 ? "↑" : "↓"}`,
+    if (adx >= 0) row(adx >= CFG.adxKey ? (dp > dm ? "buy" : "sell") : "", `Fuerza (ADX ${TF_LABEL(S.tf)})`, `${adx.toFixed(1)} ${adx > adx1 ? "↑" : "↓"}`,
       `${adx >= CFG.adxKey ? "Por encima" : "Por debajo"} del nivel clave ${CFG.adxKey}: ${adx >= CFG.adxKey ? "hay tendencia" : "mercado sin fuerza"}${adx > adx1 ? " y ganando fuerza" : ""}. +DI ${dp.toFixed(1)} / −DI ${dm.toFixed(1)}: ${dp > dm ? "dominan compradores" : "dominan vendedores"}.`);
     row(r.close > r.vwap ? "buy" : "sell", "VWAP de la sesión", `${fp(r.vwap)} (${pct(r.vwap_dist_pct)})`, r.close > r.vwap ? "El precio está sobre el promedio del día: favorece compras." : "El precio está bajo el promedio del día: favorece ventas.");
     const f = SSP.fibSetup(a, t, trend1h(S.sel, t), FIBP);
@@ -3352,7 +3353,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   };
 
   // ------------------------------------------------------------ controles
-  $("tfs").innerHTML = TFS.map((t) => `<button data-tf="${t}" title="${t === "1d" ? "1 día" : t}">${TF_LABEL(t)}</button>`).join("");
+  $("tfs").innerHTML = TFS.map((t) => `<button data-tf="${t}" title="${t === "1d" ? "1 día" : t === "1w" ? "1 semana" : t}">${TF_LABEL(t)}</button>`).join("");
   const paintControls = () => {
     $("tfs").querySelectorAll("[data-tf]").forEach((b) => b.classList.toggle("on", b.dataset.tf === S.tf));
     $("tzBtn").textContent = S.tz === "UTC" ? "Hora UTC" : "Hora de Costa Rica";
