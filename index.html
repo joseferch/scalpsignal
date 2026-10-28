@@ -135,6 +135,12 @@ aside.side{display:flex;flex-direction:column;gap:12px;min-width:0}
 .pair{display:grid;grid-template-columns:1fr auto 64px 76px 22px;align-items:center;gap:8px;padding:6px 4px;border-radius:var(--r-sm);cursor:pointer;font-size:13px}
 .pair:hover{background:var(--deck2)} .pair.sel{background:var(--deck2);box-shadow:inset 3px 0 0 var(--info)}
 .pair .x{background:none;border:0;padding:0;color:var(--ink3)}
+.schips{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.schips button{padding:1px 7px;font-size:11px;line-height:16px;border-radius:999px;background:transparent;border:1px solid var(--rule2);color:var(--ink3);cursor:pointer}
+.schips button.on{background:color-mix(in srgb,var(--buy) 22%,transparent);border-color:var(--buy);color:var(--ink)}
+.schips button.mid{border-color:var(--gold);color:var(--ink)}
+.schips button.goff{opacity:.45;text-decoration:line-through}
+.schips.sall{margin:0 0 8px;gap:6px}.schips.sall span{font-size:12px;margin-right:2px}
 .badge{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--deck2);color:var(--ink2);white-space:nowrap}
 .badge.p{background:var(--info-bg);color:var(--info)} .badge.c{background:var(--buy-bg);color:var(--buy)}
 .list{max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:6px;font-size:13px}
@@ -395,6 +401,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
       </div>
       <div id="results"></div>
       <label class="f" style="display:flex;gap:8px;align-items:center;margin:2px 0 8px"><input type="checkbox" id="onlyActive" style="width:auto"> Mostrar solo pares en preparación o con entrada</label>
+      <div id="stratAll" class="schips sall"></div>
       <div id="watch" class="list"></div>
     </section>
     <section class="panel" id="tab-historial" hidden>
@@ -458,6 +465,21 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Stop loss (×ATR 1h)<input data-k="rsi3.sl_atr" inputmode="decimal"></label>
     <label class="f">Validez de la orden límite (h)<input data-k="rsi3.limit_hours" inputmode="numeric"></label>
     <label class="f">Cierre por tiempo (h)<input data-k="rsi3.max_hold_hours" inputmode="numeric"></label>
+  </div>
+  <h4>Estrategia 4 · Scalping RR 3:1 en 3m <small>(se activa por par en la pestaña Pares: botón E4)</small></h4>
+  <div class="grid3">
+    <label class="f">Activa (1/0)<input data-k="sc4.enabled" inputmode="numeric"></label>
+    <label class="f">Beneficio/riesgo neto objetivo<input data-k="sc4.rr_net" inputmode="decimal"></label>
+    <label class="f">Stop (×ATR 3m)<input data-k="sc4.atr_mult" inputmode="decimal"></label>
+    <label class="f">Stop mínimo (% precio)<input data-k="sc4.min_stop_pct" inputmode="decimal"></label>
+    <label class="f">Coste ida y vuelta estimado (%)<input data-k="sc4.round_trip_cost_pct" inputmode="decimal"></label>
+    <label class="f">Volumen mínimo (× media 20)<input data-k="sc4.vol_mult" inputmode="decimal"></label>
+    <label class="f">Máx. entradas por día y par<input data-k="sc4.max_trades_day" inputmode="numeric"></label>
+    <label class="f">Velas de espera tras salir<input data-k="sc4.cooldown_bars" inputmode="numeric"></label>
+    <label class="f">Máx. velas por operación<input data-k="sc4.max_hold_bars" inputmode="numeric"></label>
+    <label class="f">Ventas (SHORT) (1/0)<input data-k="sc4.allow_short" inputmode="numeric"></label>
+    <label class="f">Exposición máxima (× cuenta)<input data-k="sc4.max_exposure" inputmode="decimal"></label>
+    <label class="f">Apalancamiento<input data-k="sc4.leverage" inputmode="decimal"></label>
   </div>
   <h4>Datos, pares y alertas</h4>
   <div class="grid2">
@@ -1686,6 +1708,125 @@ const SSP = (() => {
     }
   }
 
+  // ------------------------------------------------------------ estrategia 4: "Scalping RR 3:1 / 5x" (traducción del Pine del usuario)
+  /* Gráfico de 3 m con filtro de la ÚLTIMA vela de 15 m ya cerrada (como request.security con close[1] y lookahead).
+     Compra: 15m cierre > EMA50 > EMA200 · EMA20 > EMA50 (3m) · cierre > VWAP del día · el cierre cruza hacia arriba la EMA20 ·
+     52 < RSI14 < 70 · volumen > 1,2 × media de 20 · vela verde. Venta simétrica (RSI entre 30 y 48, vela roja).
+     Entrada al cierre de la vela de señal. Stop = máx(1,5·ATR14, 0,20 % del precio). Objetivo = 3·(stop + coste) + coste,
+     con coste = 0,10 % del precio. Cierre por tiempo a las 20 velas. Máx. 3 entradas por día y par, 5 velas de espera tras salir,
+     exposición máxima 5 × cuenta. Una sola posición por par (como el Pine). */
+  const DEFAULT_SC4 = { enabled: true, rr_net: 3, round_trip_cost_pct: 0.10, max_trades_day: 3, cooldown_bars: 5, max_hold_bars: 20, allow_short: true,
+    atr_mult: 1.5, min_stop_pct: 0.20, vol_mult: 1.2, rsi_long_min: 52, rsi_long_max: 70, rsi_short_min: 30, rsi_short_max: 48, max_exposure: 5, leverage: 5 };
+  const SC4_COND_LABELS = { S0: "Datos completos y actualizados", S1: "Tendencia 15m (cierre, EMA50, EMA200)", S2: "EMA20 vs EMA50 (3m) y precio vs VWAP",
+    S3: "Cruce del cierre con la EMA20 y vela a favor", S4: "RSI(14) dentro del rango", S5: "Volumen > media de 20 × 1,2", S6: "Límites: entradas del día, espera y riesgo" };
+  const scond = (id, passed, detail = "") => ({ id, label: SC4_COND_LABELS[id], passed, detail });
+  class Scalp3m {
+    constructor(params) { this.name = "scalping_rr3_3m"; this.label = "Scalping RR 3:1 (3m)"; this.p = Object.assign({}, DEFAULT_SC4, params || {}); }
+    ind3(a) {
+      const key = `${a.n}|${a.d.closeTime[a.n - 1]}`;
+      if (a._sc4 && a._sc4.key === key) return a._sc4;
+      const d = a.d, c = d.close;
+      a._sc4 = { key, e20: ema(c, 20), e50: ema(c, 50), rsi: rsi(c, 14), atr: a.ind.atr, vm: sma(d.volume, 20), vw: sessionVwap(d).vwap };
+      return a._sc4;
+    }
+    ind15(a) {
+      const key = `${a.n}|${a.d.closeTime[a.n - 1]}`;
+      if (a._sc4h && a._sc4h.key === key) return a._sc4h;
+      a._sc4h = { key, e50: ema(a.d.close, 50), e200: ema(a.d.close, 200) };
+      return a._sc4h;
+    }
+  }
+  class Scalp3mEngine extends SignalEngine {
+    constructor(exchange, risk, strategy, autoPaper = true, book = null) {
+      super(exchange, risk, strategy || new Scalp3m(), autoPaper, book);
+      this.condLabels = SC4_COND_LABELS; this.perSym = {};
+    }
+    _ps(sym, day) { const o = this.perSym[sym] || (this.perSym[sym] = { day, count: 0, cooldownUntil: 0 }); if (o.day !== day) { o.day = day; o.count = 0; } return o; }
+    _stepSlot(ctx, s) {
+      if (s.state === ST.OPEN) return this._manageTrade(ctx, s);
+      const st = this.strategy, p = st.p, dir = s.direction, up = dir === "LONG", M3 = TF_MS["3m"];
+      if (ctx.t % M3 !== 0) return [];
+      const a = ctx.tf["3m"], h = ctx.tf["15m"];
+      if (!a || !h) return [];
+      const i = a.idxAsof(ctx.t);
+      if (i < 60 || a.d.closeTime[i] !== ctx.t) return [];
+      const I = st.ind3(a), d = a.d, c = d.close[i], o = d.open[i];
+      const j = h.idxAsof(floorTime(ctx.t - 1, "15m")), J = st.ind15(h);
+      const c0 = scond("S0", ctx.dataOk, ctx.dataReason);
+      let c1;
+      if (j < 200) c1 = scond("S1", false, "faltan velas de 15m para la EMA200");
+      else {
+        const hc = h.d.close[j], e50 = J.e50[j], e200 = J.e200[j];
+        const ok = up ? hc > e50 && e50 > e200 : hc < e50 && e50 < e200;
+        c1 = scond("S1", ok, `15m: cierre ${fmt(hc)} · EMA50 ${fmt(e50)} · EMA200 ${fmt(e200)}`);
+      }
+      const ok2 = up ? I.e20[i] > I.e50[i] && c > I.vw[i] : I.e20[i] < I.e50[i] && c < I.vw[i];
+      const c2 = scond("S2", ok2, `EMA20 ${fmt(I.e20[i])} ${I.e20[i] > I.e50[i] ? ">" : "<"} EMA50 ${fmt(I.e50[i])} · VWAP ${fmt(I.vw[i])}`);
+      const cross = up ? c > I.e20[i] && d.close[i - 1] <= I.e20[i - 1] : c < I.e20[i] && d.close[i - 1] >= I.e20[i - 1];
+      const candle = up ? c > o : c < o;
+      const c3 = scond("S3", cross && candle, `${cross ? "cruce en esta vela" : "sin cruce"} · vela ${c > o ? "verde" : c < o ? "roja" : "neutra"}`);
+      const r = I.rsi[i], ok4 = isNum(r) && (up ? r > p.rsi_long_min && r < p.rsi_long_max : r < p.rsi_short_max && r > p.rsi_short_min);
+      const c4 = scond("S4", ok4, `RSI ${isNum(r) ? r.toFixed(1) : "—"} (${up ? `${p.rsi_long_min}–${p.rsi_long_max}` : `${p.rsi_short_min}–${p.rsi_short_max}`})`);
+      const ok5 = isNum(I.vm[i]) && d.volume[i] > I.vm[i] * p.vol_mult;
+      const c5 = scond("S5", ok5, `vol ${fmt(d.volume[i])} vs ${isNum(I.vm[i]) ? fmt(I.vm[i] * p.vol_mult) : "—"}`);
+      const day = Math.floor(ctx.t / 86400e3), ps = this._ps(s.symbol, day);
+      const other = this.slot(s.symbol, up ? "SHORT" : "LONG");
+      const limitsOk = (up || p.allow_short) && ps.count < p.max_trades_day && ctx.t >= ps.cooldownUntil && other.state !== ST.OPEN;
+      const lim = !(up || p.allow_short) ? "ventas desactivadas" : other.state === ST.OPEN ? "ya hay una posición en este par" :
+        ps.count >= p.max_trades_day ? `${ps.count}/${p.max_trades_day} entradas hoy` : ctx.t < ps.cooldownUntil ? `espera hasta ${new Date(ps.cooldownUntil).toISOString().slice(11, 16)} UTC` : `${ps.count}/${p.max_trades_day} entradas hoy`;
+      s.conditions = [c0, c1, c2, c3, c4, c5, scond("S6", limitsOk ? null : false, lim)];
+      if (!(c0.passed && c1.passed && ok2 && cross && candle && ok4 && ok5 && limitsOk) || !(I.atr[i] > 0)) return [];
+      // --- entrada al cierre de la vela de señal
+      const sd = Math.max(I.atr[i] * p.atr_mult, c * p.min_stop_pct / 100), cc = c * p.round_trip_cost_pct / 100, sign = up ? 1 : -1;
+      const stop = c - sign * sd, tp = c + sign * (p.rr_net * (sd + cc) + cc);
+      const R = Object.assign({}, this.risk, { min_rr: 0, leverage: p.leverage });
+      const plan = planPosition(dir, c, stop, tp, R, this.realizedToday[day] || 0, this.openPositions());
+      if (plan.valid && plan.notional > R.account_capital * p.max_exposure) {     // tope de exposición (5 × cuenta)
+        const k = R.account_capital * p.max_exposure / plan.notional;
+        for (const f of ["quantity", "notional", "margin_required", "est_loss", "est_profit_net"]) plan[f] *= k;
+        plan.capped = true;
+      }
+      s.conditions[6] = scond("S6", plan.valid, plan.valid ? `Riesgo ${this.risk.risk_pct}%${plan.capped ? " (limitado por exposición 5×)" : ""} · cantidad ${plan.quantity.toFixed(4)} · ${ps.count + 1}/${p.max_trades_day} hoy` : plan.reasons.join("; "));
+      if (!plan.valid) return [];
+      const [g, nn] = rrNet(dir, c, stop, tp, this.risk);
+      s.levels = { entry: c, stop_loss: stop, tp1: tp, tp2: tp, tp3: tp, risk_per_unit: sd, rr_gross: Math.round(g * 1000) / 1000, rr_net: Math.round(nn * 1000) / 1000,
+        notes: [`Stop máx(${p.atr_mult}·ATR, ${p.min_stop_pct} %) · objetivo ${p.rr_net}:1 neto con coste ${p.round_trip_cost_pct} % · cierre a las ${p.max_hold_bars} velas de 3m.`] };
+      s.plan = plan; s.state = up ? ST.CONF_L : ST.CONF_S; s.signalId = uid(); ps.count++;
+      const zone = { top: c, bottom: c, sources: [`Cruce de EMA20 en 3m con tendencia de 15m ${up ? "alcista" : "bajista"}`] };
+      s.setup = { zone };
+      const signal = { id: s.signalId, symbol: s.symbol, exchange: this.exchange, strategy: st.name, strategy_label: st.label, direction: dir, created_at: ctx.t,
+        timeframes: ["15m", "3m", "1m"], activation_price: c, reference_price: up ? ctx.ask ?? null : ctx.bid ?? null,
+        stop_loss: stop, tp1: tp, tp2: tp, tp3: tp, rr_net: s.levels.rr_net, rr_gross: s.levels.rr_gross,
+        conditions_met: s.conditions.filter((x) => x.passed), conditions_missing: s.conditions.filter((x) => !x.passed),
+        zone, notes: s.levels.notes, plan, data_status: ctx.dataReason, params: Object.assign({}, p), order: "mercado" };
+      const out = [this._ev(s, ctx, "confirmada", `${s.symbol} — ${dir} CONFIRMADO (${st.label}) entrada ${fmt(c)} SL ${fmt(stop)} TP ${fmt(tp)}`, { signal })];
+      if (this.autoPaper) {
+        s.trade = { signal_id: s.signalId, direction: dir, entry: c, stop, tp1: tp, tp2: tp, tp3: tp, quantity: plan.quantity, opened_at: ctx.t,
+          tp1_hit: false, exit_price: null, exit_time: null, exit_reason: null, result_r: null, pnl: null, fees: null };
+        s.state = ST.OPEN;
+        out.push(this._ev(s, ctx, "operacion_abierta", `${s.symbol} — operación simulada ${dir} abierta en ${fmt(c)}`));
+      } else { s.setup = null; s.state = ST.SIN; ps.cooldownUntil = ctx.t + p.cooldown_bars * M3; }
+      return out;
+    }
+    _manageTrade(ctx, s) {
+      const tr = s.trade, bar = ctx.tf["1m"].row(ctx.t), p = this.strategy.p;
+      if (!bar || bar.closeTime !== ctx.t || bar.closeTime <= tr.opened_at) return [];
+      const up = tr.direction === "LONG";
+      const hitSl = up ? bar.low <= tr.stop : bar.high >= tr.stop, hitTp = up ? bar.high >= tr.tp2 : bar.low <= tr.tp2;
+      if (hitSl) return this._close(ctx, s, tr.stop, "Stop Loss" + (hitTp ? " (vela tocó SL y TP: se asume SL)" : ""));
+      if (hitTp) return this._close(ctx, s, tr.tp2, "Take Profit");
+      if (ctx.t - tr.opened_at >= p.max_hold_bars * TF_MS["3m"]) return this._close(ctx, s, bar.close, `Cierre por tiempo (${p.max_hold_bars} velas)`);
+      return [];
+    }
+    _close(ctx, s, price, reason) {
+      const sym = s.symbol, M3 = TF_MS["3m"], ev = super._close(ctx, s, price, reason);
+      const ps = this._ps(sym, Math.floor(ctx.t / 86400e3)), exitBarClose = Math.ceil(ctx.t / M3) * M3;
+      ps.cooldownUntil = exitBarClose + this.strategy.p.cooldown_bars * M3;
+      s.cooldownUntil = 0;
+      return ev;
+    }
+  }
+
   // ------------------------------------------------------------ biblioteca de indicadores (estilo TradingView)
   /* Fórmulas estándar (las mismas que usa TradingView en sus indicadores integrados):
      RSI  = 100 − 100/(1 + RMA(subidas)/RMA(bajadas))                 (Wilder)
@@ -1929,7 +2070,7 @@ const SSP = (() => {
   function sessionsAt(ms, list = SESSIONS) { return list.filter((s) => sessionWindows(ms, ms + 1, s).some((w) => w.start <= ms && ms < w.end)); }
 
   return {
-    DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
+    DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
   };
@@ -1957,8 +2098,9 @@ if (typeof module !== "undefined") module.exports = SSP;
   const TC = Object.assign({}, SSP.DEFAULT_TC, LS.get("tc", {}));
   const FIBP = Object.assign({}, SSP.DEFAULT_FIB, LS.get("fib", {}));
   const RSI3P = Object.assign({}, SSP.DEFAULT_RSI3, LS.get("rsi3", {}));
+  const SC4P = Object.assign({}, SSP.DEFAULT_SC4, LS.get("sc4", {}));
   const IND = Object.assign({}, SSP.DEFAULT_IND, LS.get("ind", {}));
-  const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d", "1w"], ENGINE_TFS = ["1m", "5m", "15m", "1h"];
+  const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d", "1w"], ENGINE_TFS = ["1m", "3m", "5m", "15m", "1h"];
   const BYBIT_INT = { "1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D", "1w": "W" };
   const TF_LABEL = (tf) => (tf === "1d" ? "1D" : tf === "1w" ? "1S" : tf);
   const DAILYUP = (tf) => tf === "1d" || tf === "1w";      // velas de un día o más: fechas en UTC, sin hora
@@ -1979,10 +2121,17 @@ if (typeof module !== "undefined") module.exports = SSP;
   if (!S.symbols.includes(S.sel)) S.sel = S.symbols[0];
   const engine = new SSP.SignalEngine("bybit", RISK, new SSP.TrendContinuation(TC));
   const engine2 = new SSP.FibEngine("bybit", RISK, new SSP.FibRetracement(FIBP), true, engine.book);
-  const engine3 = new SSP.Rsi2Engine("bybit", RISK, new SSP.Rsi2Pullback(RSI3P), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
+  const engine3 = new SSP.Rsi2Engine("bybit", RISK, new SSP.Rsi2Pullback(RSI3P), true, engine.book);
+  const engine4 = new SSP.Scalp3mEngine("bybit", RISK, new SSP.Scalp3m(SC4P), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
   const ENGINES = [{ key: "e1", eng: engine, title: "Estrategia 1 · Continuación de tendencia", short: "Continuación de tendencia", labels: SSP.COND_LABELS },
     { key: "e2", eng: engine2, title: "Estrategia 2 · Retroceso Fibonacci", short: "Retroceso Fibonacci", labels: SSP.FIB_COND_LABELS },
-    { key: "e3", eng: engine3, title: "Estrategia 3 · Retroceso RSI(2) 1h (experimental)", short: "Retroceso RSI(2) 1h · exp.", labels: SSP.RSI3_COND_LABELS }];
+    { key: "e3", eng: engine3, title: "Estrategia 3 · Retroceso RSI(2) 1h (experimental)", short: "Retroceso RSI(2) 1h · exp.", labels: SSP.RSI3_COND_LABELS },
+    { key: "e4", eng: engine4, title: "Estrategia 4 · Scalping RR 3:1 en 3m", short: "Scalping RR 3:1 (3m)", labels: SSP.SC4_COND_LABELS, defOff: true }];
+  // activación por par: {"e4|BTCUSDT": true, ...}; sin entrada = valor por defecto (E1–E3 encendidas, E4 apagada)
+  const STRAT_SYM = LS.get("stratSym", {});
+  const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled })[E.key];
+  const symOn = (E, sym) => { const v = STRAT_SYM[`${E.key}|${sym}`]; return v === undefined ? !E.defOff : !!v; };
+  function setSymOn(E, sym, on) { if (on === !E.defOff) delete STRAT_SYM[`${E.key}|${sym}`]; else STRAT_SYM[`${E.key}|${sym}`] = on; LS.set("stratSym", STRAT_SYM); }
   const allSlots = (sym) => ENGINES.flatMap((E) => ["LONG", "SHORT"].map((d) => E.eng.slot(sym, d)));
   const k2 = (s, tf) => `${s}|${tf}`;
 
@@ -2158,9 +2307,14 @@ if (typeof module !== "undefined") module.exports = SSP;
     S.health[sym] = { ok, reason, t };
     const q = S.quotes[sym] || {};
     const ctx = { symbol: sym, exchange: "bybit", t, tf: tfs, dataOk: ok, dataReason: reason, bid: q.bid1Price ? +q.bid1Price : null, ask: q.ask1Price ? +q.ask1Price : null };
-    const evs = engine.step(ctx);
-    if (FIBP.enabled || ["LONG", "SHORT"].some((d) => engine2.slot(sym, d).state === "OPERACION_SIMULADA_ABIERTA")) evs.push(...engine2.step(ctx));
-    if (RSI3P.enabled || ["LONG", "SHORT"].some((d) => engine3.slot(sym, d).state !== "SIN_SEÑAL")) evs.push(...engine3.step(ctx));
+    const evs = [];
+    for (const E of ENGINES) {
+      const slots = ["LONG", "SHORT"].map((d) => E.eng.slot(sym, d));
+      if (globalOn(E) && symOn(E, sym)) { evs.push(...E.eng.step(ctx)); continue; }
+      // apagada: las operaciones simuladas abiertas se siguen gestionando hasta cerrar; lo que estaba en preparación se descarta
+      for (const s of slots) if (s.state !== "OPERACION_SIMULADA_ABIERTA" && s.state !== "SIN_SEÑAL") Object.assign(s, { state: "SIN_SEÑAL", setup: null, levels: null, plan: null, conditions: [] });
+      if (slots.some((s) => s.state === "OPERACION_SIMULADA_ABIERTA")) evs.push(...E.eng.step(ctx));
+    }
     evs.forEach(handleEvent);
     if (sym === S.sel) { renderSide(); $("clock").textContent = `Última evaluación: ${fmtTime(t)}`; }
     if (evs.length) renderWatch();
@@ -2706,7 +2860,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       .map((o) => Object.assign({}, o, { status: SSP.obStatusAt(o, tLast) }));
     const markers = S.signals.filter((s) => s.symbol === sym && s.created_at >= first).map((s) => {
       const long = s.direction === "LONG";
-      return { time: SSP.floorTime(s.created_at - 1000, tf) / 1000, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : ""} ${s.rr_net.toFixed(1)}R` };
+      return { time: SSP.floorTime(s.created_at - 1000, tf) / 1000, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : s.strategy === "scalping_rr3_3m" ? " 3m" : ""} ${s.rr_net.toFixed(1)}R` };
     }).sort((x, y) => x.time - y.time);
     // indicadores agregados: se calculan sobre todo el historial cargado y se recortan a lo que se dibuja
     const custom = {};
@@ -2874,9 +3028,9 @@ if (typeof module !== "undefined") module.exports = SSP;
     for (const { E, slots } of groups) for (const s of slots) {
       const key = `${E.key}|${s.direction}`, open = !!openMeters[key];
       const conds = s.conditions.length ? s.conditions : Object.entries(E.labels).map(([id, label]) => ({ id, label, passed: null, detail: "" }));
-      const off = (E.key === "e2" && !FIBP.enabled) || (E.key === "e3" && !RSI3P.enabled);
+      const off = !globalOn(E) ? " (apagada)" : !symOn(E, S.sel) ? " (apagada en este par)" : "";
       html += `<div class="meter" data-meter="${key}" tabindex="0" role="button" aria-expanded="${open}"><div class="meter-hd"><b class="${s.direction === "LONG" ? "buy" : "sell"}">${s.direction === "LONG" ? "Compra" : "Venta"}</b>` +
-        `<span class="nm">${E.short}${off ? " (apagada)" : ""}</span><span class="st">${STATE_LABEL[s.state]}</span><b>${s.passed}/${s.total}</b></div>` +
+        `<span class="nm">${E.short}${off}</span><span class="st">${STATE_LABEL[s.state]}</span><b>${s.passed}/${s.total}</b></div>` +
         `<div class="segs">${conds.map((c) => `<i class="${c.passed === true ? "ok" : c.passed === false ? "no" : ""}" title="${esc(c.label)}"></i>`).join("")}</div>`;
       if (open) html += `<ul class="checks">${conds.map((c) => `<li><span class="${c.passed === true ? "ck-ok" : c.passed === false ? "ck-no" : "ck-pd"}">${c.passed === true ? "✓" : c.passed === false ? "✗" : "○"}</span><span style="flex:1">${esc(c.label)}${c.detail ? `<span class="d">${esc(c.detail)}</span>` : ""}</span></li>`).join("")}</ul>`;
       html += `</div>`;
@@ -2999,11 +3153,29 @@ if (typeof module !== "undefined") module.exports = SSP;
       const q = S.quotes[s] || {}, tr = trendOf(s, "1h"), ch = q.price24hPcnt !== undefined ? +q.price24hPcnt * 100 : null;
       return `<div class="pair${s === S.sel ? " sel" : ""}" data-sym="${s}" tabindex="0"><span><b>${s.replace("USDT", "")}</b><span class="faint">/USDT</span> ${st ? `<span class="badge ${st === "entrada" ? "c" : "p"}">${st}</span>` : ""}</span>` +
         `<span>${q.lastPrice ? fp(+q.lastPrice) : "—"}</span><span class="${ch === null ? "faint" : ch >= 0 ? "buy" : "sell"}">${ch === null ? "—" : pct(ch, 1)}</span>` +
-        `<span class="tr ${tr === "alcista" ? "buy" : tr === "bajista" ? "sell" : "gold"}">${TREND_ICON[tr] || ""} ${tr}</span><button class="x" data-del="${s}" aria-label="Quitar ${s}" title="Quitar">✕</button></div>`;
+        `<span class="tr ${tr === "alcista" ? "buy" : tr === "bajista" ? "sell" : "gold"}">${TREND_ICON[tr] || ""} ${tr}</span><button class="x" data-del="${s}" aria-label="Quitar ${s}" title="Quitar">✕</button>` +
+        `<div class="schips">${ENGINES.map((E, n) => { const on = symOn(E, s); return `<button data-son="${E.key}|${s}" class="${on ? "on" : ""}${globalOn(E) ? "" : " goff"}" aria-pressed="${on}" title="${esc(E.title)}: ${on ? "activa" : "apagada"} en ${s}${globalOn(E) ? "" : " (la estrategia está apagada en Configuración)"}">E${n + 1}</button>`; }).join("")}</div></div>`;
     }).join("") : '<p class="faint">Ningún par está en preparación ahora.</p>';
+    $("stratAll").innerHTML = `<span class="faint">Estrategias en todos los pares:</span>` + ENGINES.map((E, n) => {
+      const k = S.symbols.filter((s) => symOn(E, s)).length;
+      return `<button data-sall="${E.key}" title="${esc(E.title)} — activa en ${k} de ${S.symbols.length} pares. Toca para ${k === S.symbols.length ? "apagarla en todos" : "activarla en todos"}." class="${k === S.symbols.length ? "on" : k ? "mid" : ""}">E${n + 1} <small>${k}/${S.symbols.length}</small></button>`;
+    }).join("");
   }
   $("onlyActive").onchange = renderWatch;
+  $("stratAll").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sall]"); if (!b) return;
+    const E = ENGINES.find((x) => x.key === b.dataset.sall), all = S.symbols.every((s) => symOn(E, s));
+    S.symbols.forEach((s) => setSymOn(E, s, !all));
+    toast(`${E.title}: ${all ? "apagada" : "activada"} en todos los pares${!all && !globalOn(E) ? " (ojo: está apagada en Configuración)" : ""}`, "info");
+    renderWatch(); renderSide();
+  });
   $("watch").addEventListener("click", (e) => {
+    const son = e.target.closest("[data-son]");
+    if (son) {
+      e.stopPropagation(); const [k, s] = son.dataset.son.split("|"), E = ENGINES.find((x) => x.key === k), on = !symOn(E, s);
+      setSymOn(E, s, on); toast(`${E.title}: ${on ? "activada" : "apagada"} en ${s}${on && !globalOn(E) ? " (ojo: está apagada en Configuración)" : ""}`, "info");
+      renderWatch(); if (s === S.sel) renderSide(); return;
+    }
     const del = e.target.closest("[data-del]");
     if (del) { e.stopPropagation(); removeSymbol(del.dataset.del); return; }
     const b = e.target.closest("[data-sym]"); if (b) selectSymbol(b.dataset.sym);
@@ -3385,20 +3557,21 @@ if (typeof module !== "undefined") module.exports = SSP;
   });
 
   // Configuración general
-  const getK = (k) => { const [g, f] = k.split("."); return ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P })[g][f]; };
+  const getK = (k) => { const [g, f] = k.split("."); return ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P })[g][f]; };
   $("cfgBtn").onclick = () => { $("cfg").querySelectorAll("[data-k]").forEach((i) => { const v = getK(i.dataset.k); i.value = typeof v === "boolean" ? (v ? 1 : 0) : v; }); $("cfg").showModal(); };
   $("cfgClose").onclick = () => $("cfg").close();
   $("cfgSave").onclick = () => {
     $("cfg").querySelectorAll("[data-k]").forEach((i) => {
-      const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P })[g], old = obj[f];
+      const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P })[g], old = obj[f];
       if (typeof old === "boolean") obj[f] = i.value === "1" || i.value.toLowerCase() === "true";
       else if (typeof old === "number") { const n = parseFloat(String(i.value).replace(",", ".")); if (!Number.isNaN(n)) obj[f] = n; }
       else obj[f] = i.value.trim();
     });
-    LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("rsi3", RSI3P);
+    LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("rsi3", RSI3P); LS.set("sc4", SC4P);
     engine.risk = Object.assign({}, RISK); engine.strategy.p = Object.assign({}, TC);
     engine2.risk = Object.assign({}, RISK); engine2.strategy.p = Object.assign({}, FIBP);
-    engine3.risk = Object.assign({}, RISK); engine3.strategy.p = Object.assign({}, RSI3P); refreshChart();
+    engine3.risk = Object.assign({}, RISK); engine3.strategy.p = Object.assign({}, RSI3P);
+    engine4.risk = Object.assign({}, RISK); engine4.strategy.p = Object.assign({}, SC4P); refreshChart(); renderSide(); renderWatch();
     $("cfg").close(); toast("Configuración guardada", "info"); renderRiskCalc();
   };
   $("tgTest").onclick = async () => {
@@ -3453,7 +3626,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, engine3, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep };   // acceso para depuración
+  window.__ssp = { S, engine, engine2, engine3, engine4, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep };   // acceso para depuración
   start();
 })();
 
