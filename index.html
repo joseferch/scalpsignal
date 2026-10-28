@@ -2402,7 +2402,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     ew: [["ew.line", "Línea del conteo", { c: "#9cc9ff", w: 2, v: true }], ["ew.impulse", "Ondas 0-5", { c: "#62a8ff", v: true }], ["ew.corr", "Ondas A-B-C", { c: "#f0c75e", v: true }], ["ew.proj", "Proyecciones", { c: "#9cc9ff", v: true }], ["ew.inval", "Nivel de invalidación", { c: "#ff6170", v: true }]],
     sess: [["sess.sydney", "Sídney", { c: "#b69cff", v: false }], ["sess.tokyo", "Tokio", { c: "#ff9f5a", v: true }], ["sess.london", "Londres", { c: "#62a8ff", v: true }], ["sess.ny", "Nueva York", { c: "#2fd3a0", v: true }],
       ["sess.range", "Caja con máximo y mínimo (si no, franja completa)", { v: true }], ["sess.labels", "Etiquetas", { v: true }]],
-    sig: [["sig.markers", "Flechas de señales", { v: true }], ["sig.levels", "Líneas de entrada, SL y TP", { v: true }], ["sig.entry", "Entrada", { c: "#e6ebf2" }], ["sig.sl", "Stop loss", { c: "#ff6170" }], ["sig.tp", "Objetivos (TP)", { c: "#2fd3a0" }]],
+    sig: [["sig.markers", "Flechas de señales", { v: true }], ["sig.trades", "Operaciones al estilo TradingView (LONG/SHORT, salida, Stop y Objetivo)", { v: true }], ["sig.levels", "Líneas de entrada, SL y TP", { v: true }], ["sig.entry", "Entrada", { c: "#e6ebf2" }], ["sig.sl", "Stop loss", { c: "#ff6170" }], ["sig.tp", "Objetivos (TP)", { c: "#2fd3a0" }]],
   };
   const STYLE_DEFAULTS = Object.fromEntries(Object.values(STYLE_DEF).flat().map(([k, , d]) => [k, Object.assign({}, d)]));
   const STY = (() => { const saved = LS.get("style", {}); const o = {}; for (const [k, d] of Object.entries(STYLE_DEFAULTS)) o[k] = Object.assign({}, d, saved[k] || {}); return o; })();
@@ -2774,6 +2774,22 @@ if (typeof module !== "undefined") module.exports = SSP;
           if (lo >= 0) mark(lo, C[lo].low, false);
         }
       }
+      // tramos de Stop y Objetivo de cada operación simulada (como el probador de estrategias de TradingView)
+      if (vis("sig.trades") && data.trades && data.trades.length) {
+        const hb = (ts.options().barSpacing || 6) / 2;
+        g.save(); g.lineWidth = 2;
+        for (const t of data.trades) {
+          let xa = ts.timeToCoordinate(t.t0), xb = ts.timeToCoordinate(t.t1);
+          if (xa === null && xb === null) continue;
+          if (xa === null) xa = 0; if (xb === null) xb = W;
+          xa -= hb; xb += hb; if (t.open) xb = Math.max(xb, xa + 40);
+          for (const [p, col] of [[t.sl, "#ff4d5e"], [t.tp, "#22d38a"]]) {
+            const y = Y(p); if (y === null || y < 0 || y > H) continue;
+            g.strokeStyle = col; g.setLineDash(t.open ? [5, 3] : []); g.beginPath(); g.moveTo(xa, Math.round(y) + 0.5); g.lineTo(xb, Math.round(y) + 0.5); g.stroke();
+          }
+        }
+        g.restore();
+      }
       // cuenta regresiva hasta el cierre de la vela actual, bajo el precio (como TradingView)
       if (vis("candles.cd") && data.candles.length) {
         const step = SSP.TF_MS[data.tf], now = Date.now(), left = SSP.floorTime(now, data.tf) + step - now, C = data.candles, lastC = C[C.length - 1];
@@ -2858,10 +2874,28 @@ if (typeof module !== "undefined") module.exports = SSP;
     const first = d.openTime[i0];
     const obs = a.structure.orderBlocks.filter((o) => SSP.obStatusAt(o, tLast) !== "invalidada" && o.availableAt >= first).slice(-2 * IND.ob_max_zones)
       .map((o) => Object.assign({}, o, { status: SSP.obStatusAt(o, tLast) }));
-    const markers = S.signals.filter((s) => s.symbol === sym && s.created_at >= first).map((s) => {
-      const long = s.direction === "LONG";
-      return { time: SSP.floorTime(s.created_at - 1000, tf) / 1000, position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : s.strategy === "scalping_rr3_3m" ? " 3m" : ""} ${s.rr_net.toFixed(1)}R` };
-    }).sort((x, y) => x.time - y.time);
+    // operaciones simuladas al estilo del probador de estrategias de TradingView:
+    // flecha de entrada "LONG +cantidad", flecha de salida "−cantidad motivo" y tramos de Stop (rojo) y Objetivo (verde)
+    const barT = (ms) => SSP.floorTime(ms - 1000, tf) / 1000, lastT = candles.length ? candles[candles.length - 1].time : 0;
+    const openTr = {}; for (const E of ENGINES) for (const d of ["LONG", "SHORT"]) { const s = E.eng.slot(sym, d); if (s.state === "OPERACION_SIMULADA_ABIERTA" && s.trade) openTr[s.trade.signal_id] = s.trade; }
+    const qf = (q) => !isFinite(q) ? "" : q >= 1000 ? q.toFixed(0) : q >= 1 ? String(+q.toFixed(2)) : String(+q.toPrecision(3));
+    const why = (r) => r.startsWith("Take") ? "Objetivo" : r.startsWith("Stop") ? "Stop" : r.startsWith("Cierre por tiempo") ? "Tiempo máximo" : r;
+    const markers = [], trades = [], TRD = vis("sig.trades");
+    for (const s of S.signals) {
+      if (s.symbol !== sym || s.created_at < first) continue;
+      const long = s.direction === "LONG", tr = S.trades[s.id] || openTr[s.id], tag = s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : s.strategy === "scalping_rr3_3m" ? " 3m" : "";
+      if (!TRD || !tr) { markers.push({ time: barT(s.created_at), position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${tag} ${s.rr_net.toFixed(1)}R` }); continue; }
+      const t0 = !tr.opened_at || tr.opened_at === s.created_at ? barT(s.created_at) : SSP.floorTime(tr.opened_at, tf) / 1000, q = qf(tr.quantity);   // E4 entra al cierre; E1–E3 en la apertura de una vela de 1m
+      markers.push({ time: t0, position: long ? "belowBar" : "aboveBar", color: long ? "#2f7bff" : "#ff4d5e", shape: long ? "arrowUp" : "arrowDown", text: `${long ? "LONG +" : "SHORT −"}${q}` });
+      let t1 = lastT, done = false;
+      if (tr.exit_time) {
+        t1 = barT(tr.exit_time); done = true;
+        const r = isFinite(tr.result_r) ? ` (${tr.result_r >= 0 ? "+" : ""}${tr.result_r.toFixed(2)}R)` : "";
+        markers.push({ time: t1, position: long ? "aboveBar" : "belowBar", color: "#d64dff", shape: long ? "arrowDown" : "arrowUp", text: `${long ? "−" : "+"}${q} ${why(tr.exit_reason || "")}${r}` });
+      }
+      trades.push({ t0, t1, sl: tr.stop, tp: tr.tp2, open: !done });
+    }
+    markers.sort((x, y) => x.time - y.time);
     // indicadores agregados: se calculan sobre todo el historial cargado y se recortan a lo que se dibuja
     const custom = {};
     for (const x of CUST) {
@@ -2900,7 +2934,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         sess.push({ key: x.key, name: x.name, i0: j0, i1: j1, high: hi, low: lo, open: w.end > to - SSP.TF_MS[tf] && w.start <= ct[ct.length - 1] });
       }
     }
-    return { symbol: sym, tf, candles, bbU, bbM, bbL, vwap, vwU1, vwL1, vwU2, vwL2, vwU3, vwL3, sqz, dots, diP, diM, adx, obs, markers, last: a.rowAt(a.n - 1), custom, sess,
+    return { symbol: sym, tf, candles, bbU, bbM, bbL, vwap, vwU1, vwL1, vwU2, vwL2, vwU3, vwL3, sqz, dots, diP, diM, adx, obs, markers, trades, last: a.rowAt(a.n - 1), custom, sess,
       fib: SSP.fibSetup(a, tLast, trend1h(sym, tLast), FIBP), ew: SSP.elliottAsof(a, tLast, IND.ew_depth, IND.ew_min_atr) };
   }
   // cálculo de un indicador agregado en su propia temporalidad (como request.security de TradingView, sin mirar al futuro):
