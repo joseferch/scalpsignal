@@ -353,6 +353,14 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   .legend{font-size:11px;top:6px;left:6px}
   .mobsimple{margin:10px 0 2px;font-size:13px}
 }
+/* ---------- T5P / T2P ---------- */
+.t5p-seg button{font-weight:600;font-size:12.5px;padding:4px 9px}.t5p-seg button.on{background:var(--gold-bg);color:var(--gold);border-color:rgba(240,199,94,.5)}
+.t5p-panel{position:absolute;left:8px;bottom:34px;z-index:6;background:rgba(14,22,36,.92);border:1px solid var(--rule2);border-radius:var(--r-md);padding:8px 10px;max-width:330px;font-size:12px;color:var(--ink2);backdrop-filter:blur(4px)}
+.t5p-panel h5{margin:0 0 4px;font-size:12.5px;color:var(--ink);display:flex;justify-content:space-between;gap:8px;align-items:center}
+.t5p-panel h5 button{background:none;border:0;color:var(--ink3);padding:0 2px;font-size:13px;cursor:pointer}
+.t5p-panel ol{margin:0;padding-left:18px}.t5p-panel li{margin:2px 0}.t5p-panel li.ok{color:var(--ink)}.t5p-panel li.ok::marker{color:var(--buy)}.t5p-panel li.no::marker{color:var(--ink3)}
+.t5p-panel .stg{margin-top:4px;font-weight:600}.t5p-panel ol{list-style:none;padding-left:0}
+@media(max-width:700px){.t5p-panel{max-width:62vw;font-size:11px;bottom:30px;left:4px;padding:6px 8px}}
 /* ---------- analizador BTC ---------- */
 .intel-btn{background:var(--info-bg);border-color:rgba(98,168,255,.35);font-weight:600;font-size:13px;padding:6px 10px;white-space:nowrap}
 .ibadge{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:999px;font-size:11px;background:var(--deck);color:var(--ink2)}
@@ -405,6 +413,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   </div>
   <nav class="tfbar">
     <span class="seg" id="tfs" role="group" aria-label="Temporalidad"></span>
+    <span class="seg t5p-seg" id="t5pBtns" role="group" aria-label="Estrategias T5P y T2P"><button data-t5p="T5P" title="T5P: dibuja los 5 pasos en el gráfico (1H 2 días + Fibonacci, acumulación 15m, impulso, retroceso, Fibonacci y entrada)">T5P</button><button data-t5p="T2P" title="T2P: impulso + retroceso Fibonacci + vela de entrada">T2P</button></span>
     <button id="indBtn" class="btn-ind" title="Activar, ocultar y ajustar indicadores">Indicadores <span id="indCount" class="badge">0</span></button>
   </nav>
 </header>
@@ -525,6 +534,21 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Ventas (SHORT) (1/0)<input data-k="sc4.allow_short" inputmode="numeric"></label>
     <label class="f">Exposición máxima (× cuenta)<input data-k="sc4.max_exposure" inputmode="decimal"></label>
     <label class="f">Apalancamiento<input data-k="sc4.leverage" inputmode="decimal"></label>
+  </div>
+  <h4>Estrategias 5 y 6 · T5P / T2P <small>(se activan por par con E5 y E6; los botones T5P/T2P del gráfico solo dibujan)</small></h4>
+  <div class="grid3">
+    <label class="f">Activas (1/0)<input data-k="t5p.enabled" inputmode="numeric"></label>
+    <label class="f">Temporalidad de ejecución (5m o 3m)<input data-k="t5p.exec_tf"></label>
+    <label class="f">Velas de 1h para máx./mín. (48 = 2 días)<input data-k="t5p.h1_bars" inputmode="numeric"></label>
+    <label class="f">Acumulación: velas de 15m<input data-k="t5p.acc_bars" inputmode="numeric"></label>
+    <label class="f">Acumulación: rango máximo (× ATR 15m)<input data-k="t5p.acc_max_atr" inputmode="decimal"></label>
+    <label class="f">Impulso: velas mínimas<input data-k="t5p.imp_min_bars" inputmode="numeric"></label>
+    <label class="f">Impulso: cuerpo medio (× lo normal)<input data-k="t5p.imp_body_mult" inputmode="decimal"></label>
+    <label class="f">Impulso: avance mínimo (× ATR)<input data-k="t5p.imp_min_atr" inputmode="decimal"></label>
+    <label class="f">Retroceso: velas mínimas<input data-k="t5p.ret_min_bars" inputmode="numeric"></label>
+    <label class="f">Retroceso: cuerpo máx. (× cuerpo del impulso)<input data-k="t5p.ret_body_max" inputmode="decimal"></label>
+    <label class="f">Martillo: mecha ≥ N × cuerpo<input data-k="t5p.hammer_wick" inputmode="decimal"></label>
+    <label class="f">Cierre por tiempo (velas)<input data-k="t5p.max_hold_bars" inputmode="numeric"></label>
   </div>
   <h4>Datos, pares y alertas</h4>
   <div class="grid2">
@@ -1889,6 +1913,143 @@ const SSP = (() => {
     }
   }
 
+  // ------------------------------------------------------------ estrategias 5 y 6: T5P (5 pasos) y T2P (versión corta)
+  /* Reglas del usuario (pizarra): 1H marca el máximo y el mínimo de los últimos 2 días y su Fibonacci 38,2/50/61,8 %.
+     Paso 1 (15m): zona de acumulación. Paso 2 (5m o 3m): impulso con velas de una sola dirección y grandes.
+     Paso 3: retroceso con velas de una sola dirección contraria, más pequeñas que las del impulso y sin dudas (sin velas
+     del color del impulso en medio). Paso 4: el retroceso llega a la zona Fibonacci 38,2–61,8 % del impulso.
+     Paso 5: entrada con vela envolvente o martillo que supera a la anterior (cierra por encima de su máximo en compras).
+     T2P = la versión corta: impulso + entrada en el retroceso Fibonacci, sin exigir la acumulación de 15m.
+     Definiciones numéricas (configurables): impulso >= 3 velas seguidas del mismo color, cuerpo medio >= 1,3× el cuerpo medio
+     de las 20 velas anteriores y avance >= 1,5 ATR; retroceso >= 2 velas contrarias seguidas con cada cuerpo menor que el cuerpo
+     medio del impulso; acumulación = las 12 velas de 15m previas al impulso en un rango <= 3 ATR de 15m y el impulso cierra fuera. */
+  const DEFAULT_T5P = { enabled: true, exec_tf: "5m", h1_bars: 48, acc_bars: 12, acc_max_atr: 3, imp_min_bars: 3, imp_max_bars: 10, imp_body_mult: 1.3,
+    imp_min_atr: 1.5, ret_min_bars: 2, ret_max_bars: 10, ret_body_max: 1.0, fib_lo: 0.382, fib_hi: 0.618, fib_tol: 0.03, fib_invalid: 0.786,
+    hammer_wick: 2, stop_buf_atr: 0.1, max_hold_bars: 48, lookback: 90 };
+  const T5P_LABELS = { P0: "Datos completos y actualizados", P1: "1. Acumulación en 15m", P2: "2. Impulso (velas de una dirección y grandes)", P3: "3. Retroceso (velas contrarias, pequeñas, sin dudas)",
+    P4: "4. Retroceso en Fibonacci 38,2–61,8 %", P5: "5. Entrada: envolvente o martillo que supera la anterior", P6: "Límites de riesgo de la cuenta" };
+  function h1Range(a, t, bars = 48) {               // máximo y mínimo de las últimas 48 velas de 1h cerradas + Fibonacci
+    if (!a || !a.n) return null;
+    const i = a.idxAsof(t); if (i < 2) return null;
+    let hi = -Infinity, lo = Infinity, hiT = 0, loT = 0;
+    for (let j = Math.max(0, i - bars + 1); j <= i; j++) { if (a.d.high[j] > hi) { hi = a.d.high[j]; hiT = a.d.openTime[j]; } if (a.d.low[j] < lo) { lo = a.d.low[j]; loT = a.d.openTime[j]; } }
+    const up = hiT >= loT, r = hi - lo;          // si el máximo es más reciente, el movimiento fue de subida: el retroceso se mide desde el máximo
+    const lv = (f) => (up ? hi - f * r : lo + f * r);
+    return { hi, lo, hiT, loT, from: a.d.openTime[Math.max(0, i - bars + 1)], up, fib: { "38.2": lv(0.382), "50": lv(0.5), "61.8": lv(0.618) } };
+  }
+  function t5pAsof(ans, t, p = DEFAULT_T5P, mode = "T5P") {
+    const a = ans[p.exec_tf]; if (!a || a.n < 40) return null;
+    const d = a.d, i = a.idxAsof(t); if (i < 30) return null;
+    const A = a.ind.atr, body = (j) => Math.abs(d.close[j] - d.open[j]), rng = (j) => d.high[j] - d.low[j];
+    const col = (j) => (body(j) < 0.1 * rng(j) ? 0 : d.close[j] > d.open[j] ? 1 : -1);
+    const out = { mode, tf: p.exec_tf, h1: h1Range(ans["1h"], t, p.h1_bars), acc: null, imp: null, ret: null, fib: null, entry: null, steps: [], stage: "sin impulso", dir: null };
+    // tramos de velas del mismo color (las velas sin cuerpo cortan el tramo)
+    const runs = []; let j0 = Math.max(1, i - p.lookback);
+    for (let j = j0; j <= i; ) { const c = col(j); let k = j; while (k + 1 <= i && col(k + 1) === c && c !== 0) k++; runs.push({ c, a: j, b: k }); j = k + 1; }
+    for (let r = runs.length - 1; r >= 0; r--) {
+      const R = runs[r], n = R.b - R.a + 1; if (R.c === 0 || n < p.imp_min_bars || n > p.imp_max_bars) continue;
+      let avg = 0, prev = 0; for (let j = R.a; j <= R.b; j++) avg += body(j); avg /= n;
+      for (let j = Math.max(0, R.a - 20); j < R.a; j++) prev += body(j); prev /= Math.max(1, Math.min(20, R.a));
+      const up = R.c > 0, start = up ? Math.min(...d.low.slice(R.a, R.b + 1)) : Math.max(...d.high.slice(R.a, R.b + 1)), end = up ? Math.max(...d.high.slice(R.a, R.b + 1)) : Math.min(...d.low.slice(R.a, R.b + 1));
+      const move = Math.abs(end - start), Aa = A[R.b];
+      if (!(avg >= p.imp_body_mult * prev && move >= p.imp_min_atr * Aa)) continue;
+      // ---- impulso encontrado (el más reciente que cumple)
+      out.dir = up ? "LONG" : "SHORT"; out.stage = "impulso";
+      out.imp = { dir: up ? "alcista" : "bajista", a: R.a, b: R.b, from: d.openTime[R.a], to: d.closeTime[R.b], start, end, avgBody: avg, bars: n, move_atr: move / Aa };
+      out.steps.push({ id: "P2", ok: true, text: `Impulso ${out.imp.dir}: ${n} velas seguidas, cuerpo medio ${(avg / prev).toFixed(1)}× lo normal, avance ${(move / Aa).toFixed(1)} ATR` });
+      // ---- paso 1: acumulación en 15m antes del impulso
+      const m = ans["15m"];
+      if (m && m.n) {
+        const k = m.idxAsof(d.openTime[R.a]);
+        if (k >= p.acc_bars) {
+          let hi = -Infinity, lo = Infinity; for (let q = k - p.acc_bars + 1; q <= k; q++) { hi = Math.max(hi, m.d.high[q]); lo = Math.min(lo, m.d.low[q]); }
+          const h = (hi - lo) / m.ind.atr[k], brk = up ? Math.max(...d.close.slice(R.a, R.b + 1)) > hi : Math.min(...d.close.slice(R.a, R.b + 1)) < lo;
+          out.acc = { top: hi, bottom: lo, from: m.d.openTime[k - p.acc_bars + 1], to: m.d.closeTime[k], height_atr: h, ok: h <= p.acc_max_atr && brk, breakout: brk };
+          out.steps.unshift({ id: "P1", ok: out.acc.ok, text: `Acumulación 15m: ${p.acc_bars} velas en ${h.toFixed(1)} ATR (máx. ${p.acc_max_atr})${brk ? " y el impulso rompió la zona" : " · el impulso NO cerró fuera de la zona"}` });
+        } else out.steps.unshift({ id: "P1", ok: false, text: "Acumulación 15m: faltan velas" });
+      } else out.steps.unshift({ id: "P1", ok: false, text: "Acumulación 15m: sin datos de 15m" });
+      // ---- paso 3: retroceso
+      const RR = runs[r + 1];
+      if (!RR) { out.steps.push({ id: "P3", ok: false, text: "Esperando el retroceso (velas contrarias)" }); out.stage = "esperando retroceso"; break; }
+      if (RR.c !== -R.c) { out.steps.push({ id: "P3", ok: false, text: "Retroceso con dudas: después del impulso no siguieron velas contrarias" }); out.stage = "invalidado"; out.invalid = "retroceso con dudas"; break; }
+      const rn = RR.b - RR.a + 1; let maxB = 0; for (let j = RR.a; j <= RR.b; j++) maxB = Math.max(maxB, body(j));
+      const small = maxB <= p.ret_body_max * avg;
+      const ext = up ? Math.min(...d.low.slice(RR.a, RR.b + 1)) : Math.max(...d.high.slice(RR.a, RR.b + 1));
+      out.ret = { a: RR.a, b: RR.b, from: d.openTime[RR.a], to: d.closeTime[RR.b], bars: rn, extreme: ext, maxBody: maxB };
+      const retOk = rn >= p.ret_min_bars && rn <= p.ret_max_bars && small;
+      out.steps.push({ id: "P3", ok: retOk, text: `Retroceso: ${rn} vela(s) contrarias seguidas (mín. ${p.ret_min_bars}) · la más grande es ${(maxB / avg * 100).toFixed(0)} % del cuerpo medio del impulso (máx. ${p.ret_body_max * 100} %)` });
+      // ---- paso 4: Fibonacci del impulso
+      const lv = (f) => (up ? end - f * move : end + f * move), depth = Math.abs(end - ext) / move;
+      out.fib = { "38.2": lv(0.382), "50": lv(0.5), "61.8": lv(0.618), "78.6": lv(0.786), "100": start, "127.2": up ? end + 0.272 * move : end - 0.272 * move, "161.8": up ? end + 0.618 * move : end - 0.618 * move, from: d.openTime[R.a], depth };
+      const fibOk = depth >= p.fib_lo - p.fib_tol && depth <= p.fib_hi + p.fib_tol;
+      out.steps.push({ id: "P4", ok: fibOk, text: `Retroceso hasta el ${(depth * 100).toFixed(1)} % del impulso (zona ${p.fib_lo * 100}–${p.fib_hi * 100} %)` });
+      if (depth > p.fib_invalid) { out.stage = "invalidado"; out.invalid = `el retroceso pasó el ${p.fib_invalid * 100} %`; }
+      // ---- paso 5: la vela que corta el retroceso debe ser envolvente o martillo y superar a la anterior
+      const e = RR.b + 1;
+      if (e > i) { out.steps.push({ id: "P5", ok: false, text: "Esperando vela de entrada (envolvente o martillo)" }); if (!out.invalid) out.stage = retOk ? (fibOk ? "esperando entrada" : "esperando que el retroceso llegue a Fibonacci") : "retroceso no válido"; break; }
+      const pb = e - 1, bo = body(e), lowW = up ? Math.min(d.open[e], d.close[e]) - d.low[e] : d.high[e] - Math.max(d.open[e], d.close[e]);
+      const upW = up ? d.high[e] - Math.max(d.open[e], d.close[e]) : Math.min(d.open[e], d.close[e]) - d.low[e];
+      const beats = up ? d.close[e] > d.high[pb] : d.close[e] < d.low[pb];
+      const engulf = (up ? d.close[e] > d.open[e] : d.close[e] < d.open[e]) && Math.max(d.open[e], d.close[e]) >= Math.max(d.open[pb], d.close[pb]) && Math.min(d.open[e], d.close[e]) <= Math.min(d.open[pb], d.close[pb]);
+      const hammer = bo > 0 && lowW >= p.hammer_wick * bo && upW <= bo;
+      const typ = engulf ? "envolvente" : hammer ? "martillo" : null, entOk = !!typ && beats;
+      out.steps.push({ id: "P5", ok: entOk, text: entOk ? `Vela ${typ} ${up ? "alcista" : "bajista"} que cierra ${up ? "sobre el máximo" : "bajo el mínimo"} de la anterior` : `La vela que cortó el retroceso no es envolvente ni martillo que supere a la anterior` });
+      out.entry = { index: e, time: d.openTime[e], closeAt: d.closeTime[e], price: d.close[e], type: typ, ok: entOk };
+      const need = mode === "T5P" ? ["P1", "P2", "P3", "P4", "P5"] : ["P2", "P3", "P4", "P5"];
+      const all = need.every((id) => (out.steps.find((x) => x.id === id) || {}).ok) && !out.invalid;
+      out.stage = all ? (e === i ? "CONFIRMADO" : "confirmado antes") : entOk ? "entrada sin todos los pasos" : "sin entrada";
+      if (all) { out.stop = ext - (up ? 1 : -1) * p.stop_buf_atr * A[e]; out.tp1 = end; out.tp2 = out.fib["127.2"]; out.tp3 = out.fib["161.8"]; }
+      break;
+    }
+    if (!out.imp) out.steps.push({ id: "P2", ok: false, text: `Sin impulso válido en las últimas ${p.lookback} velas de ${p.exec_tf}` });
+    return out;
+  }
+  class T5PStrategy { constructor(params, mode = "T5P") { this.mode = mode; this.name = mode === "T5P" ? "t5p_5_pasos" : "t2p_2_pasos"; this.label = mode === "T5P" ? "T5P (5 pasos)" : "T2P (impulso + retroceso)"; this.p = Object.assign({}, DEFAULT_T5P, params || {}); } }
+  class T5PEngine extends SignalEngine {
+    constructor(exchange, risk, strategy, autoPaper = true, book = null) { super(exchange, risk, strategy || new T5PStrategy(), autoPaper, book); this.condLabels = T5P_LABELS; }
+    _stepSlot(ctx, s) {
+      if (s.state === ST.OPEN) return this._manageTrade(ctx, s);
+      const st = this.strategy, p = st.p, M = TF_MS[p.exec_tf];
+      if (ctx.t % M !== 0) return [];
+      const a = ctx.tf[p.exec_tf]; if (!a) return [];
+      const i = a.idxAsof(ctx.t); if (i < 30 || a.d.closeTime[i] !== ctx.t) return [];
+      const r = t5pAsof(ctx.tf, ctx.t, p, st.mode);
+      const want = s.direction;
+      const c0 = { id: "P0", label: T5P_LABELS.P0, passed: ctx.dataOk, detail: ctx.dataReason };
+      const conds = [c0, ...["P1", "P2", "P3", "P4", "P5"].filter((id) => st.mode === "T5P" || id !== "P1").map((id) => { const x = r && r.dir === want ? r.steps.find((q) => q.id === id) : null; return { id, label: T5P_LABELS[id], passed: x ? x.ok : null, detail: x ? x.text : r && r.dir && r.dir !== want ? `el impulso actual es ${r.imp.dir}` : "" }; })];
+      s.conditions = conds;
+      if (!r || r.dir !== want || r.stage !== "CONFIRMADO" || !ctx.dataOk || ctx.t < s.cooldownUntil) return [];
+      const up = want === "LONG", entry = r.entry.price, day = Math.floor(ctx.t / 86400e3);
+      const plan = planPosition(want, entry, r.stop, r.tp1, Object.assign({}, this.risk, { min_rr: 0 }), this.realizedToday[day] || 0, this.openPositions());
+      conds.push({ id: "P6", label: T5P_LABELS.P6, passed: plan.valid, detail: plan.valid ? `Riesgo ${this.risk.risk_pct}% · cantidad ${plan.quantity.toFixed(4)}` : plan.reasons.join("; ") });
+      if (!plan.valid) return [];
+      const [g, nn] = rrNet(want, entry, r.stop, r.tp1, this.risk);
+      s.levels = { entry, stop_loss: r.stop, tp1: r.tp1, tp2: r.tp2, tp3: r.tp3, risk_per_unit: Math.abs(entry - r.stop), rr_gross: Math.round(g * 1000) / 1000, rr_net: Math.round(nn * 1000) / 1000,
+        notes: [`${st.label}: entrada con vela ${r.entry.type}; SL bajo el extremo del retroceso; TP1 = extremo del impulso (100 %), TP2 = 127,2 %, TP3 = 161,8 %. La simulación cierra en TP1.`] };
+      s.plan = plan; s.state = up ? ST.CONF_L : ST.CONF_S; s.signalId = uid();
+      const zone = { top: r.fib["38.2"], bottom: r.fib["61.8"], sources: [`Fibonacci 38,2–61,8 % del impulso ${r.imp.dir} de ${p.exec_tf}`] };
+      s.setup = { zone };
+      const signal = { id: s.signalId, symbol: s.symbol, exchange: this.exchange, strategy: st.name, strategy_label: st.label, direction: want, created_at: ctx.t, timeframes: ["1h", "15m", p.exec_tf],
+        activation_price: entry, reference_price: up ? ctx.ask ?? null : ctx.bid ?? null, stop_loss: r.stop, tp1: r.tp1, tp2: r.tp2, tp3: r.tp3, rr_net: s.levels.rr_net, rr_gross: s.levels.rr_gross,
+        conditions_met: conds.filter((x) => x.passed), conditions_missing: conds.filter((x) => !x.passed), zone, notes: s.levels.notes, plan, data_status: ctx.dataReason, params: Object.assign({}, p), order: "mercado" };
+      const out = [this._ev(s, ctx, "confirmada", `${s.symbol} — ${want} CONFIRMADO (${st.label}) entrada ${fmt(entry)} SL ${fmt(r.stop)} TP ${fmt(r.tp1)}`, { signal })];
+      if (this.autoPaper) {
+        s.trade = { signal_id: s.signalId, direction: want, entry, stop: r.stop, tp1: r.tp1, tp2: r.tp1, tp3: r.tp1, quantity: plan.quantity, opened_at: ctx.t, tp1_hit: false, exit_price: null, exit_time: null, exit_reason: null, result_r: null, pnl: null, fees: null };
+        s.state = ST.OPEN; out.push(this._ev(s, ctx, "operacion_abierta", `${s.symbol} — operación simulada ${want} abierta en ${fmt(entry)}`));
+      } else { s.setup = null; s.state = ST.SIN; }
+      return out;
+    }
+    _manageTrade(ctx, s) {
+      const tr = s.trade, bar = ctx.tf["1m"].row(ctx.t), p = this.strategy.p;
+      if (!bar || bar.closeTime !== ctx.t || bar.closeTime <= tr.opened_at) return [];
+      const up = tr.direction === "LONG", hitSl = up ? bar.low <= tr.stop : bar.high >= tr.stop, hitTp = up ? bar.high >= tr.tp1 : bar.low <= tr.tp1;
+      if (hitSl) return this._close(ctx, s, tr.stop, "Stop Loss" + (hitTp ? " (vela tocó SL y TP: se asume SL)" : ""));
+      if (hitTp) return this._close(ctx, s, tr.tp1, "Take Profit");
+      if (ctx.t - tr.opened_at >= p.max_hold_bars * TF_MS[p.exec_tf]) return this._close(ctx, s, bar.close, `Cierre por tiempo (${p.max_hold_bars} velas)`);
+      return [];
+    }
+  }
+
   // ------------------------------------------------------------ biblioteca de indicadores (estilo TradingView)
   /* Fórmulas estándar (las mismas que usa TradingView en sus indicadores integrados):
      RSI  = 100 − 100/(1 + RMA(subidas)/RMA(bajadas))                 (Wilder)
@@ -2132,7 +2293,7 @@ const SSP = (() => {
   function sessionsAt(ms, list = SESSIONS) { return list.filter((s) => sessionWindows(ms, ms + 1, s).some((w) => w.start <= ms && ms < w.end)); }
 
   return {
-    DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
+    DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, DEFAULT_T5P, T5P_LABELS, h1Range, t5pAsof, T5PStrategy, T5PEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, elliottHistory, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
   };
@@ -2161,6 +2322,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const FIBP = Object.assign({}, SSP.DEFAULT_FIB, LS.get("fib", {}));
   const RSI3P = Object.assign({}, SSP.DEFAULT_RSI3, LS.get("rsi3", {}));
   const SC4P = Object.assign({}, SSP.DEFAULT_SC4, LS.get("sc4", {}));
+  const T5PP = Object.assign({}, SSP.DEFAULT_T5P, LS.get("t5p", {}));       // T5P y T2P comparten parámetros
   const IND = Object.assign({}, SSP.DEFAULT_IND, LS.get("ind", {}));
   const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d", "1w"], ENGINE_TFS = ["1m", "3m", "5m", "15m", "1h"];
   const BYBIT_INT = { "1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D", "1w": "W" };
@@ -2184,14 +2346,18 @@ if (typeof module !== "undefined") module.exports = SSP;
   const engine = new SSP.SignalEngine("bybit", RISK, new SSP.TrendContinuation(TC));
   const engine2 = new SSP.FibEngine("bybit", RISK, new SSP.FibRetracement(FIBP), true, engine.book);
   const engine3 = new SSP.Rsi2Engine("bybit", RISK, new SSP.Rsi2Pullback(RSI3P), true, engine.book);
-  const engine4 = new SSP.Scalp3mEngine("bybit", RISK, new SSP.Scalp3m(SC4P), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
+  const engine4 = new SSP.Scalp3mEngine("bybit", RISK, new SSP.Scalp3m(SC4P), true, engine.book);
+  const engine5 = new SSP.T5PEngine("bybit", RISK, new SSP.T5PStrategy(T5PP, "T5P"), true, engine.book);
+  const engine6 = new SSP.T5PEngine("bybit", RISK, new SSP.T5PStrategy(T5PP, "T2P"), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
   const ENGINES = [{ key: "e1", eng: engine, title: "Estrategia 1 · Continuación de tendencia", short: "Continuación de tendencia", labels: SSP.COND_LABELS },
     { key: "e2", eng: engine2, title: "Estrategia 2 · Retroceso Fibonacci", short: "Retroceso Fibonacci", labels: SSP.FIB_COND_LABELS },
     { key: "e3", eng: engine3, title: "Estrategia 3 · Retroceso RSI(2) 1h (experimental)", short: "Retroceso RSI(2) 1h · exp.", labels: SSP.RSI3_COND_LABELS },
-    { key: "e4", eng: engine4, title: "Estrategia 4 · Scalping RR 3:1 en 3m", short: "Scalping RR 3:1 (3m)", labels: SSP.SC4_COND_LABELS, defOff: true }];
+    { key: "e4", eng: engine4, title: "Estrategia 4 · Scalping RR 3:1 en 3m", short: "Scalping RR 3:1 (3m)", labels: SSP.SC4_COND_LABELS, defOff: true },
+    { key: "e5", eng: engine5, title: "Estrategia 5 · T5P (acumulación, impulso, retroceso, Fibonacci, entrada)", short: "T5P · 5 pasos", labels: SSP.T5P_LABELS, defOff: true },
+    { key: "e6", eng: engine6, title: "Estrategia 6 · T2P (impulso + retroceso Fibonacci + entrada)", short: "T2P · impulso + retroceso", labels: SSP.T5P_LABELS, defOff: true }];
   // activación por par: {"e4|BTCUSDT": true, ...}; sin entrada = valor por defecto (E1–E3 encendidas, E4 apagada)
   const STRAT_SYM = LS.get("stratSym", {});
-  const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled })[E.key];
+  const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled, e5: !!T5PP.enabled, e6: !!T5PP.enabled })[E.key];
   const symOn = (E, sym) => { const v = STRAT_SYM[`${E.key}|${sym}`]; return v === undefined ? !E.defOff : !!v; };
   function setSymOn(E, sym, on) { if (on === !E.defOff) delete STRAT_SYM[`${E.key}|${sym}`]; else STRAT_SYM[`${E.key}|${sym}`] = on; LS.set("stratSym", STRAT_SYM); }
   const allSlots = (sym) => ENGINES.flatMap((E) => ["LONG", "SHORT"].map((d) => E.eng.slot(sym, d)));
@@ -2882,6 +3048,7 @@ if (typeof module !== "undefined") module.exports = SSP;
         g.restore();
       }
       // capas del analizador BTC (estructura SMC, liquidez, FVG, zona de entrada) — las dibuja intel-ui
+      for (const hk of window.__drawHooks || []) { try { g.save(); hk(g, { X, Y, ts, W, H, ms, FONT, FONTB, data, sym: S.sel, tf: S.tf, shw, vis, st, hexA }); g.restore(); } catch (e) { console.error(e); } }
       if (window.__drawHook) { try { g.save(); window.__drawHook(g, { X, Y, ts, W, H, ms, FONT, FONTB, data, sym: S.sel, tf: S.tf, shw, vis, st, hexA }); g.restore(); } catch (e) { console.error(e); } }
       // cuenta regresiva hasta el cierre de la vela actual, bajo el precio (como TradingView)
       if (vis("candles.cd") && data.candles.length) {
@@ -3005,7 +3172,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const markers = [], trades = [], TRD = vis("sig.trades");
     for (const s of S.signals) {
       if (s.symbol !== sym || s.created_at < first) continue;
-      const long = s.direction === "LONG", tr = S.trades[s.id] || openTr[s.id], tag = s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : s.strategy === "scalping_rr3_3m" ? " 3m" : "";
+      const long = s.direction === "LONG", tr = S.trades[s.id] || openTr[s.id], tag = s.strategy === "retroceso_fibonacci" ? " Fib" : s.strategy === "retroceso_rsi2_1h" ? " RSI2" : s.strategy === "scalping_rr3_3m" ? " 3m" : s.strategy === "t5p_5_pasos" ? " T5P" : s.strategy === "t2p_2_pasos" ? " T2P" : "";
       if (!TRD || !tr) { markers.push({ time: barT(s.created_at), position: long ? "belowBar" : "aboveBar", color: long ? st("candles.up").c : st("candles.down").c, shape: long ? "arrowUp" : "arrowDown", text: `${long ? "Compra" : "Venta"}${tag} ${s.rr_net.toFixed(1)}R` }); continue; }
       const t0 = !tr.opened_at || tr.opened_at === s.created_at ? barT(s.created_at) : SSP.floorTime(tr.opened_at, tf) / 1000, q = qf(tr.quantity);   // E4 entra al cierre; E1–E3 en la apertura de una vela de 1m
       markers.push({ time: t0, position: long ? "belowBar" : "aboveBar", color: long ? "#2f7bff" : "#ff4d5e", shape: long ? "arrowUp" : "arrowDown", text: `${long ? "LONG +" : "SHORT −"}${q}` });
@@ -3715,21 +3882,24 @@ if (typeof module !== "undefined") module.exports = SSP;
   });
 
   // Configuración general
-  const getK = (k) => { const [g, f] = k.split("."); return ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P })[g][f]; };
+  const getK = (k) => { const [g, f] = k.split("."); return ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P, t5p: T5PP })[g][f]; };
   $("cfgBtn").onclick = () => { $("cfg").querySelectorAll("[data-k]").forEach((i) => { const v = getK(i.dataset.k); i.value = typeof v === "boolean" ? (v ? 1 : 0) : v; }); $("cfg").showModal(); };
   $("cfgClose").onclick = () => $("cfg").close();
   $("cfgSave").onclick = () => {
     $("cfg").querySelectorAll("[data-k]").forEach((i) => {
-      const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P })[g], old = obj[f];
+      const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P, t5p: T5PP })[g], old = obj[f];
       if (typeof old === "boolean") obj[f] = i.value === "1" || i.value.toLowerCase() === "true";
       else if (typeof old === "number") { const n = parseFloat(String(i.value).replace(",", ".")); if (!Number.isNaN(n)) obj[f] = n; }
       else obj[f] = i.value.trim();
     });
-    LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("rsi3", RSI3P); LS.set("sc4", SC4P);
+    if (!["3m", "5m"].includes(T5PP.exec_tf)) { T5PP.exec_tf = "5m"; toast("T5P/T2P: la temporalidad de ejecución debe ser 5m o 3m (se dejó 5m)", "info"); }
+    LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("rsi3", RSI3P); LS.set("sc4", SC4P); LS.set("t5p", T5PP);
     engine.risk = Object.assign({}, RISK); engine.strategy.p = Object.assign({}, TC);
     engine2.risk = Object.assign({}, RISK); engine2.strategy.p = Object.assign({}, FIBP);
     engine3.risk = Object.assign({}, RISK); engine3.strategy.p = Object.assign({}, RSI3P);
-    engine4.risk = Object.assign({}, RISK); engine4.strategy.p = Object.assign({}, SC4P); refreshChart(); renderSide(); renderWatch();
+    engine4.risk = Object.assign({}, RISK); engine4.strategy.p = Object.assign({}, SC4P);
+    for (const e of [engine5, engine6]) { e.risk = Object.assign({}, RISK); e.strategy.p = Object.assign({}, T5PP); }
+    if (window.__t5pRefresh) window.__t5pRefresh(); refreshChart(); renderSide(); renderWatch();
     $("cfg").close(); toast("Configuración guardada", "info"); renderRiskCalc();
   };
   $("tgTest").onclick = async () => {
@@ -3784,7 +3954,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, engine3, engine4, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
+  window.__ssp = { S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
     bootstrap, bybit, k2, telegram, notify, addSymbol, refreshChart, renderLegend, INTEL_SYM, INTEL_TFS, IND, CFG, setTf: (tf) => { const b = document.querySelector(`[data-tf="${tf}"]`); if (b) b.click(); } };   // acceso para depuración
   start();
 })();
@@ -4802,6 +4972,92 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
 
   window.__btci = { I, P, R, M, run, render };
   load();
+})();
+
+/* T5P / T2P en la pantalla principal: botones del gráfico que dibujan los pasos de la estrategia y un panel con su estado.
+   No cambian de pantalla: solo agregan capas al gráfico del par y la temporalidad que se están viendo. */
+(() => {
+  "use strict";
+  const X = window.__ssp; if (!X || !SSP.t5pAsof) return;
+  const { S, LS, k2, esc, fp } = X, $ = (id) => document.getElementById(id), fmt = (v) => fp(v);
+  let view = LS.get("t5pView", null), min = LS.get("t5pMin", true), cache = { key: "", r: null };
+  const params = () => Object.assign({}, X.T5PP);
+  const execTf = () => (["3m", "5m"].includes(S.tf) ? S.tf : params().exec_tf);   // si el gráfico está en 3m o 5m se usa esa; si no, la configurada
+  function compute() {
+    const sym = S.sel, tf = execTf(), a = S.an[k2(sym, tf)]; if (!a || !a.n) return null;
+    const t = a.d.closeTime[a.n - 1], key = `${view}|${sym}|${tf}|${t}|${JSON.stringify(X.T5PP)}`;
+    if (cache.key === key) return cache.r;
+    const ans = {}; for (const x of ["1h", "15m", tf]) ans[x] = S.an[k2(sym, x)];
+    const r = SSP.t5pAsof(ans, t, Object.assign(params(), { exec_tf: tf }), view);
+    cache = { key, r }; return r;
+  }
+  // ---- panel con los pasos
+  const panel = document.createElement("div"); panel.className = "t5p-panel"; panel.hidden = true;
+  document.querySelector(".chartwrap").appendChild(panel);
+  panel.addEventListener("click", (e) => { if (e.target.dataset.min !== undefined) { min = !min; LS.set("t5pMin", min); renderPanel(); } if (e.target.dataset.off !== undefined) setView(null); });
+  function renderPanel() {
+    panel.hidden = !view; if (!view) return;
+    const r = compute(), need = view === "T5P" ? ["P1", "P2", "P3", "P4", "P5"] : ["P2", "P3", "P4", "P5"];
+    const lab = { P1: "Acumulación 15m", P2: "Impulso", P3: "Retroceso", P4: "Fibonacci 38,2–61,8 %", P5: "Entrada (envolvente/martillo)" };
+    const st = r ? (r.stage === "CONFIRMADO" ? `<span class="${r.dir === "LONG" ? "buy" : "sell"}">${r.dir} CONFIRMADO al cierre de la vela</span>` : r.stage === "confirmado antes" ? `<span class="gold">${r.dir} confirmado en una vela anterior</span>` : esc(r.stage) + (r.invalid ? " · " + esc(r.invalid) : "")) : "esperando velas";
+    panel.className = "t5p-panel" + (min ? " min" : "");
+    panel.innerHTML = `<h5><span>${view} · ${S.sel.replace("USDT", "")} ${execTf()}${r && r.dir ? ` · ${r.dir === "LONG" ? "compra" : "venta"}` : ""}</span><span><button data-min title="${min ? "Ver el detalle de cada paso" : "Ver solo los pasos"}">${min ? "＋" : "－"}</button><button data-off title="Quitar ${view}">✕</button></span></h5>` +
+      `<ol>${need.map((id) => { const x = r && r.steps.find((q) => q.id === id); return `<li class="${x && x.ok ? "ok" : "no"}" title="${x ? esc(x.text) : "pendiente"}">${x && x.ok ? "✓" : x ? "✗" : "…"} ${lab[id]}${x && !min ? `<br><span class="muted">${esc(x.text.replace(/^[^:]*: /, ""))}</span>` : ""}</li>`; }).join("")}</ol>` +
+      `<div class="stg">${st}</div>` + (r && r.h1 ? `<div class="faint">1H 2 días: máx. ${fmt(r.h1.hi)} · mín. ${fmt(r.h1.lo)}</div>` : "");
+  }
+  function setView(v) {
+    view = v; LS.set("t5pView", v);
+    document.querySelectorAll("#t5pBtns [data-t5p]").forEach((b) => b.classList.toggle("on", b.dataset.t5p === v));
+    cache.key = ""; renderPanel(); X.chart.draw();
+  }
+  $("t5pBtns").addEventListener("click", (e) => { const b = e.target.closest("[data-t5p]"); if (!b) return; setView(view === b.dataset.t5p ? null : b.dataset.t5p); });
+  window.__t5pRefresh = () => { cache.key = ""; renderPanel(); };
+  setInterval(renderPanel, 5000);
+  // ---- capas en el gráfico
+  (window.__drawHooks = window.__drawHooks || []).push((g, o) => {
+    if (!view) return;
+    const r = compute(); if (!r) return;
+    const { Y, ts, W, H, ms, hexA } = o, x = (t) => ts.timeToCoordinate(t / 1000);
+    const font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10.5px "IBM Plex Sans", system-ui, sans-serif'; g.font = font;
+    const hline = (p, x0, col, lab, dash = []) => { const y = Y(p); if (y === null || y < -2 || y > H + 2) return; g.strokeStyle = col; g.setLineDash(dash); g.beginPath(); g.moveTo(x0, Math.round(y) + 0.5); g.lineTo(W, Math.round(y) + 0.5); g.stroke(); g.setLineDash([]); if (lab) { g.fillStyle = col; g.fillText(lab, Math.max(x0 + 4, W - g.measureText(lab).width - 70), y - 3); } };
+    // 1H: máximo y mínimo de 2 días y su Fibonacci
+    if (r.h1) {
+      const x0 = Math.max(0, x(r.h1.from) ?? 0);
+      hline(r.h1.hi, x0, "#ff8a5b", `Máx. 2 días (1H) ${fmt(r.h1.hi)}`); hline(r.h1.lo, x0, "#5bc0ff", `Mín. 2 días (1H) ${fmt(r.h1.lo)}`);
+      for (const [k, v] of Object.entries(r.h1.fib)) hline(v, x0, "rgba(240,199,94,.75)", ms ? `1H ${k}%` : `Fib 1H ${k} %`, [6, 4]);
+    }
+    // paso 1: caja de acumulación de 15m
+    if (r.acc && view === "T5P") {
+      const xa = x(r.acc.from), xb = x(r.acc.to - 1), ya = Y(r.acc.top), yb = Y(r.acc.bottom);
+      if (ya !== null && yb !== null && (xa !== null || xb !== null)) {
+        const a0 = xa ?? 0, b0 = xb ?? W, col = r.acc.ok ? "#9cc9ff" : "#7a8599";
+        g.fillStyle = hexA(col, 0.12); g.fillRect(a0, ya, b0 - a0, yb - ya); g.strokeStyle = col; g.setLineDash([3, 3]); g.strokeRect(a0, ya, b0 - a0, yb - ya); g.setLineDash([]);
+        g.fillStyle = col; g.fillText(`1 Acumulación 15m${r.acc.ok ? "" : " (no cumple)"}`, a0 + 3, ya - 4);
+      }
+    }
+    const box = (from, to, hi, lo, col, lab) => { const xa = x(from), xb = x(to - 1), ya = Y(hi), yb = Y(lo); if (ya === null || yb === null || (xa === null && xb === null)) return; const hb = (ts.options().barSpacing || 6) / 2, a0 = (xa ?? 0) - hb, b0 = (xb ?? W) + hb; g.strokeStyle = col; g.lineWidth = 1.5; g.strokeRect(a0, ya, b0 - a0, yb - ya); g.lineWidth = 1; g.fillStyle = col; g.fillText(lab, a0, ya - 4); };
+    const up = r.dir === "LONG";
+    if (r.imp) box(r.imp.from, r.imp.to, up ? r.imp.end : r.imp.start, up ? r.imp.start : r.imp.end, up ? "#2fd3a0" : "#ff6170", `2 Impulso ${r.imp.dir}`);
+    if (r.ret) { const s3 = r.steps.find((q) => q.id === "P3"); box(r.ret.from, r.ret.to, up ? Math.max(r.imp.end, r.ret.extreme) : r.ret.extreme, up ? r.ret.extreme : Math.min(r.imp.end, r.ret.extreme), s3 && s3.ok ? "#f0c75e" : "#7a8599", `3 Retroceso${s3 && s3.ok ? "" : " (no cumple)"}`); }
+    // paso 4: Fibonacci del impulso
+    if (r.fib) {
+      const x0 = Math.max(0, x(r.imp.from) ?? 0), zt = Y(r.fib["38.2"]), zb = Y(r.fib["61.8"]);
+      if (zt !== null && zb !== null) { g.fillStyle = "rgba(182,156,255,.10)"; g.fillRect(x0, Math.min(zt, zb), W - x0, Math.abs(zb - zt)); }
+      for (const k of ["38.2", "50", "61.8"]) hline(r.fib[k], x0, "#b69cff", `4 Fib ${k} %`, [2, 3]);
+      hline(r.fib["100"], x0, "rgba(182,156,255,.5)", "", [1, 4]);
+    }
+    // paso 5: entrada, SL y objetivos
+    if (r.entry) {
+      const xe = x(r.entry.time), ye = Y(r.entry.price);
+      if (xe !== null && ye !== null) {
+        const col = r.entry.ok ? (up ? "#2fd3a0" : "#ff6170") : "#7a8599";
+        g.fillStyle = col; g.beginPath(); if (up) { g.moveTo(xe, ye + 14); g.lineTo(xe - 6, ye + 24); g.lineTo(xe + 6, ye + 24); } else { g.moveTo(xe, ye - 14); g.lineTo(xe - 6, ye - 24); g.lineTo(xe + 6, ye - 24); } g.fill();
+        g.textAlign = "center"; g.fillText(`5 ${r.entry.type ? r.entry.type : "sin patrón"}`, xe, up ? ye + 36 : ye - 28); g.textAlign = "start";
+      }
+      if (r.stop) { const x0 = xe ?? W * 0.7; hline(r.stop, x0, "#ff6170", `SL ${fmt(r.stop)}`); hline(r.tp1, x0, "#2fd3a0", `TP1 100 % ${fmt(r.tp1)}`); hline(r.tp2, x0, "rgba(47,211,160,.6)", `TP2 127,2 %`, [4, 3]); hline(r.tp3, x0, "rgba(47,211,160,.45)", `TP3 161,8 %`, [4, 3]); }
+    }
+  });
+  setView(view);
 })();
 
 </script>
