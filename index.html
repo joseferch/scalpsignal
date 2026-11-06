@@ -354,6 +354,10 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   .mobsimple{margin:10px 0 2px;font-size:13px}
 }
 /* ---------- T5P / T2P ---------- */
+.t5p-only,#t5pBtns{display:none!important}
+.mode-t5p .t5p-only{display:grid!important}.mode-t5p h4.t5p-only{display:block!important}.mode-t5p #t5pBtns{display:inline-flex!important}
+.mode-t5p #intelBtn,.mode-t5p #t5pOpen,.mode-t5p .main-only{display:none!important}
+.mode-t5p .brand::after{content:" · T5P / T2P";color:var(--gold);font-weight:600}
 .t5p-seg button{font-weight:600;font-size:12.5px;padding:4px 9px}.t5p-seg button.on{background:var(--gold-bg);color:var(--gold);border-color:rgba(240,199,94,.5)}
 .t5p-panel{position:absolute;left:8px;bottom:34px;z-index:6;background:rgba(14,22,36,.92);border:1px solid var(--rule2);border-radius:var(--r-md);padding:8px 10px;max-width:330px;font-size:12px;color:var(--ink2);backdrop-filter:blur(4px)}
 .t5p-panel h5{margin:0 0 4px;font-size:12.5px;color:var(--ink);display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -407,6 +411,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <span class="top-right">
       <span id="conn" class="conn"><i></i><span id="connTx">Conectando…</span></span>
       <button id="installBtn" class="primary" hidden>Instalar app</button>
+      <button id="t5pOpen" class="intel-btn t5p-open" title="Abre la pestaña de las estrategias T5P y T2P (solo esas estrategias y sus indicadores)">T5P / T2P ↗</button>
       <button id="intelBtn" class="intel-btn" title="Abre el analizador profesional de BTC en una pestaña aparte">Analizador BTC ↗ <span id="intelBadge" class="ibadge">—</span></button>
       <button id="cfgBtn" aria-label="Configuración" title="Configuración">⚙</button>
     </span>
@@ -495,8 +500,8 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Deslizamiento %<input data-k="risk.slippage_pct" inputmode="decimal"></label>
     <label class="f">Margen mant. %<input data-k="risk.maintenance_margin_pct" inputmode="decimal"></label>
   </div>
-  <h4>Estrategia 1 · Continuación de tendencia</h4>
-  <div class="grid3">
+  <h4 class="main-only">Estrategia 1 · Continuación de tendencia</h4>
+  <div class="grid3 main-only">
     <label class="f">Vida de la preparación (velas 5m)<input data-k="tc.setup_ttl_5m" inputmode="numeric"></label>
     <label class="f">Mecha mínima de rechazo (0–1)<input data-k="tc.wick_ratio" inputmode="decimal"></label>
     <label class="f">Stop máximo (×ATR 5m)<input data-k="tc.max_sl_atr" inputmode="decimal"></label>
@@ -504,15 +509,15 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Tolerancia de zona (×ATR)<input data-k="tc.zone_tol_atr" inputmode="decimal"></label>
     <label class="f">SQZ exige signo (1/0)<input data-k="tc.require_sqz_sign" inputmode="numeric"></label>
   </div>
-  <h4>Estrategia 2 · Retroceso Fibonacci</h4>
-  <div class="grid3">
+  <h4 class="main-only">Estrategia 2 · Retroceso Fibonacci</h4>
+  <div class="grid3 main-only">
     <label class="f">Activa (1/0)<input data-k="fib.enabled" inputmode="numeric"></label>
     <label class="f">Espera de vela de rechazo (velas 5m)<input data-k="fib.ttl_5m" inputmode="numeric"></label>
     <label class="f">Stop máximo (×ATR 5m)<input data-k="fib.max_sl_atr" inputmode="decimal"></label>
     <label class="f">Margen del stop tras la zona (×ATR)<input data-k="fib.sl_buffer_atr" inputmode="decimal"></label>
   </div>
-  <h4>Estrategia 3 · Retroceso RSI(2) 1h <small>(experimental: úsela solo en Demo)</small></h4>
-  <div class="grid3">
+  <h4 class="main-only">Estrategia 3 · Retroceso RSI(2) 1h <small>(experimental: úsela solo en Demo)</small></h4>
+  <div class="grid3 main-only">
     <label class="f">Activa (1/0)<input data-k="rsi3.enabled" inputmode="numeric"></label>
     <label class="f">Nivel RSI(2) (compra &lt; x · venta &gt; 100−x)<input data-k="rsi3.rsi_level" inputmode="decimal"></label>
     <label class="f">Take profit (×ATR 1h)<input data-k="rsi3.tp_atr" inputmode="decimal"></label>
@@ -520,8 +525,8 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Validez de la orden límite (h)<input data-k="rsi3.limit_hours" inputmode="numeric"></label>
     <label class="f">Cierre por tiempo (h)<input data-k="rsi3.max_hold_hours" inputmode="numeric"></label>
   </div>
-  <h4>Estrategia 4 · Scalping RR 3:1 en 3m <small>(se activa por par en la pestaña Pares: botón E4)</small></h4>
-  <div class="grid3">
+  <h4 class="main-only">Estrategia 4 · Scalping RR 3:1 en 3m <small>(se activa por par en la pestaña Pares: botón E4)</small></h4>
+  <div class="grid3 main-only">
     <label class="f">Activa (1/0)<input data-k="sc4.enabled" inputmode="numeric"></label>
     <label class="f">Beneficio/riesgo neto objetivo<input data-k="sc4.rr_net" inputmode="decimal"></label>
     <label class="f">Stop (×ATR 3m)<input data-k="sc4.atr_mult" inputmode="decimal"></label>
@@ -535,8 +540,8 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <label class="f">Exposición máxima (× cuenta)<input data-k="sc4.max_exposure" inputmode="decimal"></label>
     <label class="f">Apalancamiento<input data-k="sc4.leverage" inputmode="decimal"></label>
   </div>
-  <h4>Estrategias 5 y 6 · T5P / T2P <small>(se activan por par con E5 y E6; los botones T5P/T2P del gráfico solo dibujan)</small></h4>
-  <div class="grid3">
+  <h4 class="t5p-only">Estrategias T5P / T2P <small>(se activan por par con E5 y E6 en la pestaña Pares; los botones T5P/T2P del gráfico solo dibujan)</small></h4>
+  <div class="grid3 t5p-only">
     <label class="f">Activas (1/0)<input data-k="t5p.enabled" inputmode="numeric"></label>
     <label class="f">Temporalidad de ejecución (5m o 3m)<input data-k="t5p.exec_tf"></label>
     <label class="f">Velas de 1h para máx./mín. (48 = 2 días)<input data-k="t5p.h1_bars" inputmode="numeric"></label>
@@ -2306,10 +2311,16 @@ if (typeof module !== "undefined") module.exports = SSP;
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
+  // Pestaña aparte de T5P/T2P (?t5p): misma app, pero solo con esas dos estrategias y sus indicadores. Guarda aparte sus
+  // señales, operaciones, eventos, par, temporalidad e indicadores para no mezclarse con la pestaña principal.
+  const T5M = new URLSearchParams(location.search).has("t5p");
+  const T5NS = new Set(["signals", "trades", "events", "sel", "tf", "show", "custom", "legendFolded", "disp"]);
+  const lsKey = (k) => (T5M && T5NS.has(k) ? "ssp:t5p:" : "ssp:") + k;
   const LS = {
-    get(k, d) { try { const v = localStorage.getItem("ssp:" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
-    set(k, v) { try { localStorage.setItem("ssp:" + k, JSON.stringify(v)); } catch { /* almacenamiento no disponible */ } },
+    get(k, d) { try { const v = localStorage.getItem(lsKey(k)); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(lsKey(k), JSON.stringify(v)); } catch { /* almacenamiento no disponible */ } },
   };
+  if (T5M) { document.documentElement.classList.add("mode-t5p"); document.title = "T5P / T2P · ScalpSignal Pro"; }
   const CFG = Object.assign({ rest: "https://api.bybit.com", ws: "wss://stream.bybit.com/v5/public/linear", history: 1000, maxDelayS: 20, tgToken: "", tgChat: "", topN: 40, minTurnoverM: 50, adxKey: 23 }, LS.get("cfg", {}));
   // Lista inicial = top por volumen de Bybit. La marca "topDone" se guarda SOLO cuando la carga termina,
   // así una carga interrumpida (cerrar la app a medias) se reintenta en la próxima apertura.
@@ -2338,7 +2349,8 @@ if (typeof module !== "undefined") module.exports = SSP;
   const S = {
     symbols: LS.get("watch", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"]),
     sel: LS.get("sel", "UNIUSDT"), tf: LS.get("tf", "5m"), tz: LS.get("tz", "America/Costa_Rica"),
-    show: Object.assign({ bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true, smc: false }, LS.get("show", {})), sound: LS.get("sound", true),
+    show: Object.assign(T5M ? { bb: false, vwap: false, ob: false, vrvp: false, fib: false, dmi: false, sqz: false, ew: false, sess: false, smc: false }
+      : { bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true, smc: false }, LS.get("show", {})), sound: LS.get("sound", true),
     closed: {}, live: {}, an: {}, quotes: {}, conn: { state: "iniciando", detail: "" }, health: {}, errors: {},
     signals: LS.get("signals", []), trades: LS.get("trades", {}), events: LS.get("events", []), hist: "sig",
   };
@@ -2349,12 +2361,15 @@ if (typeof module !== "undefined") module.exports = SSP;
   const engine4 = new SSP.Scalp3mEngine("bybit", RISK, new SSP.Scalp3m(SC4P), true, engine.book);
   const engine5 = new SSP.T5PEngine("bybit", RISK, new SSP.T5PStrategy(T5PP, "T5P"), true, engine.book);
   const engine6 = new SSP.T5PEngine("bybit", RISK, new SSP.T5PStrategy(T5PP, "T2P"), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
-  const ENGINES = [{ key: "e1", eng: engine, title: "Estrategia 1 · Continuación de tendencia", short: "Continuación de tendencia", labels: SSP.COND_LABELS },
+  const ALL_ENGINES = [{ key: "e1", eng: engine, title: "Estrategia 1 · Continuación de tendencia", short: "Continuación de tendencia", labels: SSP.COND_LABELS },
     { key: "e2", eng: engine2, title: "Estrategia 2 · Retroceso Fibonacci", short: "Retroceso Fibonacci", labels: SSP.FIB_COND_LABELS },
     { key: "e3", eng: engine3, title: "Estrategia 3 · Retroceso RSI(2) 1h (experimental)", short: "Retroceso RSI(2) 1h · exp.", labels: SSP.RSI3_COND_LABELS },
     { key: "e4", eng: engine4, title: "Estrategia 4 · Scalping RR 3:1 en 3m", short: "Scalping RR 3:1 (3m)", labels: SSP.SC4_COND_LABELS, defOff: true },
-    { key: "e5", eng: engine5, title: "Estrategia 5 · T5P (acumulación, impulso, retroceso, Fibonacci, entrada)", short: "T5P · 5 pasos", labels: SSP.T5P_LABELS, defOff: true },
-    { key: "e6", eng: engine6, title: "Estrategia 6 · T2P (impulso + retroceso Fibonacci + entrada)", short: "T2P · impulso + retroceso", labels: SSP.T5P_LABELS, defOff: true }];
+    { key: "e5", eng: engine5, title: "Estrategia 5 · T5P (acumulación, impulso, retroceso, Fibonacci, entrada)", short: "T5P · 5 pasos", labels: SSP.T5P_LABELS, defOff: !T5M },
+    { key: "e6", eng: engine6, title: "Estrategia 6 · T2P (impulso + retroceso Fibonacci + entrada)", short: "T2P · impulso + retroceso", labels: SSP.T5P_LABELS, defOff: !T5M }];
+  // cada pestaña trabaja solo con sus estrategias: la principal con E1–E4, la de T5P/T2P con E5 y E6
+  const chipName = (E, n) => (E.key === "e5" ? "T5P" : E.key === "e6" ? "T2P" : "E" + (n + 1));
+  const ENGINES = ALL_ENGINES.filter((E) => (T5M ? ["e5", "e6"] : ["e1", "e2", "e3", "e4"]).includes(E.key));
   // activación por par: {"e4|BTCUSDT": true, ...}; sin entrada = valor por defecto (E1–E3 encendidas, E4 apagada)
   const STRAT_SYM = LS.get("stratSym", {});
   const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled, e5: !!T5PP.enabled, e6: !!T5PP.enabled })[E.key];
@@ -2778,10 +2793,13 @@ if (typeof module !== "undefined") module.exports = SSP;
       const extra = c.panes().length - 2;
       const ps = c.panes();
       if (ps[0] && ps[0].setStretchFactor) {   // proporciones: precio grande, SQZMOM/ADX mediano, paneles agregados más bajos
-        const nar = NARROW(); ps[0].setStretchFactor(extra > 0 ? (nar ? 7 : 5) : (nar ? 4.2 : 3.2)); ps[1]?.setStretchFactor(nar ? 1 : 1.25); for (let i = 2; i < ps.length; i++) ps[i].setStretchFactor(extra > 2 ? 0.8 : 1);
+        const nar = NARROW(); lastOsc = oscOff(); ps[0].setStretchFactor(extra > 0 ? (nar ? 7 : 5) : (nar ? 4.2 : 3.2)); ps[1]?.setStretchFactor(lastOsc ? 0.02 : nar ? 1 : 1.25); for (let i = 2; i < ps.length; i++) ps[i].setStretchFactor(extra > 2 ? 0.8 : 1);
       } else requestAnimationFrame(() => { try { c.panes()[1]?.setHeight(extra > 0 ? 130 : 170); for (let i = 2; i < c.panes().length; i++) c.panes()[i].setHeight(110); } catch { /* */ } });
     }
-    function styleCustomPanes() { if (lastNar !== NARROW()) paneSizes(); }
+    // en la pestaña T5P el panel de SQZMOM/ADX se encoge casi a cero mientras ambos estén apagados
+    const oscOff = () => T5M && !shw("sqz") && !shw("dmi");
+    let lastOsc = null;
+    function styleCustomPanes() { if (lastNar !== NARROW() || lastOsc !== oscOff()) paneSizes(); }
     function styleCustom() {
       for (const g of cSeries) {
         const x = CUST.find((y) => y.id === g.id); if (!x) continue;
@@ -3274,7 +3292,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const folded = LS.get("legendFolded", NARROW());
     $("indCount").textContent = Object.keys(LEG).filter((k) => S.show[k]).length + CUST.filter((x) => x.v !== false).length;
     if (folded) { $("legend").innerHTML = `<button class="fold" data-fold="0" aria-label="Mostrar la leyenda">Leyenda ▸</button>`; return; }
-    $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).map(([k, L]) => `<div class="li${shw(k) ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
+    $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).filter(([k]) => !T5M || S.show[k]).map(([k, L]) => `<div class="li${shw(k) ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
       `<span>${L.name} <span class="faint">${S.show[k] && !tfOk(k) ? "no visible en " + TF_LABEL(S.tf) : esc(L.sub())}</span></span>` +
       `<button data-eye="${k}" aria-label="${S.show[k] ? "Ocultar" : "Mostrar"} ${L.name}" title="${S.show[k] ? "Ocultar" : "Mostrar"}">${S.show[k] ? "◉" : "○"}</button>` +
       `<button data-edit="${k}" aria-label="Ajustar ${L.name}" title="Ajustar">⚙</button></div>`).join("") +
@@ -3385,7 +3403,18 @@ if (typeof module !== "undefined") module.exports = SSP;
     const agree = t1 === t15 && t15 === t5;
     row(t1 === "alcista" ? "buy" : t1 === "bajista" ? "sell" : "gold", "Tendencia", `1H ${t1} · 15m ${t15} · 5m ${t5}`,
       agree && t1 !== "lateral" ? `Las tres temporalidades coinciden: contexto ${t1} claro.` : t1 === "lateral" ? "La tendencia principal (1H) está lateral: los rompimientos fallan más a menudo." : "Las temporalidades no coinciden: más riesgo de señales falsas.");
+    if (T5M) {   // pestaña T5P: solo las lecturas de esa estrategia (1H de 2 días + los 5 pasos)
+      const x = window.__ssp.t5pCompute ? window.__ssp.t5pCompute() : null;
+      if (!x) row("", "T5P / T2P", "—", "Esperando velas de 1h, 15m y 3m/5m.");
+      else {
+        if (x.h1) row("gold", "1H · últimos 2 días", `máx. ${fp(x.h1.hi)} · mín. ${fp(x.h1.lo)}`, `Fibonacci: 38,2 % ${fp(x.h1.fib["38.2"] ?? x.h1.fib["38"])} · 50 % ${fp(x.h1.fib["50"])} · 61,8 % ${fp(x.h1.fib["61.8"] ?? x.h1.fib["61"])}. ${x.h1.up ? "El máximo es más reciente: el retroceso se mide desde arriba." : "El mínimo es más reciente: el retroceso se mide desde abajo."}`);
+        const lab = { P1: "Paso 1 · Acumulación 15m", P2: "Paso 2 · Impulso", P3: "Paso 3 · Retroceso", P4: "Paso 4 · Fibonacci", P5: "Paso 5 · Entrada" };
+        for (const id of (window.__ssp.t5pView && window.__ssp.t5pView() === "T2P" ? ["P2", "P3", "P4", "P5"] : ["P1", "P2", "P3", "P4", "P5"])) { const q = x.steps.find((z) => z.id === id); row(q ? (q.ok ? "buy" : "sell") : "", lab[id], q ? (q.ok ? "✓ cumple" : "✗ no cumple") : "pendiente", q ? esc(q.text) : "Todavía no se puede evaluar (falta el paso anterior)."); }
+        row(x.stage === "CONFIRMADO" ? (x.dir === "LONG" ? "buy" : "sell") : "info", "Estado", esc(x.stage) + (x.dir ? ` · ${x.dir === "LONG" ? "compra" : "venta"}` : ""), x.stop && x.tp1 ? `SL ${fp(x.stop)} · TP1 ${fp(x.tp1)}${x.tp2 ? ` · TP2 ${fp(x.tp2)} (127,2 %)` : ""}${x.tp3 ? ` · TP3 ${fp(x.tp3)} (161,8 %)` : ""}.` : (x.invalid ? "Invalidado: " + esc(x.invalid) + "." : "Sin entrada todavía."));
+      }
+    }
     const sc = r.sqz_color;
+    if (!T5M) {
     row(sc === "lime" || sc === "green" ? "buy" : sc === "red" || sc === "maroon" ? "sell" : "", `Momentum (SQZMOM ${TF_LABEL(S.tf)})`, isFinite(r.sqz_val) ? r.sqz_val.toFixed(4) : "—",
       `${SSP.SQZ_LABEL[sc] || "Sin datos"}.${r.sqz_on ? " Volatilidad comprimida: suele anteceder a un movimiento fuerte." : ""}`);
     const adx = a.ind.adx[i], adx1 = a.ind.adx[i - 1], dp = a.ind.di_plus[i], dm = a.ind.di_minus[i];
@@ -3405,6 +3434,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       if (rt.onda4) parts.push(`onda 4 retrocedió ${(rt.onda4 * 100).toFixed(0)}% de la 3`);
       row("info", "Ondas de Elliott", ew.direction, `${ew.status}.${parts.length ? " " + parts.join(", ") + "." : ""}${ew.invalidation ? ` El conteo se anula en ${fp(ew.invalidation.price)} (${ew.invalidation.text}).` : ""}`);
     }
+    }
     {
       const ss = sessionStatus(), now = Date.now();
       const act = ss.ends.map((e) => `${e.s.name} (cierra en ${dur(e.end - now)}, ${fmtTime(e.end)})`);
@@ -3412,7 +3442,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       row(ss.active.length ? "info" : "", "Sesión de mercado", ss.active.length ? ss.active.map((x) => x.name).join(" + ") : "fuera de sesión",
         `${act.length ? "Abierta: " + act.join(", ") + "." : "Ninguna de las sesiones activadas está abierta: suele haber menos volumen."}${over}${ss.next ? ` Próxima apertura: ${ss.next.s.name} en ${dur(ss.next.start - now)} (${fmtTime(ss.next.start)}).` : ""}`);
     }
-    box.innerHTML = rows.join("") + '<p class="foot" style="margin-top:8px">Lecturas de la temporalidad del gráfico. El conteo de Elliott es automático y objetivo, pero es una interpretación entre varias posibles.</p>';
+    box.innerHTML = rows.join("") + (T5M ? '<p class="foot" style="margin-top:8px">Pasos evaluados en 3m/5m con velas cerradas; el 1H usa las 48 velas de 1h cerradas.</p>' : '<p class="foot" style="margin-top:8px">Lecturas de la temporalidad del gráfico. El conteo de Elliott es automático y objetivo, pero es una interpretación entre varias posibles.</p>');
   }
 
   function renderSide() {
@@ -3478,11 +3508,11 @@ if (typeof module !== "undefined") module.exports = SSP;
       return `<div class="pair${s === S.sel ? " sel" : ""}" data-sym="${s}" tabindex="0"><span><b>${s.replace("USDT", "")}</b><span class="faint">/USDT</span> ${st ? `<span class="badge ${st === "entrada" ? "c" : "p"}">${st}</span>` : ""}</span>` +
         `<span>${q.lastPrice ? fp(+q.lastPrice) : "—"}</span><span class="${ch === null ? "faint" : ch >= 0 ? "buy" : "sell"}">${ch === null ? "—" : pct(ch, 1)}</span>` +
         `<span class="tr ${tr === "alcista" ? "buy" : tr === "bajista" ? "sell" : "gold"}">${TREND_ICON[tr] || ""} ${tr}</span><button class="x" data-del="${s}" aria-label="Quitar ${s}" title="Quitar">✕</button>` +
-        `<div class="schips">${ENGINES.map((E, n) => { const on = symOn(E, s); return `<button data-son="${E.key}|${s}" class="${on ? "on" : ""}${globalOn(E) ? "" : " goff"}" aria-pressed="${on}" title="${esc(E.title)}: ${on ? "activa" : "apagada"} en ${s}${globalOn(E) ? "" : " (la estrategia está apagada en Configuración)"}">E${n + 1}</button>`; }).join("")}</div></div>`;
+        `<div class="schips">${ENGINES.map((E, n) => { const on = symOn(E, s); return `<button data-son="${E.key}|${s}" class="${on ? "on" : ""}${globalOn(E) ? "" : " goff"}" aria-pressed="${on}" title="${esc(E.title)}: ${on ? "activa" : "apagada"} en ${s}${globalOn(E) ? "" : " (la estrategia está apagada en Configuración)"}">${chipName(E, n)}</button>`; }).join("")}</div></div>`;
     }).join("") : '<p class="faint">Ningún par está en preparación ahora.</p>';
     $("stratAll").innerHTML = `<span class="faint">Estrategias en todos los pares:</span>` + ENGINES.map((E, n) => {
       const k = S.symbols.filter((s) => symOn(E, s)).length;
-      return `<button data-sall="${E.key}" title="${esc(E.title)} — activa en ${k} de ${S.symbols.length} pares. Toca para ${k === S.symbols.length ? "apagarla en todos" : "activarla en todos"}." class="${k === S.symbols.length ? "on" : k ? "mid" : ""}">E${n + 1} <small>${k}/${S.symbols.length}</small></button>`;
+      return `<button data-sall="${E.key}" title="${esc(E.title)} — activa en ${k} de ${S.symbols.length} pares. Toca para ${k === S.symbols.length ? "apagarla en todos" : "activarla en todos"}." class="${k === S.symbols.length ? "on" : k ? "mid" : ""}">${chipName(E, n)} <small>${k}/${S.symbols.length}</small></button>`;
     }).join("");
   }
   $("onlyActive").onchange = renderWatch;
@@ -3954,7 +3984,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
+  window.__ssp = { T5M, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
     bootstrap, bybit, k2, telegram, notify, addSymbol, refreshChart, renderLegend, INTEL_SYM, INTEL_TFS, IND, CFG, setTf: (tf) => { const b = document.querySelector(`[data-tf="${tf}"]`); if (b) b.click(); } };   // acceso para depuración
   start();
 })();
@@ -4569,6 +4599,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   "use strict";
   const X = window.__ssp;
   if (!X || typeof BTCI === "undefined") return;
+  if (X.T5M) return;            // la pestaña de T5P/T2P no lleva el analizador BTC
   const { S, LS, toast, esc, beep, bootstrap, bybit, k2, telegram, notify, INTEL_SYM: SYM, INTEL_TFS } = X;
   const $ = (id) => document.getElementById(id);
   const TF = SSP.TF_MS, fp = BTCI.fmtP, isNum = (x) => typeof x === "number" && Number.isFinite(x);
@@ -4979,18 +5010,22 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
 (() => {
   "use strict";
   const X = window.__ssp; if (!X || !SSP.t5pAsof) return;
+  const base = location.href.split("#")[0].split("?")[0];
+  // pestaña principal: solo un botón que abre (o trae al frente) la pestaña de T5P/T2P
+  if (!X.T5M) { document.getElementById("t5pOpen").addEventListener("click", () => { const w = window.open(base + "?t5p", "ssp-t5p"); if (w) w.focus(); else X.toast("El navegador bloqueó la pestaña nueva: permita ventanas emergentes para este sitio", "info"); }); return; }
   const { S, LS, k2, esc, fp } = X, $ = (id) => document.getElementById(id), fmt = (v) => fp(v);
-  let view = LS.get("t5pView", null), min = LS.get("t5pMin", true), cache = { key: "", r: null };
+  let view = LS.get("t5pView", "T5P") || "T5P", min = LS.get("t5pMin", true), cache = { key: "", r: null };
   const params = () => Object.assign({}, X.T5PP);
   const execTf = () => (["3m", "5m"].includes(S.tf) ? S.tf : params().exec_tf);   // si el gráfico está en 3m o 5m se usa esa; si no, la configurada
   function compute() {
     const sym = S.sel, tf = execTf(), a = S.an[k2(sym, tf)]; if (!a || !a.n) return null;
-    const t = a.d.closeTime[a.n - 1], key = `${view}|${sym}|${tf}|${t}|${JSON.stringify(X.T5PP)}`;
+    const t = a.d.closeTime[a.n - 1], h = S.an[k2(sym, "1h")], q = S.an[k2(sym, "15m")], key = `${view}|${sym}|${tf}|${t}|${h ? h.n + ":" + h.d.closeTime[h.n - 1] : 0}|${q ? q.n + ":" + q.d.closeTime[q.n - 1] : 0}|${JSON.stringify(X.T5PP)}`;
     if (cache.key === key) return cache.r;
     const ans = {}; for (const x of ["1h", "15m", tf]) ans[x] = S.an[k2(sym, x)];
     const r = SSP.t5pAsof(ans, t, Object.assign(params(), { exec_tf: tf }), view);
     cache = { key, r }; return r;
   }
+  X.t5pCompute = () => compute(); X.t5pView = () => view;
   // ---- panel con los pasos
   const panel = document.createElement("div"); panel.className = "t5p-panel"; panel.hidden = true;
   document.querySelector(".chartwrap").appendChild(panel);
@@ -5012,6 +5047,8 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   }
   $("t5pBtns").addEventListener("click", (e) => { const b = e.target.closest("[data-t5p]"); if (!b) return; setView(view === b.dataset.t5p ? null : b.dataset.t5p); });
   window.__t5pRefresh = () => { cache.key = ""; renderPanel(); };
+  let shownKey = null;   // el panel se actualiza solo cuando cambian los datos (nueva vela de 3m/5m, 15m o 1h, otro par o temporalidad)
+  setInterval(() => { if (!view || document.hidden) return; compute(); if (cache.key !== shownKey) { shownKey = cache.key; renderPanel(); } }, 1500);
   setInterval(renderPanel, 5000);
   // ---- capas en el gráfico
   (window.__drawHooks = window.__drawHooks || []).push((g, o) => {
