@@ -353,6 +353,39 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   .legend{font-size:11px;top:6px;left:6px}
   .mobsimple{margin:10px 0 2px;font-size:13px}
 }
+/* ---------- analizador BTC ---------- */
+.intel-btn{background:var(--info-bg);border-color:rgba(98,168,255,.35);font-weight:600;font-size:13px;padding:6px 10px;white-space:nowrap}
+.ibadge{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:999px;font-size:11px;background:var(--deck);color:var(--ink2)}
+.ibadge.long{background:var(--buy-bg);color:var(--buy)}.ibadge.short{background:var(--sell-bg);color:var(--sell)}.ibadge.obs{background:var(--gold-bg);color:var(--gold)}
+.iv{position:fixed;inset:0;z-index:55;background:var(--night);overflow-y:auto;overflow-x:clip;padding:14px 16px 40px}
+.iv-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;max-width:1280px;margin:0 auto}
+.iv-hd h2{margin:0;font-size:20px;letter-spacing:-.01em}.iv-hd p{margin:2px 0 0;font-size:12.5px}
+.iv-actions{display:flex;gap:8px;flex-shrink:0}
+.iv-tabs{display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;max-width:1280px;margin:12px auto 0;padding-bottom:4px}
+.iv-tabs button{white-space:nowrap;background:transparent;color:var(--ink2);font-size:13px}.iv-tabs button.on{background:var(--deck2);color:var(--ink);border-color:var(--rule2)}
+.iv-body{max-width:1280px;margin:12px auto 0;display:grid;gap:12px}
+.ivg{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.ivc{background:var(--deck);border:1px solid var(--rule);border-radius:var(--r-lg);padding:14px 16px;min-width:0}
+.ivc h3{margin:0 0 8px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+.ivc h4{margin:10px 0 4px;font-size:13px;color:var(--ink)}
+.ivc p,.ivc li{font-size:13px;margin:3px 0;color:var(--ink2)}.ivc ul{margin:4px 0;padding-left:18px}
+.ivtop{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.ivk{background:var(--deck);border:1px solid var(--rule);border-radius:var(--r-md);padding:8px 10px;min-width:0}
+.ivk span{display:block;font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}.ivk b{display:block;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dec{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}.dec .st{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.dec .st.long{color:var(--buy)}.dec .st.short{color:var(--sell)}.dec .st.obs{color:var(--gold)}.dec .st.no{color:var(--ink2)}
+.ivt{width:100%;border-collapse:collapse;font-size:12.5px}.ivt th{text-align:left;color:var(--ink3);font-weight:500;padding:5px 6px;border-bottom:1px solid var(--rule)}
+.ivt td{padding:5px 6px;border-bottom:1px solid var(--rule);color:var(--ink2);vertical-align:top}.ivt td b{color:var(--ink);font-weight:600}
+.ivscroll{overflow-x:auto}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11.5px;white-space:nowrap}
+.pill.fav{background:var(--buy-bg);color:var(--buy)}.pill.con{background:var(--sell-bg);color:var(--sell)}.pill.neu{background:var(--deck2);color:var(--ink2)}.pill.nd{background:transparent;border:1px dashed var(--rule2);color:var(--ink3)}
+.steps li.ok{color:var(--ink)}.steps li.ok::marker{color:var(--buy)}.steps li.no::marker{color:var(--ink3)}
+.why dt{font-weight:600;color:var(--ink);margin-top:8px;font-size:13px}.why dd{margin:2px 0 0;color:var(--ink2);font-size:13px}
+.sc3{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sc3 .ivc.bull{border-top:3px solid var(--buy)}.sc3 .ivc.bear{border-top:3px solid var(--sell)}.sc3 .ivc.neu{border-top:3px solid var(--ink3)}
+.ivform{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.ivform label{font-size:12px;color:var(--ink3)}
+.warnbox{border:1px dashed var(--rule2);border-radius:var(--r-md);padding:8px 10px;color:var(--ink2);font-size:12.5px}
+@media(max-width:700px){.iv{padding:10px 12px 40px}.intel-btn{font-size:12px;padding:5px 8px}.dec .st{font-size:21px}.iv-hd h2{font-size:17px}}
 @media(max-width:560px){.trend-chips .tchip:not(:first-child){display:none}#price{font-size:19px}.levels{grid-template-columns:repeat(2,1fr)}.pair{grid-template-columns:1fr auto 70px 22px}.pair .tr{display:none}}
 </style>
 </head>
@@ -366,6 +399,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <span class="top-right">
       <span id="conn" class="conn"><i></i><span id="connTx">Conectando…</span></span>
       <button id="installBtn" class="primary" hidden>Instalar app</button>
+      <button id="intelBtn" class="intel-btn" title="Abre el analizador profesional de BTC en una pestaña aparte">Analizador BTC ↗ <span id="intelBadge" class="ibadge">—</span></button>
       <button id="cfgBtn" aria-label="Configuración" title="Configuración">⚙</button>
     </span>
   </div>
@@ -420,6 +454,17 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 </main>
 
 <div id="scrim" class="scrim" hidden></div>
+<section id="intelView" class="iv" aria-label="Analizador profesional BTC" hidden>
+  <div class="iv-hd">
+    <div><h2>Analizador profesional BTC</h2><p class="faint" id="ivSub">BTCUSDT · perpetuo Bybit · motor determinista, sin datos inventados</p></div>
+    <div class="iv-actions"><button id="ivChart" title="Ver BTCUSDT en el gráfico con la capa SMC">Ver en el gráfico</button><button id="ivClose" aria-label="Cerrar el analizador">✕</button></div>
+  </div>
+  <nav class="iv-tabs seg" id="ivTabs" role="tablist">
+    <button data-iv="resumen" class="on">Decisión</button><button data-iv="mercado">Régimen y estructura</button><button data-iv="escenarios">Escenarios</button>
+    <button data-iv="riesgo">Riesgo y eventos</button><button data-iv="historial">Señales y alertas</button><button data-iv="lab">Laboratorio</button><button data-iv="datos">Datos</button>
+  </nav>
+  <div id="ivBody" class="iv-body"></div>
+</section>
 <aside id="indPanel" class="sheet" aria-label="Indicadores" aria-hidden="true">
   <div class="sheet-hd"><h2>Indicadores</h2><button id="indClose" aria-label="Cerrar">✕</button></div>
   <div class="sheet-body" id="indBody"></div>
@@ -2131,7 +2176,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   const S = {
     symbols: LS.get("watch", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"]),
     sel: LS.get("sel", "UNIUSDT"), tf: LS.get("tf", "5m"), tz: LS.get("tz", "America/Costa_Rica"),
-    show: Object.assign({ bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true }, LS.get("show", {})), sound: LS.get("sound", true),
+    show: Object.assign({ bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true, smc: false }, LS.get("show", {})), sound: LS.get("sound", true),
     closed: {}, live: {}, an: {}, quotes: {}, conn: { state: "iniciando", detail: "" }, health: {}, errors: {},
     signals: LS.get("signals", []), trades: LS.get("trades", {}), events: LS.get("events", []), hist: "sig",
   };
@@ -2236,15 +2281,17 @@ if (typeof module !== "undefined") module.exports = SSP;
   // Los pares que no se están viendo solo reciben 1m/5m/15m/1h (lo que usa el motor);
   // 3m y 4h se suscriben únicamente para el par seleccionado.
   const EXTRA_TFS = TFS.filter((tf) => !ENGINE_TFS.includes(tf));
+  const INTEL_SYM = "BTCUSDT", INTEL_TFS = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"];   // series que mantiene el analizador BTC
   const extraArgs = (sym) => EXTRA_TFS.map((tf) => `kline.${BYBIT_INT[tf]}.${sym}`);
   let extraSym = null;
   function switchExtraSubs(newSym) {
     if (newSym === extraSym) return;
     const old = extraSym; extraSym = newSym;
-    if (old) for (const tf of EXTRA_TFS) { const k = k2(old, tf); delete S.closed[k]; delete S.an[k]; delete S.live[k]; }  // dejarían de actualizarse
+    const keep = (s, tf) => s === INTEL_SYM && INTEL_TFS.includes(tf);          // el analizador BTC las sigue usando
+    if (old) for (const tf of EXTRA_TFS) { if (keep(old, tf)) continue; const k = k2(old, tf); delete S.closed[k]; delete S.an[k]; delete S.live[k]; }  // dejarían de actualizarse
     if (!ws || ws.readyState !== 1) return;
     try {
-      if (old) ws.send(JSON.stringify({ op: "unsubscribe", args: extraArgs(old) }));
+      if (old) { const un = extraArgs(old).filter((a) => !INTEL_TFS.some((tf) => old === INTEL_SYM && a === `kline.${BYBIT_INT[tf]}.${old}`)); if (un.length) ws.send(JSON.stringify({ op: "unsubscribe", args: un })); }
       ws.send(JSON.stringify({ op: "subscribe", args: extraArgs(newSym) }));
     } catch { /* se corrige en la próxima reconexión */ }
   }
@@ -2258,6 +2305,9 @@ if (typeof module !== "undefined") module.exports = SSP;
     const args = [];
     for (const s of S.symbols) { for (const tf of ENGINE_TFS) args.push(`kline.${BYBIT_INT[tf]}.${s}`); args.push(`tickers.${s}`); }
     args.push(...extraArgs(S.sel)); extraSym = S.sel;
+    // analizador BTC: BTCUSDT en todas sus temporalidades y su precio en vivo, aunque no esté en la lista de pares
+    for (const tf of INTEL_TFS) args.push(`kline.${BYBIT_INT[tf]}.${INTEL_SYM}`); args.push(`tickers.${INTEL_SYM}`);
+    for (let i = args.length - 1; i >= 0; i--) if (args.indexOf(args[i]) !== i) args.splice(i, 1);
     sock.onopen = () => {
       for (let i = 0; i < args.length; i += 10) sock.send(JSON.stringify({ op: "subscribe", args: args.slice(i, i + 10) }));
       clearInterval(pingT); pingT = setInterval(() => { try { sock.send('{"op":"ping"}'); } catch { /* */ } }, 20000);
@@ -2266,6 +2316,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       wasConnected = true;
       setConn("conectado", `${args.length} suscripciones`);
       if (reconnect) S.symbols.forEach((s) => bootstrap(s, 200, s === S.sel ? TFS : ENGINE_TFS).then(() => { if (s === S.sel) refreshChart(); }));
+      if (reconnect) bootstrap(INTEL_SYM, 200, INTEL_TFS);
     };
     sock.onmessage = (m) => {
       const msg = JSON.parse(m.data), topic = msg.topic || "";
@@ -2301,6 +2352,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (sym === S.sel && tf === S.tf) chart.updateLive(c);
     if (!isNew) return;
     reanalyze(sym, tf);
+    if (window.__onKlineHook) { try { window.__onKlineHook(sym, tf, c); } catch (e) { console.error(e); } }
     if (sym === S.sel && tf === S.tf) { clearTimeout(chartRefreshT); chartRefreshT = setTimeout(refreshChart, 250); }
     if (tf === "1m") { const key = `${sym}|${c.closeTime}`; if (!pending.has(key)) { pending.add(key); evaluate(sym, c.closeTime).finally(() => pending.delete(key)); } }
   }
@@ -2419,6 +2471,8 @@ if (typeof module !== "undefined") module.exports = SSP;
     ew: [["ew.line", "Línea del conteo", { c: "#9cc9ff", w: 2, v: true }], ["ew.impulse", "Ondas 0-5", { c: "#62a8ff", v: true }], ["ew.corr", "Ondas A-B-C", { c: "#f0c75e", v: true }], ["ew.proj", "Proyecciones", { c: "#9cc9ff", v: true }], ["ew.inval", "Nivel de invalidación", { c: "#ff6170", v: true }]],
     sess: [["sess.sydney", "Sídney", { c: "#b69cff", v: false }], ["sess.tokyo", "Tokio", { c: "#ff9f5a", v: true }], ["sess.london", "Londres", { c: "#62a8ff", v: true }], ["sess.ny", "Nueva York", { c: "#2fd3a0", v: true }],
       ["sess.range", "Caja con máximo y mínimo (si no, franja completa)", { v: true }], ["sess.labels", "Etiquetas", { v: true }]],
+    smc: [["smc.bos", "BOS y CHoCH/MSS", { c: "#9cc9ff", v: true }], ["smc.fvg", "Fair Value Gaps sin mitigar", { c: "#b69cff", v: true }], ["smc.liq", "Liquidez BSL / SSL (estimada por estructura)", { c: "#f0c75e", v: true }],
+      ["smc.sweep", "Barridas de liquidez", { c: "#ff9f5a", v: true }], ["smc.zone", "Zona de entrada, SL y TP del analizador (BTC)", { c: "#62a8ff", v: true }]],
     sig: [["sig.markers", "Flechas de señales", { v: true }], ["sig.trades", "Operaciones al estilo TradingView (LONG/SHORT, salida, Stop y Objetivo)", { v: true }], ["sig.levels", "Líneas de entrada, SL y TP", { v: true }], ["sig.entry", "Entrada", { c: "#e6ebf2" }], ["sig.sl", "Stop loss", { c: "#ff6170" }], ["sig.tp", "Objetivos (TP)", { c: "#2fd3a0" }]],
   };
   const STYLE_DEFAULTS = Object.fromEntries(Object.values(STYLE_DEF).flat().map(([k, , d]) => [k, Object.assign({}, d)]));
@@ -2435,6 +2489,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     ew: { name: "Elliott", sw: () => st("ew.line").c, sub: () => `sensibilidad ${IND.ew_depth}` },
     sqz: { name: "SQZMOM", sw: () => st("sqz.lime").c, sub: () => `${IND.sqz_bb_length} ${IND.sqz_bb_mult} ${IND.sqz_kc_length} ${IND.sqz_kc_mult}` },
     dmi: { name: "DMI + ADX", sw: () => st("dmi.adx").c, sub: () => `${IND.dmi_length} ${IND.adx_smoothing} · nivel ${CFG.adxKey}` },
+    smc: { name: "Estructura SMC", sw: () => st("smc.bos").c, sub: () => "BOS · CHoCH · FVG · liquidez" },
     sess: { name: "Sesiones de mercado", sw: () => st("sess.london").c, sub: () => SESS_TF.includes(S.tf) ? SSP.SESSIONS.filter((x) => vis("sess." + x.key)).map((x) => x.name).join(" · ") || "ninguna" : "visibles hasta 1 h" },
   };
   const NARROW = () => window.matchMedia("(max-width: 700px)").matches;
@@ -2826,6 +2881,8 @@ if (typeof module !== "undefined") module.exports = SSP;
         }
         g.restore();
       }
+      // capas del analizador BTC (estructura SMC, liquidez, FVG, zona de entrada) — las dibuja intel-ui
+      if (window.__drawHook) { try { g.save(); window.__drawHook(g, { X, Y, ts, W, H, ms, FONT, FONTB, data, sym: S.sel, tf: S.tf, shw, vis, st, hexA }); g.restore(); } catch (e) { console.error(e); } }
       // cuenta regresiva hasta el cierre de la vela actual, bajo el precio (como TradingView)
       if (vis("candles.cd") && data.candles.length) {
         const step = SSP.TF_MS[data.tf], now = Date.now(), left = SSP.floorTime(now, data.tf) + step - now, C = data.candles, lastC = C[C.length - 1];
@@ -3381,6 +3438,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       params: [["fib.fast_speed", "Tendencia rápida desde (ATR por vela)", "dec"], ["fib.min_leg_atr", "Impulso mínimo (×ATR)", "dec"]] },
     { key: "ew", name: "Ondas de Elliott", desc: "Conteo automático 1-2-3-4-5 y A-B-C que respeta las tres reglas de Elliott. Más sensibilidad = ondas más grandes.",
       params: [["ind.ew_depth", "Sensibilidad (velas por lado)", "int"], ["ind.ew_min_atr", "Onda 1 mínima (×ATR)", "dec"]] },
+    { key: "smc", name: "Estructura SMC (analizador)", desc: "BOS y CHoCH/MSS de la temporalidad del gráfico, Fair Value Gaps sin mitigar, niveles de liquidez (BSL arriba, SSL abajo: giros sin romper, máximos/mínimos iguales, día y semana anteriores, sesiones) y barridas. La liquidez es una estimación por estructura, no órdenes vistas en el libro. En BTCUSDT también dibuja la zona de entrada, el stop y el objetivo del analizador.", params: [] },
     { key: "sess", name: "Sesiones de mercado", desc: "Cajas con el rango de Sídney, Tokio, Londres y Nueva York (hora local de cada plaza; el horario de verano se aplica solo). Se dibujan en temporalidades hasta 1 h. Activa o desactiva cada sesión en Estilo.",
       params: SSP.SESSIONS.flatMap((x) => [[`sess.${x.key}_start`, `${x.name}: apertura`, "time"], [`sess.${x.key}_end`, `${x.name}: cierre`, "time"]]) },
     { key: "sig", name: "Señales y niveles", noSwitch: true, desc: "Flechas de las señales confirmadas y líneas de entrada, stop loss y objetivos.", params: [] },
@@ -3726,8 +3784,1024 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { S, engine, engine2, engine3, engine4, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep };   // acceso para depuración
+  window.__ssp = { S, engine, engine2, engine3, engine4, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
+    bootstrap, bybit, k2, telegram, notify, addSymbol, refreshChart, renderLegend, INTEL_SYM, INTEL_TFS, IND, CFG, setTf: (tf) => { const b = document.querySelector(`[data-tf="${tf}"]`); if (b) b.click(); } };   // acceso para depuración
   start();
+})();
+
+</script>
+<script>
+/* BTC INTELLIGENCE ENGINE — analizador multicapa (fase 1: datos, estructura, confirmación y riesgo).
+   Reglas deterministas y reproducibles. Toda consulta es "a fecha t": solo usa velas cerradas con closeTime <= t
+   y objetos con availableAt <= t (sin mirar al futuro ni repintar). Lo que necesita datos que la app todavía
+   no recibe (order flow real, open interest, liquidaciones, calendario macro verificado) se marca "Sin datos". */
+const BTCI = ((SSP) => {
+  "use strict";
+  const VERSION = "btci-1.0";
+  const isNum = (x) => typeof x === "number" && Number.isFinite(x);
+  const TF = SSP.TF_MS;
+  const fmtP = (x) => (!isNum(x) ? "—" : x >= 1000 ? x.toFixed(1) : x >= 1 ? x.toFixed(3) : x.toPrecision(4));
+
+  // ------------------------------------------------------------ parámetros (todos configurables)
+  const DEFAULT = {
+    regime_tfs: ["1w", "1d", "4h", "1h", "15m", "5m"],
+    exec_tf: "5m",                 // temporalidad de confirmación y ejecución
+    pct_lookback: 200,             // velas para el percentil de volatilidad (ATR / precio)
+    vol_hi_pct: 85, vol_lo_pct: 15, vol_extreme_pct: 95,
+    range_bars: 48, range_atr_max: 6,           // consolidación: rango de 48 velas < 6 ATR
+    eq_tol_atr: 0.10,              // máximos/mínimos iguales: diferencia <= 0,10 ATR
+    fvg_min_atr: 0.30,             // FVG: hueco mínimo de 0,30 ATR
+    mss_pivot: 2,                  // giros internos (2 velas por lado) para MSS/CHoCH de ejecución
+    disp_atr: 1.0,                 // desplazamiento: rango de la vela de ruptura >= 1 ATR
+    vol_rel_min: 1.2,              // volumen relativo mínimo (volumen / media de 20)
+    a_window: 36,                  // patrón A: velas máximas entre barrida y confirmación
+    a_mss_bars: 12,                // patrón A: velas máximas entre barrida y MSS
+    b_window: 24,                  // patrón B: velas máximas entre ruptura y retesteo
+    b_break_atr: 0.10,             // patrón B: cierre fuera del nivel por >= 0,10 ATR
+    b_retest_atr: 0.25,            // patrón B: el retesteo toca el nivel ± 0,25 ATR
+    stop_buf_atr: 0.10,            // colchón del stop estructural
+    min_stop_pct: 0.15, max_stop_pct: 3.0,
+    max_spread_pct: 0.05,
+    max_hold_bars: 48,             // cierre por tiempo (velas de ejecución)
+    liq_max: 12,                   // niveles de liquidez por lado
+  };
+  const DEFAULT_RISK = {
+    account_capital: 1000, risk_pct: 0.5, max_daily_loss_pct: 1.5, max_trades_day: 3, max_consec_losses: 3,
+    min_rr: 3, max_leverage: 5, taker_fee_pct: 0.055, maker_fee_pct: 0.02, slippage_pct: 0.02, margin_mode: "aislado",
+  };
+  const RISK_LIMITS = { risk_pct: [0.05, 2], max_daily_loss_pct: [0.25, 5], max_trades_day: [1, 10], max_consec_losses: [1, 10], min_rr: [1, 10], max_leverage: [1, 5] };
+  const DEFAULT_MACRO = { before_min: 15, after_min: 30 };
+
+  // ------------------------------------------------------------ paquete de cálculos por temporalidad (se guarda en la análisis)
+  function bundle(an, p = DEFAULT) {
+    const d = an.d, n = d.n, key = `${n}|${n ? d.closeTime[n - 1] : 0}|${p.mss_pivot}|${p.fvg_min_atr}|${p.pct_lookback}`;
+    if (an._btci && an._btci.key === key) return an._btci;
+    const c = d.close, atr = an.ind.atr;
+    const e20 = SSP.ema(c, 20), e50 = SSP.ema(c, 50), e200 = SSP.ema(c, 200), rsi = SSP.rsi(c, 14);
+    const vs = SSP.sma(d.volume, 20), relVol = d.volume.map((v, i) => (vs[i] > 0 ? v / vs[i] : NaN));
+    // percentil de ATR/precio en las últimas pct_lookback velas (rango 0–100)
+    const ap = atr.map((a, i) => a / c[i]), pctl = new Array(n).fill(NaN);
+    for (let i = 0; i < n; i++) {
+      if (!isNum(ap[i])) continue;
+      const j0 = Math.max(0, i - p.pct_lookback + 1); let below = 0, tot = 0;
+      for (let j = j0; j <= i; j++) if (isNum(ap[j])) { tot++; if (ap[j] <= ap[i]) below++; }
+      if (tot >= Math.min(50, p.pct_lookback)) pctl[i] = (100 * below) / tot;
+    }
+    // giros internos para MSS/CHoCH de ejecución
+    const micro = SSP.analyzeStructure(d, an.tf + "-int", p.mss_pivot, p.mss_pivot, 0, 14);
+    // Fair Value Gaps (3 velas) con mitigación parcial y total
+    const fvg = [];
+    for (let i = 2; i < n; i++) {
+      const A = atr[i]; if (!(A > 0)) continue;
+      const up = d.low[i] - d.high[i - 2], dn = d.low[i - 2] - d.high[i];
+      for (const [dir, gap, top, bot] of [["alcista", up, d.low[i], d.high[i - 2]], ["bajista", dn, d.low[i - 2], d.high[i]]]) {
+        if (!(gap >= p.fvg_min_atr * A)) continue;
+        const g = { dir, top, bottom: bot, index: i, time: d.openTime[i - 1], availableAt: d.closeTime[i], size_atr: gap / A, partialAt: null, filledAt: null, fillPct: [] };
+        for (let k = i + 1; k < Math.min(n, i + 3000); k++) {
+          const into = dir === "alcista" ? d.low[k] < top : d.high[k] > bot;
+          if (into && g.partialAt === null) g.partialAt = d.closeTime[k];
+          const full = dir === "alcista" ? d.low[k] <= bot : d.high[k] >= top;
+          if (full) { g.filledAt = d.closeTime[k]; break; }
+        }
+        fvg.push(g);
+      }
+    }
+    // tablas dispersas (RMQ) del cierre: "¿hubo algún cierre por encima/debajo de X entre las velas a y b?" en O(1)
+    const mx = [c.slice()], mn = [c.slice()];
+    for (let k = 1; 1 << k <= n; k++) {
+      const pm = mx[k - 1], pn = mn[k - 1], h = 1 << (k - 1), am = new Float64Array(n - (1 << k) + 1), an2 = new Float64Array(n - (1 << k) + 1);
+      for (let i = 0; i + (1 << k) <= n; i++) { am[i] = Math.max(pm[i], pm[i + h]); an2[i] = Math.min(pn[i], pn[i + h]); }
+      mx.push(am); mn.push(an2);
+    }
+    const q = (T, a, b) => { if (b < a) return NaN; const k = 31 - Math.clz32(b - a + 1); return [T[k][a], T[k][b - (1 << k) + 1]]; };
+    const maxClose = (a, b) => { const r = q(mx, a, b); return r === r ? Math.max(r[0], r[1]) : -Infinity; };
+    const minClose = (a, b) => { const r = q(mn, a, b); return r === r ? Math.min(r[0], r[1]) : Infinity; };
+    an._btci = { key, e20, e50, e200, rsi, relVol, pctl, micro, fvg, maxClose, minClose };
+    return an._btci;
+  }
+  const fvgStatus = (g, t) => (g.filledAt !== null && g.filledAt <= t ? "mitigado" : g.partialAt !== null && g.partialAt <= t ? "parcial" : "activo");
+
+  // ------------------------------------------------------------ CAPA 1: régimen por temporalidad
+  function swingsAsof(an, t, k = 4) {        // últimos giros confirmados con etiqueta HH/HL/LH/LL
+    const P = an.structure.pivots.filter((x) => x.availableAt <= t);
+    const H = P.filter((x) => x.kind === "high").slice(-k), L = P.filter((x) => x.kind === "low").slice(-k);
+    const lab = (arr, hi) => arr.map((x, i) => ({ ...x, label: i === 0 ? null : hi ? (x.price > arr[i - 1].price ? "HH" : "LH") : (x.price > arr[i - 1].price ? "HL" : "LL") }));
+    return { highs: lab(H, true), lows: lab(L, false) };
+  }
+  function regimeAt(an, t, p = DEFAULT) {
+    if (!an || !an.n) return { tf: an && an.tf, ok: false, label: "Sin datos", vol: "Sin datos", basis: ["no hay velas cargadas"] };
+    const i = an.idxAsof(t);
+    if (i < 60) return { tf: an.tf, ok: false, label: "Sin datos", vol: "Sin datos", basis: [`solo ${Math.max(0, i + 1)} velas cerradas`] };
+    const B = bundle(an, p), d = an.d, c = d.close[i], A = an.ind.atr[i];
+    const e20 = B.e20[i], e50 = B.e50[i], e200 = B.e200[i], has200 = isNum(e200) && i >= 200;
+    const sw = swingsAsof(an, t), lh = sw.highs.at(-1), ll = sw.lows.at(-1);
+    const seqUp = lh && ll && lh.label === "HH" && ll.label === "HL", seqDn = lh && ll && lh.label === "LH" && ll.label === "LL";
+    const st = an.structure.trend[i] || 0;
+    const ev = an.structure.events.filter((e) => e.availableAt <= t).slice(-1)[0] || null;
+    let score = 0; const basis = [];
+    if (c > e20 && e20 > e50) { score++; basis.push("precio > EMA20 > EMA50"); } else if (c < e20 && e20 < e50) { score--; basis.push("precio < EMA20 < EMA50"); }
+    if (has200) { if (c > e200) { score++; basis.push("sobre la EMA200"); } else { score--; basis.push("bajo la EMA200"); } } else basis.push("EMA200 sin historia suficiente");
+    if (seqUp) { score++; basis.push("máximos y mínimos crecientes (HH/HL)"); } else if (seqDn) { score--; basis.push("máximos y mínimos decrecientes (LH/LL)"); }
+    if (st) { score += st; basis.push(`última ruptura de estructura ${st > 0 ? "alcista" : "bajista"}${ev ? " (" + ev.kind + ")" : ""}`); }
+    // rango de las últimas velas en ATR (consolidación)
+    let hi = -Infinity, lo = Infinity; for (let j = Math.max(0, i - p.range_bars + 1); j <= i; j++) { hi = Math.max(hi, d.high[j]); lo = Math.min(lo, d.low[j]); }
+    const rangeAtr = A > 0 ? (hi - lo) / A : NaN;
+    const recentChoch = ev && ev.kind === "CHoCH" && i - ev.index <= 20;
+    let label;
+    if (recentChoch && Math.sign(score) !== (ev.direction === "alcista" ? 1 : -1)) label = "Transición estructural";
+    else if (score >= 3) label = "Tendencia alcista";
+    else if (score <= -3) label = "Tendencia bajista";
+    else if (rangeAtr < p.range_atr_max) label = "Consolidación";
+    else if (recentChoch) label = "Transición estructural";
+    else label = "Alta incertidumbre";
+    const pc = B.pctl[i];
+    const vol = !isNum(pc) ? "Sin datos" : pc >= p.vol_hi_pct ? "Expansión de volatilidad" : pc <= p.vol_lo_pct ? "Compresión de volatilidad" : "Volatilidad normal";
+    const dir = label === "Tendencia alcista" ? 1 : label === "Tendencia bajista" ? -1 : 0;
+    return { tf: an.tf, ok: true, t: d.closeTime[i], label, dir, score, vol, vol_pctl: pc, basis, close: c, ema20: e20, ema50: e50, ema200: has200 ? e200 : null,
+      rsi: B.rsi[i], atr: A, atr_pct: (A / c) * 100, rel_vol: B.relVol[i], range_atr: rangeAtr, swings: sw, last_event: ev,
+      liquidations: "Sin datos (requiere fuente de liquidaciones: fase 4)" };
+  }
+  function alignment(regs) {
+    const v = regs.filter((r) => r.ok), up = v.filter((r) => r.dir > 0).map((r) => r.tf), dn = v.filter((r) => r.dir < 0).map((r) => r.tf);
+    const htf = v.filter((r) => ["1d", "4h"].includes(r.tf)), htfDir = htf.length && htf.every((r) => r.dir === htf[0].dir) ? htf[0].dir : 0;
+    let text;
+    if (!v.length) text = "Sin datos";
+    else if (up.length && !dn.length) text = `Alineación alcista (${up.join(", ")})`;
+    else if (dn.length && !up.length) text = `Alineación bajista (${dn.join(", ")})`;
+    else if (up.length && dn.length) text = `Temporalidades en conflicto: alcistas ${up.join(", ")} · bajistas ${dn.join(", ")}`;
+    else text = "Sin tendencia definida en ninguna temporalidad";
+    return { up, dn, htfDir, text, conflict: !!(up.length && dn.length) };
+  }
+
+  // ------------------------------------------------------------ CAPA 2: estructura, liquidez, barridas, FVG
+  function eqLevels(an, t, p, kind) {        // máximos/mínimos iguales entre giros aún no rotos
+    const i = an.idxAsof(t), A = an.ind.atr[i];
+    const P = an.structure.pivots.filter((x) => x.kind === kind && x.availableAt <= t && (x.brokenAt === null || x.brokenAt > t)).slice(-12), out = [];
+    for (let a = 0; a < P.length; a++) for (let b = a + 1; b < P.length; b++)
+      if (Math.abs(P[a].price - P[b].price) <= p.eq_tol_atr * A) out.push({ price: kind === "high" ? Math.max(P[a].price, P[b].price) : Math.min(P[a].price, P[b].price), availableAt: Math.max(P[a].availableAt, P[b].availableAt), times: [P[a].time, P[b].time] });
+    return out;
+  }
+  /* Niveles de liquidez a fecha t. BSL (encima) y SSL (debajo): giros sin romper de 5m/15m/1h/4h, máximos/mínimos
+     iguales (EQH/EQL), día y semana anteriores (PDH/PDL, PWH/PWL) y máximos/mínimos de las sesiones terminadas.
+     Son zonas donde PUEDE haber stops: estimación por estructura, no órdenes vistas en el libro. */
+  function liquidityAsof(ans, t, p = DEFAULT) {
+    const lv = [], ex = ans[p.exec_tf];
+    const add = (price, side, kind, availableAt, tf) => { if (isNum(price)) lv.push({ price, side, kind, tf, availableAt }); };
+    for (const tf of [p.exec_tf, "15m", "1h", "4h"]) {
+      const an = ans[tf]; if (!an || !an.n) continue;
+      const P = an.structure.pivots.filter((x) => x.availableAt <= t && (x.brokenAt === null || x.brokenAt > t)).slice(-16);
+      for (const x of P) add(x.price, x.kind === "high" ? "BSL" : "SSL", `giro ${tf}`, x.availableAt, tf);
+      for (const e of eqLevels(an, t, p, "high")) add(e.price, "BSL", `EQH ${tf}`, e.availableAt, tf);
+      for (const e of eqLevels(an, t, p, "low")) add(e.price, "SSL", `EQL ${tf}`, e.availableAt, tf);
+    }
+    for (const [tf, nm] of [["1d", "día"], ["1w", "semana"]]) {
+      const an = ans[tf]; if (!an || !an.n) continue;
+      const i = an.idxAsof(t); if (i < 0) continue;
+      add(an.d.high[i], "BSL", `máximo ${nm} anterior`, an.d.closeTime[i], tf); add(an.d.low[i], "SSL", `mínimo ${nm} anterior`, an.d.closeTime[i], tf);
+    }
+    if (ex && ex.n) {                         // sesiones terminadas en las últimas 36 h
+      const d = ex.d, i = ex.idxAsof(t);
+      for (const s of SSP.SESSIONS) for (const w of SSP.sessionWindows(t - 36 * 3600e3, t, s)) {
+        if (w.end > t) continue;
+        let hi = -Infinity, lo = Infinity;
+        for (let j = i; j >= 0 && d.openTime[j] >= w.start - 1; j--) if (d.openTime[j] < w.end) { hi = Math.max(hi, d.high[j]); lo = Math.min(lo, d.low[j]); }
+        if (hi > -Infinity) { add(hi, "BSL", `máximo sesión ${s.name}`, w.end, p.exec_tf); add(lo, "SSL", `mínimo sesión ${s.name}`, w.end, p.exec_tf); }
+      }
+    }
+    // quitar los que el precio ya cruzó con un cierre después de formarse (dejaron de ser liquidez pendiente)
+    if (ex && ex.n) {
+      const i = ex.idxAsof(t), Bx = bundle(ex, p);
+      for (const l of lv) { const j = ex.idxAsof(l.availableAt) + 1; l.taken = l.side === "BSL" ? Bx.maxClose(j, i) > l.price : Bx.minClose(j, i) < l.price; }
+    }
+    const live = lv.filter((l) => !l.taken), price = ex && ex.n ? ex.d.close[ex.idxAsof(t)] : NaN;
+    const uniq = (arr) => { const o = []; for (const l of arr) { const m = o.find((x) => Math.abs(x.price - l.price) / l.price < 0.0004); if (m) { if (!m.kind.includes(l.kind)) m.kind += " · " + l.kind; } else o.push({ ...l }); } return o; };
+    const bsl = uniq(live.filter((l) => l.side === "BSL" && l.price > price).sort((a, b) => a.price - b.price)).slice(0, p.liq_max);
+    const ssl = uniq(live.filter((l) => l.side === "SSL" && l.price < price).sort((a, b) => b.price - a.price)).slice(0, p.liq_max);
+    return { price, bsl, ssl, all: live };
+  }
+  /* Barrida: la vela pasa el nivel con la mecha y CIERRA de vuelta del lado anterior (el nivel existía antes de esa vela
+     y no había sido cruzado con un cierre). No implica reversión: solo que se tomó esa liquidez. */
+  function sweepsAsof(ans, t, p = DEFAULT, bars = 60) {
+    const ex = ans[p.exec_tf]; if (!ex || !ex.n) return [];
+    const d = ex.d, i = ex.idxAsof(t), out = [], Bx = bundle(ex, p);
+    const L = liquidityAsof(ans, d.closeTime[Math.max(0, i - bars)], p).all;   // niveles vigentes al inicio de la ventana
+    const levels = L.concat(liquidityAsof(ans, t, p).all.filter((l) => l.availableAt > d.closeTime[Math.max(0, i - bars)]));
+    for (let j = Math.max(1, i - bars + 1); j <= i; j++) {
+      for (const l of levels) {
+        if (l.availableAt >= d.openTime[j]) continue;
+        const k0 = ex.idxAsof(l.availableAt) + 1, crossed = l.side === "BSL" ? Bx.maxClose(k0, j - 1) > l.price : Bx.minClose(k0, j - 1) < l.price;
+        if (crossed) continue;
+        if (l.side === "SSL" && d.low[j] < l.price && d.close[j] > l.price) out.push({ dir: "alcista", side: "SSL", level: l.price, kind: l.kind, index: j, time: d.openTime[j], availableAt: d.closeTime[j], extreme: d.low[j] });
+        if (l.side === "BSL" && d.high[j] > l.price && d.close[j] < l.price) out.push({ dir: "bajista", side: "BSL", level: l.price, kind: l.kind, index: j, time: d.openTime[j], availableAt: d.closeTime[j], extreme: d.high[j] });
+      }
+    }
+    // una barrida por vela y dirección (la del nivel más relevante = el más lejano tomado)
+    const rank = (k) => (/semana/.test(k) ? 7 : /día/.test(k) ? 6 : /sesión/.test(k) ? 5 : /EQ/.test(k) ? 4 : /4h/.test(k) ? 3 : /1h/.test(k) ? 2 : /15m/.test(k) ? 1 : 0);
+    const best = new Map();       // por vela y dirección se queda el nivel más relevante (semana > día > sesión > iguales > giros)
+    for (const s of out) { const k = s.index + s.dir, b = best.get(k); if (!b || rank(s.kind) > rank(b.kind)) best.set(k, s); }
+    return [...best.values()].sort((a, b) => a.index - b.index);
+  }
+  function fvgAsof(an, t, p = DEFAULT, max = 8) {
+    const B = bundle(an, p);
+    return B.fvg.filter((g) => g.availableAt <= t).map((g) => ({ ...g, status: fvgStatus(g, t) })).filter((g) => g.status !== "mitigado").slice(-max);
+  }
+  function structureAsof(an, t, p = DEFAULT) {
+    const B = bundle(an, p), ev = an.structure.events.filter((e) => e.availableAt <= t).slice(-6);
+    const mev = B.micro.events.filter((e) => e.availableAt <= t).slice(-6).map((e) => ({ ...e, kind: e.kind === "CHoCH" ? "MSS/CHoCH" : "BOS interno" }));
+    return { tf: an.tf, swings: swingsAsof(an, t), events: ev, internal: mev, fvg: fvgAsof(an, t, p), obs: an.orderBlocksAsof(t, null, false).slice(-6) };
+  }
+
+  // ------------------------------------------------------------ CAPA 3: VWAP y perfil de volumen
+  function vwapProfileAsof(ans, t, p = DEFAULT) {
+    const ex = ans[p.exec_tf], m15 = ans["15m"]; if (!ex || !ex.n) return null;
+    const i = ex.idxAsof(t), d = ex.d, c = d.close[i], vw = ex.ind.vwap[i];
+    const out = { price: c, vwap: vw, vwap_dist_pct: isNum(vw) ? ((c - vw) / vw) * 100 : NaN, side: c >= vw ? "sobre" : "bajo" };
+    // VWAP anclado al último evento de estructura de 15m (BOS/CHoCH) — se ancla en el giro que se rompió
+    const src = m15 && m15.n ? m15 : ex, ev = src.structure.events.filter((e) => e.availableAt <= t).slice(-1)[0];
+    if (ev) {
+      let pv = 0, vv = 0; const j0 = ex.idxAsof(ev.pivotTime) + 1;
+      for (let j = Math.max(0, j0); j <= i; j++) { const tp = (d.high[j] + d.low[j] + d.close[j]) / 3; pv += tp * d.volume[j]; vv += d.volume[j]; }
+      out.avwap = vv > 0 ? pv / vv : NaN; out.avwap_anchor = `${ev.kind} ${ev.direction} de ${src.tf} (giro ${new Date(ev.pivotTime).toISOString().slice(5, 16).replace("T", " ")} UTC)`;
+    }
+    // recuperación / pérdida del VWAP de sesión en las últimas 6 velas
+    let cross = null; for (let j = Math.max(1, i - 5); j <= i; j++) { const a = d.close[j - 1] - ex.ind.vwap[j - 1], b = d.close[j] - ex.ind.vwap[j]; if (a < 0 && b > 0) cross = "recuperó el VWAP"; if (a > 0 && b < 0) cross = "perdió el VWAP"; }
+    out.vwap_event = cross;
+    // perfil de rango fijo: día UTC anterior completo (reproducible) y sesión de hoy hasta t
+    const day0 = Math.floor(t / 86400e3) * 86400e3, prev = [], today = [];
+    if (m15 && m15.n) for (let j = m15.idxAsof(t); j >= 0 && m15.d.openTime[j] >= day0 - 86400e3; j--) (m15.d.openTime[j] >= day0 ? today : prev).push(j);
+    const prof = (idx) => { if (idx.length < 8) return null; const a = Math.min(...idx), b = Math.max(...idx); const pr = SSP.volumeProfile(sliceIdx(m15.d, a, b + 1), 32, 0.7); return { from: m15.d.openTime[a], to: m15.d.closeTime[b], poc: pr.poc, vah: pr.vah, val: pr.val, hvn: pr.hvn.map((x) => x.price), lvn: pr.lvn.map((x) => x.price), method: "rango fijo, 15m, volumen repartido en cada vela (aproximación OHLCV)" }; };
+    out.profile_prev = prof(prev); out.profile_today = prof(today);
+    const P = out.profile_prev;
+    if (P) out.acceptance = c > P.vah ? "por encima del área de valor de ayer (aceptación arriba si se sostiene)" : c < P.val ? "por debajo del área de valor de ayer" : "dentro del área de valor de ayer (rango, menor ventaja direccional)";
+    return out;
+  }
+  function sliceIdx(d, a, b) { const o = {}; for (const k of Object.keys(d)) o[k] = Array.isArray(d[k]) ? d[k].slice(a, b) : d[k]; o.n = b - a; return o; }
+
+  // ------------------------------------------------------------ CAPA 8 (parcial): detector de movimientos extremos
+  function extremeAsof(ans, t, p = DEFAULT, tf = "15m") {
+    const an = ans[tf]; if (!an || an.n < 60) return { state: "SIN DATOS", tf, reasons: ["faltan velas de " + tf] };
+    const B = bundle(an, p), d = an.d, i = an.idxAsof(t), A = an.ind.atr, R = [];
+    const tr = (j) => Math.max(d.high[j] - d.low[j], Math.abs(d.high[j] - d.close[j - 1]), Math.abs(d.low[j] - d.close[j - 1]));
+    let exp = -1;
+    for (let j = Math.max(21, i - 5); j <= i; j++) {
+      let hi = -Infinity, lo = Infinity; for (let k = j - 20; k < j; k++) { hi = Math.max(hi, d.high[k]); lo = Math.min(lo, d.low[k]); }
+      if (tr(j) >= 2 * A[j - 1] && B.relVol[j] >= 2 && (d.close[j] > hi || d.close[j] < lo)) exp = j;
+    }
+    const ev = an.structure.events.filter((e) => e.availableAt <= t && i - e.index <= 6).slice(-1)[0];
+    const sw = sweepsAsof(ans, t, Object.assign({}, p, { exec_tf: tf }), 8).filter((s) => i - s.index <= 6);
+    const pc = B.pctl[i];
+    let state = "NORMAL";
+    if (exp >= 0) {
+      state = exp === i ? "EXPANSIÓN INICIADA" : "EXPANSIÓN INICIADA";
+      R.push(`vela de ${tf} con rango ≥ 2 ATR, volumen ${B.relVol[exp].toFixed(1)}× y ruptura del rango de 20 velas`);
+      // agotamiento: después de la expansión el rango y el volumen se reducen y el RSI no acompaña al nuevo extremo
+      if (exp < i) {
+        const up = d.close[exp] > d.open[exp];
+        const newExt = up ? Math.max(...d.high.slice(exp + 1, i + 1)) > d.high[exp] : Math.min(...d.low.slice(exp + 1, i + 1)) < d.low[exp];
+        const rsiWeak = up ? B.rsi[i] < B.rsi[exp] : B.rsi[i] > B.rsi[exp];
+        if ((newExt && rsiWeak) || (B.relVol[i] < 1 && tr(i) < A[i])) { state = "POSIBLE AGOTAMIENTO"; R.push(newExt && rsiWeak ? "nuevo extremo sin confirmación del RSI (divergencia)" : "volumen y rango se reducen tras la expansión"); }
+      }
+    } else if (isNum(pc) && pc <= p.vol_lo_pct + 5) {
+      const L = liquidityAsof(ans, t, p), c = d.close[i], near = [...L.bsl, ...L.ssl].filter((l) => Math.abs(l.price - c) <= 0.5 * A[i] && /día|semana|EQ/.test(l.kind));
+      if (near.length) { state = "VULNERABLE"; R.push(`volatilidad comprimida (percentil ${pc.toFixed(0)}) junto a ${near.map((l) => l.kind + " " + fmtP(l.price)).join(", ")}`); }
+    }
+    if (sw.length && ev && ev.kind === "CHoCH" && ev.index >= sw.at(-1).index && ev.direction === sw.at(-1).dir) { state = "REVERSIÓN EN CONFIRMACIÓN"; R.push(`barrida de ${sw.at(-1).kind} y cambio de carácter ${ev.direction} en ${tf}`); }
+    else if (ev && ev.kind === "BOS" && state !== "EXPANSIÓN INICIADA") {
+      const lvl = ev.level, up = ev.direction === "alcista", ret = d.low.slice(ev.index + 1, i + 1).some((x, k) => (up ? x <= lvl + 0.25 * A[i] && d.close[ev.index + 1 + k] > lvl : false)) || d.high.slice(ev.index + 1, i + 1).some((x, k) => (!up ? x >= lvl - 0.25 * A[i] && d.close[ev.index + 1 + k] < lvl : false));
+      if (ret) { state = "CONTINUACIÓN CONFIRMADA"; R.push(`ruptura ${ev.direction} de ${tf} con retesteo aceptado en ${fmtP(lvl)}`); }
+    }
+    if (!R.length) R.push(isNum(pc) ? `volatilidad en el percentil ${pc.toFixed(0)} de las últimas ${p.pct_lookback} velas` : "volatilidad sin historia suficiente");
+    return { state, tf, reasons: R, vol_pctl: pc, cascade: "CASCADA ACTIVA requiere datos de liquidaciones (fase 4): no evaluada" };
+  }
+
+  // ------------------------------------------------------------ patrones de entrada (A y B) — a fecha t, sin estado
+  /* Patrón A — Sweep + MSS + FVG:
+     1) barrida de SSL (compra) o BSL (venta); 2) en <= a_mss_bars velas, cambio de estructura interno (giros de 2 velas)
+     en el sentido contrario a la barrida, con vela de ruptura de rango >= disp_atr·ATR y volumen >= vol_rel_min;
+     3) un FVG a favor formado entre la barrida y la vela siguiente a la ruptura; 4) retroceso: una vela toca el FVG,
+     cierra dentro o por encima de él y a favor (verde en compras) → CONFIRMACIÓN al cierre de esa vela.
+     Invalidación: cierre más allá del extremo de la barrida, FVG mitigado por completo o más de a_window velas. */
+  function patternA(ans, t, p = DEFAULT) {
+    const an = ans[p.exec_tf]; if (!an || an.n < 80) return [];
+    const B = bundle(an, p), d = an.d, i = an.idxAsof(t), A = an.ind.atr, out = [];
+    const sweeps = sweepsAsof(ans, t, p, p.a_window);
+    for (const s of sweeps.slice(-6)) {
+      const up = s.dir === "alcista", sg = up ? 1 : -1, st = { pattern: "A", name: "Liquidity Sweep + MSS + FVG", dir: up ? "LONG" : "SHORT", sweep: s, stage: "barrida", steps: [], id: `A-${up ? "L" : "S"}-${s.time}` };
+      st.steps.push({ ok: true, text: `Barrida de ${s.kind} en ${fmtP(s.level)} (extremo ${fmtP(s.extreme)}) y cierre de vuelta` });
+      // invalidación por cierre más allá del extremo
+      let inval = null; for (let j = s.index + 1; j <= i; j++) if (up ? d.close[j] < s.extreme : d.close[j] > s.extreme) { inval = j; break; }
+      const mss = B.micro.events.find((e) => e.availableAt > s.availableAt && e.availableAt <= t && e.direction === s.dir && e.index - s.index <= p.a_mss_bars);
+      if (!mss) { st.steps.push({ ok: false, text: `Falta cambio de estructura interno ${s.dir} en ${p.exec_tf} (máx. ${p.a_mss_bars} velas)` }); st.stage = inval !== null ? "invalidado" : i - s.index > p.a_mss_bars ? "vencido" : "esperando MSS"; if (inval !== null) st.invalid = `cierre más allá del extremo de la barrida (${fmtP(s.extreme)})`; out.push(st); continue; }
+      const k = mss.index, rng = d.high[k] - d.low[k], dispOk = rng >= p.disp_atr * A[k], volOk = B.relVol[k] >= p.vol_rel_min;
+      st.steps.push({ ok: dispOk && volOk, text: `MSS ${s.dir} en ${p.exec_tf} rompiendo ${fmtP(mss.level)} · vela de ${(rng / A[k]).toFixed(1)} ATR (mín. ${p.disp_atr}) · volumen ${B.relVol[k].toFixed(1)}× (mín. ${p.vol_rel_min})` });
+      st.mss = mss;
+      if (!(dispOk && volOk)) { st.stage = "MSS sin desplazamiento/volumen"; st.invalid = "el cambio de estructura no tuvo desplazamiento o volumen suficiente"; out.push(st); continue; }
+      const g = B.fvg.filter((x) => x.dir === s.dir && x.index >= s.index && x.index <= k + 1 && x.availableAt <= t).slice(-1)[0];
+      if (!g) { st.steps.push({ ok: false, text: `Sin FVG ${s.dir} en el desplazamiento` }); st.stage = i > k + 1 ? "sin FVG" : "esperando FVG"; if (i > k + 1) st.invalid = "el desplazamiento no dejó FVG"; out.push(st); continue; }
+      st.fvg = g; st.steps.push({ ok: true, text: `FVG ${s.dir} ${fmtP(g.bottom)}–${fmtP(g.top)} (${g.size_atr.toFixed(2)} ATR)` });
+      // confirmación: primera vela después de que el FVG existe que lo toca y cierra a favor sin perderlo
+      let conf = null;
+      for (let j = g.index + 1; j <= i; j++) {
+        if (inval !== null && j >= inval) break;
+        if (g.filledAt !== null && g.filledAt <= d.closeTime[j]) { st.invalid = "FVG mitigado por completo antes de confirmar"; break; }
+        const touch = up ? d.low[j] <= g.top : d.high[j] >= g.bottom, hold = up ? d.close[j] >= g.bottom && d.close[j] > d.open[j] : d.close[j] <= g.top && d.close[j] < d.open[j];
+        if (touch && hold) { conf = j; break; }
+      }
+      if (inval !== null && (conf === null || inval <= conf)) st.invalid = st.invalid || `cierre más allá del extremo de la barrida (${fmtP(s.extreme)})`;
+      if (conf === null) {
+        st.steps.push({ ok: false, text: `Esperando retroceso al FVG con vela de confirmación ${up ? "alcista" : "bajista"}` });
+        st.stage = st.invalid ? "invalidado" : i - s.index > p.a_window ? "vencido" : "esperando retesteo del FVG"; out.push(st); continue;
+      }
+      st.steps.push({ ok: true, text: `Retesteo del FVG y cierre a favor (vela ${new Date(d.openTime[conf]).toISOString().slice(11, 16)} UTC, volumen ${B.relVol[conf].toFixed(1)}×)` });
+      st.confirmIndex = conf; st.confirmAt = d.closeTime[conf]; st.stage = conf === i ? "CONFIRMADO" : "confirmado antes";
+      st.entry = d.close[conf]; st.stop = s.extreme - sg * p.stop_buf_atr * A[conf];
+      st.evidence = [`barrida de ${s.kind}`, "MSS con desplazamiento", "FVG retesteado", `volumen de confirmación ${B.relVol[conf].toFixed(1)}×`];
+      out.push(st);
+    }
+    return out;
+  }
+  /* Patrón B — BOS + Retest + Volume: ruptura de un giro (BOS de la estructura normal del TF de ejecución) con cierre
+     fuera por >= b_break_atr·ATR y volumen >= vol_rel_min; después el precio vuelve al nivel (± b_retest_atr·ATR) y una
+     vela CIERRA del lado de la ruptura y a favor → confirmación. Cierre del otro lado por > 0,25 ATR = ruptura fallida. */
+  function patternB(ans, t, p = DEFAULT) {
+    const an = ans[p.exec_tf]; if (!an || an.n < 80) return [];
+    const B = bundle(an, p), d = an.d, i = an.idxAsof(t), A = an.ind.atr, out = [];
+    const evs = an.structure.events.filter((e) => e.kind === "BOS" && e.availableAt <= t && i - e.index <= p.b_window);
+    for (const e of evs.slice(-4)) {
+      const up = e.direction === "alcista", sg = up ? 1 : -1, k = e.index, L = e.level;
+      const st = { pattern: "B", name: "Breakout + Retest + Volume", dir: up ? "LONG" : "SHORT", bos: e, steps: [], id: `B-${up ? "L" : "S"}-${e.time}` };
+      const outBy = sg * (d.close[k] - L) / A[k], volOk = B.relVol[k] >= p.vol_rel_min;
+      st.steps.push({ ok: outBy >= p.b_break_atr && volOk, text: `BOS ${e.direction} en ${fmtP(L)} · cierre fuera ${outBy.toFixed(2)} ATR (mín. ${p.b_break_atr}) · volumen ${B.relVol[k].toFixed(1)}× (mín. ${p.vol_rel_min})` });
+      if (!(outBy >= p.b_break_atr && volOk)) { st.stage = "ruptura sin confirmar"; st.invalid = "ruptura sin cierre claro o sin volumen"; out.push(st); continue; }
+      let conf = null, fail = null, lowest = up ? Infinity : -Infinity;
+      for (let j = k + 1; j <= i; j++) {
+        lowest = up ? Math.min(lowest, d.low[j]) : Math.max(lowest, d.high[j]);
+        if (up ? d.close[j] < L - 0.25 * A[j] : d.close[j] > L + 0.25 * A[j]) { fail = j; break; }
+        const touch = up ? d.low[j] <= L + p.b_retest_atr * A[j] : d.high[j] >= L - p.b_retest_atr * A[j];
+        if (touch && (up ? d.close[j] > L && d.close[j] > d.open[j] : d.close[j] < L && d.close[j] < d.open[j])) { conf = j; break; }
+      }
+      if (fail !== null) { st.steps.push({ ok: false, text: "Ruptura fallida: cierre de vuelta al otro lado del nivel" }); st.stage = "invalidado"; st.invalid = "ruptura fallida"; out.push(st); continue; }
+      if (conf === null) { st.steps.push({ ok: false, text: `Esperando retesteo de ${fmtP(L)} (± ${p.b_retest_atr} ATR) con cierre a favor` }); st.stage = i - k > p.b_window ? "vencido" : "esperando retesteo"; out.push(st); continue; }
+      st.steps.push({ ok: true, text: `Retesteo aceptado: cierre ${up ? "sobre" : "bajo"} ${fmtP(L)} (vela ${new Date(d.openTime[conf]).toISOString().slice(11, 16)} UTC)` });
+      st.confirmIndex = conf; st.confirmAt = d.closeTime[conf]; st.stage = conf === i ? "CONFIRMADO" : "confirmado antes";
+      st.entry = d.close[conf]; st.stop = (up ? Math.min(lowest, L) : Math.max(lowest, L)) - sg * p.stop_buf_atr * A[conf];
+      st.evidence = ["BOS con cierre fuera del nivel", `volumen de ruptura ${B.relVol[k].toFixed(1)}×`, "retesteo aceptado"];
+      out.push(st);
+    }
+    return out;
+  }
+
+  // ------------------------------------------------------------ riesgo y tamaño de posición
+  function sizePosition(dir, entry, stop, target, R, instr = null) {
+    const up = dir === "LONG", dist = Math.abs(entry - stop), c = (R.taker_fee_pct + R.slippage_pct) / 100;
+    const out = { reasons: [] };
+    if (!(dist > 0) || (up ? stop >= entry : stop <= entry)) return { valid: false, reasons: ["stop del lado equivocado"] };
+    out.risk_amount = (R.account_capital * R.risk_pct) / 100;
+    const lossU = dist + c * (entry + stop);
+    let qty = out.risk_amount / lossU;
+    const capQty = (R.account_capital * R.max_leverage) / entry;          // la exposición no puede superar capital × apalancamiento máximo
+    if (qty > capQty) { qty = capQty; out.reasons_info = [`cantidad limitada por apalancamiento máximo ${R.max_leverage}x (riesgo real menor al configurado)`]; }
+    if (instr && instr.qtyStep) { qty = Math.floor(qty / instr.qtyStep + 1e-9) * instr.qtyStep; if (instr.minQty && qty < instr.minQty) out.reasons.push(`cantidad ${qty} menor al mínimo del exchange (${instr.minQty})`); }
+    out.quantity = qty; out.notional = qty * entry; out.leverage = Math.min(R.max_leverage, Math.max(1, Math.ceil((out.notional / R.account_capital) * 10) / 10));
+    out.margin = out.notional / out.leverage; out.margin_mode = R.margin_mode;
+    out.est_loss = qty * lossU; out.est_loss_pct = (out.est_loss / R.account_capital) * 100;
+    const gain = Math.abs(target - entry), costTp = c * (entry + target);
+    out.rr_gross = gain / dist; out.rr_net = (gain - costTp) / lossU; out.est_profit = qty * (gain - costTp);
+    out.costs = qty * c * (entry + target); out.stop_pct = (dist / entry) * 100;
+    out.valid = !out.reasons.length;
+    return out;
+  }
+  const roundTick = (x, tick) => (tick ? Math.round(x / tick) * tick : x);
+
+  // ------------------------------------------------------------ CAPA 10: motor de decisión
+  /* ctx = { ans: {tf: TFAnalysis}, t, dq: calidad de datos, ticker: {bid, ask, last, ts}, ledger: {...}, macro: [...], instr }
+     Devuelve el estado (LONG CONFIRMADO / SHORT CONFIRMADO / EN OBSERVACIÓN / NO OPERAR), la matriz A–J, vetos,
+     escenarios y la ficha de señal con traza completa. */
+  function evaluate(ctx, p = DEFAULT, R = DEFAULT_RISK, M = DEFAULT_MACRO) {
+    const { ans, t } = ctx, ex = ans[p.exec_tf];
+    const regs = p.regime_tfs.map((tf) => regimeAt(ans[tf], t, p)), al = alignment(regs), rg = Object.fromEntries(regs.map((r) => [r.tf, r]));
+    const liq = ex && ex.n ? liquidityAsof(ans, t, p) : { bsl: [], ssl: [], all: [], price: NaN };
+    const vw = vwapProfileAsof(ans, t, p), xt = extremeAsof(ans, t, p, "15m");
+    const setups = [...patternA(ans, t, p), ...patternB(ans, t, p)];
+    const dq = ctx.dq || { ok: false, critical: ["sin información de calidad de datos"] };
+    const ledger = ctx.ledger || { tradesToday: 0, realizedTodayPct: 0, consecLosses: 0 };
+    const tk = ctx.ticker || {};
+    const spreadPct = tk.bid && tk.ask ? ((tk.ask - tk.bid) / ((tk.ask + tk.bid) / 2)) * 100 : NaN;
+    // ---- eventos macro (solo los que el usuario registró: no hay calendario verificado conectado)
+    const mac = (ctx.macro || []).map((e) => ({ ...e, blockFrom: e.time - (e.before ?? M.before_min) * 60e3, blockTo: e.time + (e.after ?? M.after_min) * 60e3 }));
+    const macroBlock = mac.filter((e) => e.impact === "alto" && e.blockFrom <= t && t <= e.blockTo);
+    const macroNext = mac.filter((e) => e.time > t).sort((a, b) => a.time - b.time)[0] || null;
+    // ---- vetos globales (ningún puntaje los anula)
+    const vetoG = [];
+    if (!dq.ok) vetoG.push(...dq.critical.map((x) => "Datos: " + x));
+    if (macroBlock.length) vetoG.push(`Evento macro de alto impacto: ${macroBlock.map((e) => e.name).join(", ")} (bloqueo ${M.before_min} min antes / ${M.after_min} min después)`);
+    if (ledger.realizedTodayPct <= -R.max_daily_loss_pct) vetoG.push(`Pérdida diaria máxima alcanzada (${ledger.realizedTodayPct.toFixed(2)} % ≤ −${R.max_daily_loss_pct} %)`);
+    if (ledger.tradesToday >= R.max_trades_day) vetoG.push(`Máximo de ${R.max_trades_day} operaciones diarias alcanzado`);
+    if (ledger.consecLosses >= R.max_consec_losses) vetoG.push(`Suspensión preventiva: ${ledger.consecLosses} pérdidas seguidas (se reanuda el próximo día UTC)`);
+    if (ledger.openPositions > 0) vetoG.push("Ya hay una operación del analizador abierta");
+    if (isNum(spreadPct) && spreadPct > p.max_spread_pct) vetoG.push(`Spread ${spreadPct.toFixed(3)} % > máximo ${p.max_spread_pct} %`);
+    if (!isNum(spreadPct)) vetoG.push("Spread no disponible (sin precio de compra/venta en vivo)");
+    // ---- evaluar cada setup confirmado en esta vela
+    const ready = [];
+    for (const s of setups) {
+      if (s.stage !== "CONFIRMADO") continue;
+      const up = s.dir === "LONG", sg = up ? 1 : -1, A = ex.ind.atr[s.confirmIndex];
+      const targets = (up ? liq.bsl : liq.ssl).filter((l) => sg * (l.price - s.entry) > 0);
+      const contra = [], conf = [...s.evidence], veto = [];
+      // objetivo principal: primer nivel de liquidez opuesta con R/B neto >= mínimo; los más cercanos quedan como obstáculos
+      let tp = null, obst = [];
+      for (const l of targets) { const z = sizePosition(s.dir, s.entry, s.stop, l.price, R, ctx.instr); if (z.rr_net >= R.min_rr) { tp = l; break; } obst.push(l); }
+      if (!targets.length) veto.push("No hay liquidez opuesta identificada para un objetivo");
+      else if (!tp) veto.push(`Ningún nivel de liquidez opuesta da R/B neto ≥ ${R.min_rr} (el más lejano: ${fmtP(targets.at(-1).price)})`);
+      if (obst.length) contra.push(`${obst.length} nivel(es) de liquidez antes del objetivo (primero en ${fmtP(obst[0].price)})`);
+      const stopPct = (Math.abs(s.entry - s.stop) / s.entry) * 100;
+      if (stopPct < p.min_stop_pct) veto.push(`Stop demasiado cerca (${stopPct.toFixed(2)} % < ${p.min_stop_pct} %): el ruido y los costos lo harían inútil`);
+      if (stopPct > p.max_stop_pct) veto.push(`Stop demasiado lejos (${stopPct.toFixed(2)} % > ${p.max_stop_pct} %)`);
+      // régimen: una entrada en 5M no debe ir contra 4H y 1D a la vez
+      const r1h = rg["1h"], r4h = rg["4h"], r1d = rg["1d"];
+      const against = [r4h, r1d].filter((r) => r && r.ok && r.dir === -sg);
+      if (against.length === 2) veto.push(`La estructura de 4H y 1D es ${up ? "bajista" : "alcista"}: contradice la entrada`);
+      else if (against.length) contra.push(`${against.map((r) => r.tf.toUpperCase()).join(" y ")} en ${against[0].label.toLowerCase()}`);
+      if (s.pattern === "B" && !(r1h && r1h.ok && r1h.dir === sg)) veto.push("Patrón B (continuación) exige tendencia de 1H a favor");
+      if (xt.state === "EXPANSIÓN INICIADA") veto.push("Volatilidad extrema en curso en 15m: esperar a que se asiente");
+      if (vw && isNum(vw.vwap)) (up ? vw.price >= vw.vwap : vw.price <= vw.vwap) ? conf.push(`precio ${vw.side} el VWAP de sesión`) : contra.push(`precio ${vw.side} el VWAP de sesión`);
+      const z = tp ? sizePosition(s.dir, s.entry, s.stop, tp.price, R, ctx.instr) : null;
+      if (z && !z.valid) veto.push(...z.reasons);
+      // ---- matriz A–J
+      const F = (st, why) => ({ st, why });
+      const mx = {
+        A: !r1h || !r1h.ok ? F("Sin datos suficientes", "régimen 1H sin datos") : r1h.dir === sg ? F("Favorable", `1H: ${r1h.label}`) : r1h.dir === -sg ? F("Contradictorio", `1H: ${r1h.label}`) : F("Neutral", `1H: ${r1h.label}`),
+        B: (() => { const v = regs.filter((r) => r.ok && ["1d", "4h", "1h", "15m"].includes(r.tf)), f = v.filter((r) => r.dir === sg).length, c2 = v.filter((r) => r.dir === -sg).length; return !v.length ? F("Sin datos suficientes", "") : c2 > f ? F("Contradictorio", `${c2} temporalidades en contra, ${f} a favor`) : f >= 2 && !c2 ? F("Favorable", `${f} temporalidades a favor, ninguna en contra`) : F("Neutral", `${f} a favor, ${c2} en contra`); })(),
+        C: F("Favorable", s.steps.filter((x) => x.ok).map((x) => x.text).join(" · ")),
+        D: tp ? (obst.length ? F("Neutral", `objetivo en ${tp.kind} ${fmtP(tp.price)} con ${obst.length} nivel(es) intermedio(s)`) : F("Favorable", `camino libre hasta ${tp.kind} ${fmtP(tp.price)}`)) : F("Contradictorio", "sin objetivo de liquidez con R/B suficiente"),
+        E: vw && isNum(vw.vwap) ? ((up ? vw.price >= vw.vwap : vw.price <= vw.vwap) && ex.d.volume[s.confirmIndex] > 0 ? F("Favorable", `${vw.side} VWAP (${vw.vwap_dist_pct.toFixed(2)} %)${vw.acceptance ? " · " + vw.acceptance : ""}`) : F("Contradictorio", `${vw.side} VWAP (${vw.vwap_dist_pct.toFixed(2)} %)`)) : F("Sin datos suficientes", "VWAP no disponible"),
+        F: F("Sin datos suficientes", "order flow real (CVD de operaciones ejecutadas) pendiente: fase 4"),
+        G: F("Sin datos suficientes", "open interest y funding pendientes: fase 4"),
+        H: F("Sin datos suficientes", "liquidaciones pendientes: fase 4"),
+        I: macroBlock.length ? F("Contradictorio", "dentro de una ventana de evento de alto impacto") : F(mac.length ? "Favorable" : "Sin datos suficientes", mac.length ? "sin eventos registrados en la ventana" : "sin calendario verificado conectado; solo eventos que usted registre"),
+        J: z ? (z.rr_net >= R.min_rr && isNum(spreadPct) && spreadPct <= p.max_spread_pct ? F("Favorable", `R/B neto ${z.rr_net.toFixed(2)} · stop ${stopPct.toFixed(2)} % · spread ${isNum(spreadPct) ? spreadPct.toFixed(3) + " %" : "—"}`) : F("Contradictorio", `R/B neto ${z.rr_net.toFixed(2)}`)) : F("Contradictorio", "sin objetivo válido"),
+      };
+      const fav = Object.values(mx).filter((x) => x.st === "Favorable").length, ctr = Object.values(mx).filter((x) => x.st === "Contradictorio").length;
+      const quality = ctr >= 3 ? "baja" : fav >= 6 && !ctr ? "alta" : fav >= 4 && ctr <= 1 ? "media" : "baja";
+      ready.push({ s, tp, obst, targets, z, veto: [...vetoG, ...veto], contra, conf, mx, quality, stopPct });
+    }
+    // ---- conflicto: compra y venta confirmadas a la vez → no operar
+    const okL = ready.filter((x) => x.s.dir === "LONG" && !x.veto.length), okS = ready.filter((x) => x.s.dir === "SHORT" && !x.veto.length);
+    let decision, pick = null;
+    if (okL.length && okS.length) decision = { state: "NO OPERAR", why: "Señales de compra y venta a la vez: conflicto sin resolver" };
+    else if (okL.length || okS.length) { pick = (okL.length ? okL : okS).sort((a, b) => (a.s.pattern === "A" ? -1 : 1))[0]; decision = { state: pick.s.dir === "LONG" ? "LONG CONFIRMADO" : "SHORT CONFIRMADO" }; }
+    else {
+      const pending = setups.filter((s) => !s.invalid && /esperando/.test(s.stage));
+      if (ready.length) decision = { state: "NO OPERAR", why: "Hay un setup confirmado pero lo bloquean: " + ready[0].veto.join(" · ") };
+      else if (vetoG.length) decision = { state: "NO OPERAR", why: vetoG.join(" · ") };
+      else if (pending.length) decision = { state: "EN OBSERVACIÓN", why: pending.map((s) => `${s.dir} patrón ${s.pattern}: ${s.stage}`).join(" · ") };
+      else decision = { state: "NO OPERAR", why: "No hay un setup válido en formación: sin ventaja identificada" };
+    }
+    // ---- ficha de señal
+    let signal = null;
+    if (pick) {
+      const s = pick.s, z = pick.z, tick = ctx.instr && ctx.instr.tick;
+      signal = {
+        id: `${VERSION}|${s.id}|${s.confirmAt}`, symbol: "BTCUSDT", exchange: "Bybit", market: "perpetuo USDT (linear)", dir: s.dir, strategy: `Patrón ${s.pattern} — ${s.name}`,
+        time: s.confirmAt, tf: p.exec_tf, price_now: tk.last ?? s.entry, entry: roundTick(s.entry, tick), entry_zone: s.fvg ? [s.fvg.bottom, s.fvg.top] : s.bos ? [s.bos.level, s.entry] : null,
+        stop: roundTick(s.stop, tick), tp: roundTick(pick.tp.price, tick), tp_kind: pick.tp.kind, tp2: pick.targets.filter((l) => l !== pick.tp && (s.dir === "LONG" ? l.price > pick.tp.price : l.price < pick.tp.price)).slice(0, 2).map((l) => ({ price: roundTick(l.price, tick), kind: l.kind })),
+        risk_amount: z.risk_amount, quantity: z.quantity, notional: z.notional, leverage: z.leverage, margin_mode: z.margin_mode, rr_net: z.rr_net, rr_gross: z.rr_gross,
+        spread_pct: spreadPct, costs: z.costs, est_loss: z.est_loss, est_profit: z.est_profit, sizing_info: z.reasons_info || [],
+        confirmations: pick.conf, contradictions: pick.contra, invalidation: s.pattern === "A" ? `cierre ${s.dir === "LONG" ? "bajo" : "sobre"} ${fmtP(s.sweep.extreme)} (extremo de la barrida) o tocar el stop` : `cierre del otro lado de ${fmtP(s.bos.level)} o tocar el stop`,
+        expires: s.confirmAt + TF[p.exec_tf], quality: pick.quality, status: "emitida (simulación)", matrix: pick.mx,
+        trace: { version: VERSION, params: Object.assign({}, p), risk: Object.assign({}, R), steps: s.steps, regimes: regs.map((r) => ({ tf: r.tf, label: r.label, vol: r.vol, t: r.t })), data: dq.summary || null, t },
+      };
+    }
+    const scen = scenarios(ans, t, p, regs, al, liq, vw, xt, setups, vetoG);
+    return { t, version: VERSION, regimes: regs, alignment: al, liquidity: liq, vwap: vw, extreme: xt, setups, ready, decision, signal, scenarios: scen, macro: { events: mac, block: macroBlock, next: macroNext },
+      vetoes: vetoG, spread_pct: spreadPct, structure: ex && ex.n ? structureAsof(ex, t, p) : null, structure15: ans["15m"] && ans["15m"].n ? structureAsof(ans["15m"], t, p) : null };
+  }
+
+  // ------------------------------------------------------------ CAPA 9 (cualitativa): escenarios y horizontes
+  function scenarios(ans, t, p, regs, al, liq, vw, xt, setups, vetoG) {
+    const rg = Object.fromEntries(regs.map((r) => [r.tf, r])), px = liq.price;
+    const s15 = ans["15m"] && ans["15m"].n ? swingsAsof(ans["15m"], t) : null, sh = s15 && s15.highs.at(-1), sl = s15 && s15.lows.at(-1);
+    const facts = (sg) => {
+      const sup = [], con = [];
+      for (const r of regs) if (r.ok && r.dir) (r.dir === sg ? sup : con).push(`${r.tf.toUpperCase()}: ${r.label.toLowerCase()}`);
+      if (vw && isNum(vw.vwap)) ((sg > 0) === (vw.price >= vw.vwap) ? sup : con).push(`precio ${vw.side} el VWAP (${vw.vwap_dist_pct.toFixed(2)} %)`);
+      const ev = rg["15m"] && rg["15m"].last_event; if (ev) ((ev.direction === "alcista") === (sg > 0) ? sup : con).push(`último ${ev.kind} de 15m ${ev.direction}`);
+      for (const s of setups.filter((x) => !x.invalid && x.stage !== "vencido")) ((s.dir === "LONG") === (sg > 0) ? sup : con).push(`patrón ${s.pattern} ${s.dir}: ${s.stage}`);
+      return { sup, con };
+    };
+    const bull = facts(1), bear = facts(-1);
+    const nb = liq.bsl[0], ns = liq.ssl[0];
+    const neutral = [];
+    if (al.conflict) neutral.push(al.text);
+    for (const r of regs.filter((r) => r.ok && ["1h", "15m"].includes(r.tf) && /Consolidación|incertidumbre|Transición/.test(r.label))) neutral.push(`${r.tf.toUpperCase()}: ${r.label.toLowerCase()}`);
+    if (vw && vw.acceptance && /dentro/.test(vw.acceptance)) neutral.push("precio " + vw.acceptance);
+    if (xt.state === "EXPANSIÓN INICIADA") neutral.push("expansión de volatilidad sin confirmar dirección");
+    neutral.push(...vetoG);
+    const H = (tf, label) => { const r = rg[tf]; return { horizon: label, bias: r && r.ok ? (r.dir > 0 ? "alcista" : r.dir < 0 ? "bajista" : "sin dirección") : "sin datos", basis: r && r.ok ? r.label : "sin datos", probability: "Evidencia insuficiente: no hay un modelo estadístico entrenado y validado fuera de muestra" }; };
+    return {
+      bull: { title: "ALCISTA", support: bull.sup, against: bull.con,
+        confirm: sh ? `cierre de 15m sobre ${fmtP(sh.price)} (último máximo de 15m) con volumen ≥ ${p.vol_rel_min}× y retesteo aceptado` : "falta estructura de 15m",
+        invalidate: sl ? `cierre de 15m bajo ${fmtP(sl.price)} (último mínimo de 15m)` : "—", targets: liq.bsl.slice(0, 3).map((l) => `${fmtP(l.price)} (${l.kind})`) },
+      bear: { title: "BAJISTA", support: bear.sup, against: bear.con,
+        confirm: sl ? `cierre de 15m bajo ${fmtP(sl.price)} (último mínimo de 15m) con volumen ≥ ${p.vol_rel_min}× y retesteo rechazado` : "falta estructura de 15m",
+        invalidate: sh ? `cierre de 15m sobre ${fmtP(sh.price)} (último máximo de 15m)` : "—", targets: liq.ssl.slice(0, 3).map((l) => `${fmtP(l.price)} (${l.kind})`) },
+      neutral: { title: "NEUTRAL / NO OPERAR", reasons: neutral.length ? neutral : ["no hay razones fuertes para no operar, pero tampoco un setup confirmado"],
+        range: nb && ns ? `entre ${fmtP(ns.price)} (${ns.kind}) y ${fmtP(nb.price)} (${nb.kind})` : "—" },
+      valid_until: Math.floor(t / TF["15m"]) * TF["15m"] + TF["15m"],
+      horizons: [H("15m", "15 minutos"), H("1h", "1 hora"), H("4h", "4 horas"), H("1d", "24 horas")],
+      objectives: {
+        direction: rg["1h"] && rg["1h"].ok ? `cualitativa: 1H ${rg["1h"].label.toLowerCase()}, 4H ${rg["4h"] && rg["4h"].ok ? rg["4h"].label.toLowerCase() : "sin datos"}` : "sin datos",
+        extreme_risk: `${xt.state} (${xt.reasons[0]})`,
+        zone_first: "Evidencia insuficiente (requiere etiquetado de triple barrera y modelo calibrado: fase posterior)",
+        entry_quality: setups.some((s) => s.stage === "CONFIRMADO") ? "ver ficha de la señal" : "sin setup confirmado",
+      },
+      price: px,
+    };
+  }
+
+  // ------------------------------------------------------------ explicación en español, a partir de los resultados calculados
+  function explain(r) {
+    const rg = Object.fromEntries(r.regimes.map((x) => [x.tf, x])), L = [];
+    const desc = ["1d", "4h", "1h", "15m"].filter((tf) => rg[tf] && rg[tf].ok).map((tf) => `${tf.toUpperCase()} ${rg[tf].label.toLowerCase()}`).join(", ");
+    L.push({ q: "¿Qué está haciendo el mercado?", a: `${desc || "sin datos de régimen"}. ${r.alignment.text}. Volatilidad 15m: ${rg["15m"] && rg["15m"].ok ? rg["15m"].vol.toLowerCase() : "sin datos"}. Detector: ${r.extreme.state.toLowerCase()} (${r.extreme.reasons[0]}).` });
+    const pick = r.signal, sc = pick ? (pick.dir === "LONG" ? r.scenarios.bull : r.scenarios.bear) : null;
+    L.push({ q: "¿Qué datos respaldan el análisis?", a: pick ? pick.confirmations.join("; ") : (r.scenarios.bull.support.length >= r.scenarios.bear.support.length ? r.scenarios.bull.support : r.scenarios.bear.support).join("; ") || "ninguno destacable" });
+    L.push({ q: "¿Qué datos lo contradicen?", a: pick ? (pick.contradictions.join("; ") || "ninguno relevante") : (r.scenarios.bull.support.length >= r.scenarios.bear.support.length ? r.scenarios.bull.against : r.scenarios.bear.against).join("; ") || "ninguno destacable" });
+    L.push({ q: "¿Qué eventos podrían cambiarlo?", a: r.macro.next ? `${r.macro.next.name} (${r.macro.next.impact}) el ${new Date(r.macro.next.time).toLocaleString("es-CR", { timeZone: "America/Costa_Rica", dateStyle: "short", timeStyle: "short" })} hora de Costa Rica.` : "No hay eventos registrados. No hay un calendario económico verificado conectado: agregue manualmente CPI, FOMC, NFP, etc." });
+    const pend = r.setups.filter((s) => !s.invalid && /esperando/.test(s.stage));
+    L.push({ q: "¿Qué confirmación falta?", a: pick ? "Ninguna: la señal se confirmó al cierre de la vela." : pend.length ? pend.map((s) => `${s.dir} patrón ${s.pattern}: ${s.steps.filter((x) => !x.ok).map((x) => x.text).join("; ")}`).join(" | ") : `Alcista: ${r.scenarios.bull.confirm}. Bajista: ${r.scenarios.bear.confirm}.` });
+    L.push({ q: "¿Qué lo invalidaría?", a: pick ? pick.invalidation : `Alcista: ${r.scenarios.bull.invalidate}. Bajista: ${r.scenarios.bear.invalidate}.` });
+    L.push({ q: "¿Por qué esperar, comprar o vender?", a: r.decision.state.includes("CONFIRMADO") ? `${r.decision.state}: el patrón completó todos sus pasos, ningún veto está activo y el R/B neto es ${pick.rr_net.toFixed(2)} (mínimo ${r.signal.trace.risk.min_rr}). Calidad ${pick.quality}.` : `${r.decision.state}: ${r.decision.why}.` });
+    return L;
+  }
+
+  // ------------------------------------------------------------ calidad de datos
+  /* series: {tf: {rows: velas cerradas, live: vela en curso, recvAt}}, ticker: {ts, recvAt, bid, ask}, wsOk, now.
+     Críticos para señales: temporalidad de ejecución, 15m y 1h actualizadas, sin huecos recientes, y precio en vivo. */
+  function dataQuality(series, ticker, wsOk, now, p = DEFAULT, maxDelayS = 20) {
+    const rows = [], critical = [], critTfs = [p.exec_tf, "15m", "1h"];
+    for (const tf of p.regime_tfs.concat(["1m"]).filter((x, i, a) => a.indexOf(x) === i)) {
+      const s = series[tf], r = { source: "Bybit REST + WebSocket", instrument: "BTCUSDT", exchange: "Bybit", market: "perpetuo", tf, unit: "USDT", freq: tf };
+      if (!s || !s.rows || !s.rows.length) { r.status = "Datos no disponibles"; r.valid = false; rows.push(r); if (critTfs.includes(tf)) critical.push(`velas de ${tf} no disponibles`); continue; }
+      const L = s.rows, last = L[L.length - 1], st = TF[tf];
+      let dup = 0, gap = 0, ooo = 0;
+      for (let i = Math.max(1, L.length - 300); i < L.length; i++) { const dd = L[i].openTime - L[i - 1].openTime; if (dd === 0) dup++; else if (dd < 0) ooo++; else if (dd !== st && tf !== "1w") gap++; }
+      const expectNext = last.closeTime + st, age = (now - last.closeTime) / 1000;
+      r.ts = last.closeTime; r.recvAt = s.recvAt || null; r.age_s = age; r.bars = L.length; r.duplicates = dup; r.gaps = gap; r.out_of_order = ooo;
+      const late = now > expectNext + maxDelayS * 1000;
+      r.valid = !dup && !ooo && !gap && !late;
+      r.status = dup ? "duplicados" : ooo ? "fuera de orden" : gap ? `${gap} hueco(s)` : late ? `desactualizada (${Math.round((now - expectNext) / 1000)} s de retraso)` : "OK";
+      if (!r.valid && critTfs.includes(tf)) critical.push(`${tf}: ${r.status}`);
+      rows.push(r);
+    }
+    const tk = { source: "Bybit WebSocket tickers", instrument: "BTCUSDT", exchange: "Bybit", market: "perpetuo", tf: "precio en vivo", unit: "USDT" };
+    if (!ticker || !ticker.recvAt) { tk.status = "Datos no disponibles"; tk.valid = false; critical.push("precio en vivo no disponible"); }
+    else { tk.age_s = (now - ticker.recvAt) / 1000; tk.ts = ticker.ts || null; tk.recvAt = ticker.recvAt; tk.valid = tk.age_s <= 30; tk.status = tk.valid ? "OK" : `desactualizado (${tk.age_s.toFixed(0)} s)`; if (!tk.valid) critical.push("precio en vivo " + tk.status); }
+    rows.push(tk);
+    if (!wsOk) critical.push("WebSocket desconectado");
+    for (const [nm, ph] of [["Order flow (operaciones ejecutadas)", "fase 4"], ["Open interest / funding", "fase 4"], ["Liquidaciones", "fase 4"], ["Libro de órdenes L2", "fase 4"], ["Calendario macro verificado", "sin fuente conectada"]]) rows.push({ source: "—", instrument: "BTCUSDT", tf: nm, status: `Datos no disponibles (${ph})`, valid: null });
+    return { ok: !critical.length, critical, rows, summary: rows.filter((r) => r.valid !== null).map((r) => `${r.tf}:${r.status}`).join(", ") };
+  }
+
+  // ------------------------------------------------------------ libro de operaciones simuladas (paper trading del analizador)
+  function ledgerStats(trades, t) {
+    const day = Math.floor(t / 86400e3), today = trades.filter((x) => Math.floor(x.time / 86400e3) === day);
+    const closed = trades.filter((x) => x.exit_time), closedToday = closed.filter((x) => Math.floor(x.exit_time / 86400e3) === day);
+    let consec = 0; for (let i = closed.length - 1; i >= 0; i--) { if (Math.floor(closed[i].exit_time / 86400e3) !== day) break; if (closed[i].pnl < 0) consec++; else break; }
+    return { tradesToday: today.length, realizedTodayPct: closedToday.reduce((a, x) => a + x.pnl_pct, 0), consecLosses: consec, openPositions: trades.filter((x) => !x.exit_time).length };
+  }
+  /* avanza una operación simulada con una vela de 1m (stop primero si la vela toca ambos; en la vela de entrada no cuenta el TP) */
+  function stepTrade(tr, bar, R, maxHoldMs) {
+    if (tr.exit_time || bar.closeTime <= tr.time) return false;
+    const up = tr.dir === "LONG", hitSl = up ? bar.low <= tr.stop : bar.high >= tr.stop, hitTp = up ? bar.high >= tr.tp : bar.low <= tr.tp;
+    let px = null, why = null;
+    if (hitSl) { px = tr.stop; why = "Stop Loss"; } else if (hitTp) { px = tr.tp; why = "Take Profit"; } else if (bar.closeTime - tr.time >= maxHoldMs) { px = bar.close; why = "Cierre por tiempo"; }
+    if (px === null) return false;
+    const c = (R.taker_fee_pct + R.slippage_pct) / 100, sg = up ? 1 : -1;
+    const net = sg * (px - tr.entry) - c * (tr.entry + px), riskU = Math.abs(tr.entry - tr.stop) + c * (tr.entry + tr.stop);
+    Object.assign(tr, { exit_time: bar.closeTime, exit_price: px, exit_reason: why, r: net / riskU, pnl: net * tr.quantity, pnl_pct: ((net * tr.quantity) / R.account_capital) * 100 });
+    return true;
+  }
+
+  return { VERSION, DEFAULT, DEFAULT_RISK, RISK_LIMITS, DEFAULT_MACRO, bundle, regimeAt, alignment, swingsAsof, liquidityAsof, sweepsAsof, fvgAsof, structureAsof, vwapProfileAsof, extremeAsof,
+    patternA, patternB, sizePosition, evaluate, explain, dataQuality, ledgerStats, stepTrade, fmtP };
+})(typeof SSP !== "undefined" ? SSP : require("./core.js"));
+if (typeof module !== "undefined") module.exports = BTCI;
+
+</script>
+<script>
+/* Resultados reales del BTC Strategy Lab (lab/backtest_btci.js sobre velas de 1m de Bybit). Se regeneran al volver a correr el laboratorio. */
+window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z", "data": {"symbol": "BTCUSDT perpetuo Bybit", "from": "2023-01-01", "to": "2024-12-01", "bars_1m": 833760}, "costs": "taker 0.055 % + deslizamiento 0.02 % por lado", "setups_confirmados": 1606, "señales": 383, "total": {"n": 383, "win_pct": 27.9, "avg_win_R": 1.649, "avg_loss_R": -0.898, "expectancy_R": -0.186, "t_stat": -2.45, "profit_factor": 0.71, "total_R": -71.29, "max_dd_R": -86.23, "recovery": -0.83, "max_losing_streak": 15, "exits": {"tp": 19, "sl": 229, "tiempo": 135}, "pnl_pct_account": -34.96}, "muestra_2023": {"n": 220, "win_pct": 26.4, "avg_win_R": 1.503, "avg_loss_R": -0.876, "expectancy_R": -0.249, "t_stat": -2.65, "profit_factor": 0.61, "total_R": -54.76, "max_dd_R": -56.65, "recovery": -0.97, "max_losing_streak": 15, "exits": {"tp": 12, "sl": 132, "tiempo": 76}, "pnl_pct_account": -27.17}, "fuera_de_muestra_2024": {"n": 163, "win_pct": 30.1, "avg_win_R": 1.822, "avg_loss_R": -0.928, "expectancy_R": -0.101, "t_stat": -0.81, "profit_factor": 0.84, "total_R": -16.53, "max_dd_R": -42.86, "recovery": -0.39, "max_losing_streak": 12, "exits": {"tp": 7, "sl": 97, "tiempo": 59}, "pnl_pct_account": -7.79}, "patron_A": {"n": 231, "win_pct": 34.2, "avg_win_R": 1.072, "avg_loss_R": -0.823, "expectancy_R": -0.175, "t_stat": -2.38, "profit_factor": 0.68, "total_R": -40.36, "max_dd_R": -45.61, "recovery": -0.88, "max_losing_streak": 8, "exits": {"tp": 6, "sl": 108, "tiempo": 117}, "pnl_pct_account": -19.72}, "patron_B": {"n": 152, "win_pct": 18.4, "avg_win_R": 3.277, "avg_loss_R": -0.989, "expectancy_R": -0.204, "t_stat": -1.31, "profit_factor": 0.75, "total_R": -30.93, "max_dd_R": -54.86, "recovery": -0.56, "max_losing_streak": 22, "exits": {"tp": 13, "sl": 121, "tiempo": 18}, "pnl_pct_account": -15.25}, "long": {"n": 210, "win_pct": 31.9, "avg_win_R": 1.588, "avg_loss_R": -0.894, "expectancy_R": -0.102, "t_stat": -1.03, "profit_factor": 0.83, "total_R": -21.42, "max_dd_R": -42.79, "recovery": -0.5, "max_losing_streak": 8, "exits": {"tp": 11, "sl": 120, "tiempo": 79}, "pnl_pct_account": -10.36}, "short": {"n": 173, "win_pct": 23.1, "avg_win_R": 1.751, "avg_loss_R": -0.902, "expectancy_R": -0.288, "t_stat": -2.46, "profit_factor": 0.58, "total_R": -49.87, "max_dd_R": -56.56, "recovery": -0.88, "max_losing_streak": 14, "exits": {"tp": 8, "sl": 109, "tiempo": 56}, "pnl_pct_account": -24.61}, "descartes": [["Patrón B (continuación) exige tendencia de 1H a favor", 846], ["Stop demasiado cerca (< 0.15 %): el ruido y los costos lo harían inútil", 634], ["Volatilidad extrema en curso en 15m: esperar a que se asiente", 199], ["La estructura de 4H y 1D es alcista: contradice la entrada", 157], ["Ya hay una operación del analizador abierta", 105], ["Ningún nivel de liquidez opuesta da R/B neto ≥ 3 (el más lejano, insuficiente)", 104], ["La estructura de 4H y 1D es bajista: contradice la entrada", 28], ["No hay liquidez opuesta identificada para un objetivo", 15], ["Máximo de #operaciones diarias alcanzado", 8], ["Suspensión preventiva: #pérdidas seguidas (se reanuda el próximo día U", 5], ["Stop demasiado lejos (# > #)", 1]], "segundos": 715, "label": "Configuración del analizador (cierre por tiempo a las 4 h)", "verdict": "Veredicto: con las reglas definidas antes de la prueba, los patrones A y B NO muestran ventaja después de costos en BTCUSDT (2023: −0,25R por operación, t = −2,65; 2024 fuera de muestra: −0,10R, t = −0,81). Cerrar a las 24 h tampoco la crea. Por eso el analizador emite señales solo como simulación y la decisión más frecuente es NO OPERAR. No se ajustaron parámetros para \"mejorar\" el resultado: eso sería sobreoptimizar. Antes de usar dinero real hace falta una regla que sí pase la prueba fuera de muestra."}, {"engine": "btci-1.0", "generated": "2026-11-05T21:13:29.817Z", "data": {"symbol": "BTCUSDT perpetuo Bybit", "from": "2023-01-01", "to": "2024-12-01", "bars_1m": 833760}, "costs": "taker 0.055 % + deslizamiento 0.02 % por lado", "setups_confirmados": 1606, "señales": 345, "total": {"n": 345, "win_pct": 19.7, "avg_win_R": 3.074, "avg_loss_R": -0.982, "expectancy_R": -0.182, "t_stat": -1.91, "profit_factor": 0.77, "total_R": -62.9, "max_dd_R": -84.13, "recovery": -0.75, "max_losing_streak": 26, "exits": {"tp": 44, "sl": 270, "tiempo": 31}, "pnl_pct_account": -30.58}, "muestra_2023": {"n": 197, "win_pct": 20.8, "avg_win_R": 2.965, "avg_loss_R": -0.983, "expectancy_R": -0.161, "t_stat": -1.26, "profit_factor": 0.79, "total_R": -31.81, "max_dd_R": -45.37, "recovery": -0.7, "max_losing_streak": 11, "exits": {"tp": 25, "sl": 152, "tiempo": 20}, "pnl_pct_account": -15.85}, "fuera_de_muestra_2024": {"n": 148, "win_pct": 18.2, "avg_win_R": 3.241, "avg_loss_R": -0.98, "expectancy_R": -0.21, "t_stat": -1.47, "profit_factor": 0.74, "total_R": -31.1, "max_dd_R": -62.02, "recovery": -0.5, "max_losing_streak": 26, "exits": {"tp": 19, "sl": 118, "tiempo": 11}, "pnl_pct_account": -14.73}, "patron_A": {"n": 204, "win_pct": 23.5, "avg_win_R": 2.536, "avg_loss_R": -0.968, "expectancy_R": -0.143, "t_stat": -1.27, "profit_factor": 0.81, "total_R": -29.23, "max_dd_R": -30.86, "recovery": -0.95, "max_losing_streak": 12, "exits": {"tp": 26, "sl": 149, "tiempo": 29}, "pnl_pct_account": -14.04}, "patron_B": {"n": 141, "win_pct": 14.2, "avg_win_R": 4.366, "avg_loss_R": -1, "expectancy_R": -0.239, "t_stat": -1.43, "profit_factor": 0.72, "total_R": -33.67, "max_dd_R": -64.87, "recovery": -0.52, "max_losing_streak": 25, "exits": {"tp": 18, "sl": 121, "tiempo": 2}, "pnl_pct_account": -16.54}, "long": {"n": 194, "win_pct": 24.2, "avg_win_R": 3.158, "avg_loss_R": -0.985, "expectancy_R": 0.019, "t_stat": 0.14, "profit_factor": 1.03, "total_R": 3.64, "max_dd_R": -27.54, "recovery": 0.13, "max_losing_streak": 16, "exits": {"tp": 34, "sl": 144, "tiempo": 16}, "pnl_pct_account": 2.02}, "short": {"n": 151, "win_pct": 13.9, "avg_win_R": 2.887, "avg_loss_R": -0.978, "expectancy_R": -0.441, "t_stat": -3.47, "profit_factor": 0.48, "total_R": -66.54, "max_dd_R": -71.55, "recovery": -0.93, "max_losing_streak": 19, "exits": {"tp": 10, "sl": 126, "tiempo": 15}, "pnl_pct_account": -32.6}, "descartes": [["Patrón B (continuación) exige tendencia de 1H a favor", 846], ["Stop demasiado cerca (< 0.15 %): el ruido y los costos lo harían inútil", 637], ["Ya hay una operación del analizador abierta", 280], ["Volatilidad extrema en curso en 15m: esperar a que se asiente", 199], ["La estructura de 4H y 1D es alcista: contradice la entrada", 157], ["Ningún nivel de liquidez opuesta da R/B neto ≥ 3 (el más lejano, insuficiente)", 104], ["La estructura de 4H y 1D es bajista: contradice la entrada", 28], ["No hay liquidez opuesta identificada para un objetivo", 15], ["Suspensión preventiva: #pérdidas seguidas (se reanuda el próximo día U", 5], ["Máximo de #operaciones diarias alcanzado", 3], ["Stop demasiado lejos (# > #)", 1]], "segundos": 704, "label": "Sensibilidad: cierre por tiempo a las 24 h (mismas reglas)"}];
+
+/* Analizador profesional BTC — integración con la app (datos en vivo, alertas, simulación y panel).
+   Usa el motor determinista BTCI (intel.js) y las series que ya mantiene la app (window.__ssp). */
+(() => {
+  "use strict";
+  const X = window.__ssp;
+  if (!X || typeof BTCI === "undefined") return;
+  const { S, LS, toast, esc, beep, bootstrap, bybit, k2, telegram, notify, INTEL_SYM: SYM, INTEL_TFS } = X;
+  const $ = (id) => document.getElementById(id);
+  const TF = SSP.TF_MS, fp = BTCI.fmtP, isNum = (x) => typeof x === "number" && Number.isFinite(x);
+  const crT = (ms, opt = { dateStyle: "short", timeStyle: "short" }) => (isNum(ms) ? new Date(ms).toLocaleString("es-CR", Object.assign({ timeZone: "America/Costa_Rica" }, opt)) : "—");
+  const hm = (ms) => crT(ms, { hour: "2-digit", minute: "2-digit", hour12: false });
+  const pctS = (x, d = 2) => (isNum(x) ? `${x >= 0 ? "+" : ""}${x.toFixed(d)} %` : "—");
+
+  const P = Object.assign({}, BTCI.DEFAULT, LS.get("btciP", {}));
+  const R = Object.assign({}, BTCI.DEFAULT_RISK, LS.get("btciR", {}));
+  const M = Object.assign({}, BTCI.DEFAULT_MACRO, LS.get("btciM", {}));
+  const I = {
+    r: null, dq: null, trades: LS.get("btciTrades", []), signals: LS.get("btciSignals", []), discards: LS.get("btciDiscards", []),
+    alerts: LS.get("btciAlerts", []), macro: LS.get("btciMacro", []), seen: new Set(LS.get("btciSeen", [])), recv: {}, instr: null,
+    tab: LS.get("btciTab", "resumen"), primed: false, prev: {}, loading: true, err: null, lastRun: 0,
+  };
+  // ---- el analizador vive en su propia pestaña del navegador (?analizador). Si esa pestaña está abierta, es la única que
+  //      registra señales, simula operaciones y envía alertas; la pestaña principal solo lee (así nada se duplica).
+  const ALONE = new URLSearchParams(location.search).has("analizador");
+  const follower = () => !ALONE && Date.now() - (LS.get("btciLeader", 0) || 0) < 8000;
+  if (ALONE) { const beat = () => LS.set("btciLeader", Date.now()); beat(); setInterval(beat, 3000); addEventListener("pagehide", () => LS.set("btciLeader", 0)); }
+  const reloadShared = () => { I.trades = LS.get("btciTrades", []); I.signals = LS.get("btciSignals", []); I.discards = LS.get("btciDiscards", []); I.alerts = LS.get("btciAlerts", []); I.macro = LS.get("btciMacro", []); I.seen = new Set(LS.get("btciSeen", [])); };
+  const save = () => { if (follower()) return; LS.set("btciTrades", I.trades.slice(-500)); LS.set("btciSignals", I.signals.slice(-300)); LS.set("btciDiscards", I.discards.slice(-300)); LS.set("btciAlerts", I.alerts.slice(0, 300)); LS.set("btciMacro", I.macro); LS.set("btciSeen", [...I.seen].slice(-800)); };
+
+  // ------------------------------------------------------------ carga de series de BTC
+  async function load() {
+    for (const tf of INTEL_TFS) if (!S.closed[k2(SYM, tf)]) { await bootstrap(SYM, null, [tf]); I.recv[tf] = Date.now(); }
+    try {
+      const r = await bybit("/v5/market/instruments-info", { category: "linear", symbol: SYM });
+      const x = (r.list || [])[0];
+      if (x) I.instr = { tick: +x.priceFilter.tickSize, qtyStep: +x.lotSizeFilter.qtyStep, minQty: +x.lotSizeFilter.minOrderQty, maxLev: +x.leverageFilter.maxLeverage };
+    } catch (e) { I.instrErr = e.message; }
+    I.loading = false; run();
+  }
+
+  // ------------------------------------------------------------ alertas con deduplicación, prioridad, caducidad y registro
+  function alert(key, type, prio, text, ttlMin = 120) {
+    if (follower()) return;
+    if (I.seen.has(key)) return;
+    I.seen.add(key);
+    if (!I.primed) return;                 // la primera evaluación solo registra lo que ya existía (sin avisos repetidos al abrir)
+    const a = { key, type, prio, text, time: Date.now(), expires: Date.now() + ttlMin * 60e3 };
+    I.alerts.unshift(a);
+    toast(`BTC · ${text}`, prio === "alta" ? "confirmada" : "info");
+    if (prio === "alta") { if (S.sound) beep("confirm"); notify(`BTC · ${text}`); telegram(`BTC · ${type}\n${text}\n${crT(a.time)} (Costa Rica) · Bybit\nAnálisis automático: no es garantía de resultado.`); }
+    save();
+  }
+
+  // ------------------------------------------------------------ evaluación (en cada cierre de 1m de BTC)
+  function bundleAns() { const a = {}; for (const tf of new Set([...P.regime_tfs, "1m", P.exec_tf])) a[tf] = S.an[k2(SYM, tf)]; return a; }
+  function run() {
+    if (I.loading) return;
+    if (follower()) reloadShared();
+    const ans = bundleAns(), l1 = S.closed[k2(SYM, "1m")];
+    if (!ans[P.exec_tf] || !l1 || !l1.length) { I.err = "Datos no disponibles: faltan velas de BTCUSDT"; render(); return; }
+    const now = Date.now(), t = l1[l1.length - 1].closeTime, q = S.quotes[SYM] || {};
+    const ticker = q.ts ? { bid: +q.bid1Price, ask: +q.ask1Price, last: +q.lastPrice, recvAt: q.ts, ts: q.ts } : null;
+    const series = {}; for (const tf of INTEL_TFS) series[tf] = { rows: S.closed[k2(SYM, tf)], recvAt: I.recv[tf] || null };
+    const dq = BTCI.dataQuality(series, ticker, S.conn.state === "conectado", now, P, X.CFG.maxDelayS);
+    const ledger = BTCI.ledgerStats(I.trades, t);
+    let r;
+    try { r = BTCI.evaluate({ ans, t, dq, ticker, ledger, macro: I.macro, instr: I.instr }, P, R, M); I.err = null; }
+    catch (e) { I.err = "Error del motor: " + e.message; console.error(e); render(); return; }
+    I.r = r; I.dq = dq; I.ledger = ledger; I.lastRun = now; I.q = q;
+    // ---- señal nueva → simulación (paper trading). Nunca se envían órdenes reales.
+    if (r.signal && !follower() && !I.signals.some((s) => s.id === r.signal.id)) {
+      const s = r.signal;
+      I.signals.push(Object.assign({}, s, { matrix: undefined, trace: s.trace }));
+      I.trades.push({ id: s.id, dir: s.dir, pattern: s.strategy.slice(7, 8), strategy: s.strategy, time: s.time, entry: s.entry, stop: s.stop, tp: s.tp, quantity: s.quantity, rr_plan: s.rr_net, quality: s.quality });
+      alert("sig|" + s.id, s.dir === "LONG" ? "Señal LONG confirmada" : "Señal SHORT confirmada", "alta",
+        `${s.dir} CONFIRMADO (${s.strategy}). Entrada ${fp(s.entry)} · SL ${fp(s.stop)} · TP ${fp(s.tp)} (${s.tp_kind}) · R/B neto ${s.rr_net.toFixed(2)} · calidad ${s.quality}. Simulación: no se envió ninguna orden.`, 30);
+    }
+    if (!follower()) for (const x of r.ready) if (x.veto.length && !I.discards.some((d) => d.id === x.s.id)) I.discards.push({ id: x.s.id, time: t, dir: x.s.dir, pattern: x.s.pattern, entry: x.s.entry, stop: x.s.stop, reasons: x.veto });
+    makeAlerts(r, ans, dq, ledger, t);
+    I.primed = true;
+    save(); render(); badge();
+    X.chart.draw();
+  }
+  function makeAlerts(r, ans, dq, ledger, t) {
+    // datos degradados / recuperados
+    if (I.prev.dqOk !== undefined && I.prev.dqOk !== dq.ok) alert(`dq|${t}`, dq.ok ? "Datos recuperados" : "Pérdida o degradación de datos", dq.ok ? "media" : "alta", dq.ok ? "Los datos de BTC volvieron a estar completos y al día." : `Datos de BTC degradados: ${dq.critical.join("; ")}. No se emitirán señales hasta recuperarlos.`);
+    I.prev.dqOk = dq.ok;
+    // estructura: BOS / CHoCH nuevos en 15m y 1h
+    for (const tf of ["15m", "1h"]) {
+      const an = ans[tf]; if (!an || !an.n) continue;
+      const lastC = an.d.closeTime[an.idxAsof(t)];
+      for (const e of an.structure.events.filter((x) => x.availableAt === lastC))
+        alert(`ev|${tf}|${e.time}|${e.direction}`, e.kind === "CHoCH" ? "CHoCH/MSS" : "BOS", tf === "1h" ? "media" : "baja",
+          `${e.kind === "CHoCH" ? "Cambio de carácter" : "Ruptura de estructura"} ${e.direction} en ${tf} (${fp(e.level)}). ${e.direction === "alcista" ? "Monitorizando retesteo del nivel roto como soporte." : "Monitorizando retesteo del soporte perdido como resistencia."}`);
+    }
+    // barridas en la temporalidad de ejecución
+    const ex = ans[P.exec_tf], lastE = ex.d.closeTime[ex.idxAsof(t)];
+    for (const s of BTCI.sweepsAsof(ans, t, P, 3).filter((x) => x.availableAt === lastE))
+      alert(`sw|${s.time}|${s.dir}`, "Barrida de liquidez", "media", `Barrida de ${s.kind} en ${fp(s.level)} y cierre de vuelta. Esperando MSS en ${P.exec_tf} y confirmación de volumen.`);
+    // FVG relevante y volumen anómalo en 15m
+    const a15 = ans["15m"];
+    if (a15 && a15.n) {
+      const i = a15.idxAsof(t), c15 = a15.d.closeTime[i], B = BTCI.bundle(a15, P);
+      for (const g of B.fvg.filter((x) => x.availableAt === c15 && x.size_atr >= 0.6)) alert(`fvg|${g.time}|${g.dir}`, "FVG relevante", "baja", `FVG ${g.dir} en 15m ${fp(g.bottom)}–${fp(g.top)} (${g.size_atr.toFixed(2)} ATR).`);
+      if (B.relVol[i] >= 3) alert(`vol|${c15}`, "Volumen anómalo", "media", `Volumen de 15m ${B.relVol[i].toFixed(1)}× la media de 20 velas.`);
+    }
+    // régimen de volatilidad y detector de movimientos extremos
+    const r15 = r.regimes.find((x) => x.tf === "15m");
+    if (r15 && r15.ok && I.prev.vol && I.prev.vol !== r15.vol) alert(`vr|${t}`, "Cambio de régimen de volatilidad", "media", `BTC pasa a ${r15.vol.toLowerCase()} en 15m (percentil ${isNum(r15.vol_pctl) ? r15.vol_pctl.toFixed(0) : "—"}).`);
+    if (r15 && r15.ok) I.prev.vol = r15.vol;
+    if (I.prev.xt && I.prev.xt !== r.extreme.state && r.extreme.state !== "NORMAL") {
+      const extra = r.extreme.state === "EXPANSIÓN INICIADA" ? " Evitar entradas sin confirmación." : r.extreme.state === "REVERSIÓN EN CONFIRMACIÓN" ? " Esperando confirmación de volumen y retesteo." : "";
+      alert(`xt|${t}|${r.extreme.state}`, "Detector de movimientos", r.extreme.state === "EXPANSIÓN INICIADA" ? "alta" : "media", `BTC: ${r.extreme.state.toLowerCase()} — ${r.extreme.reasons.join("; ")}.${extra}`);
+    }
+    I.prev.xt = r.extreme.state;
+    // setups invalidados después de estar en observación
+    const prevObs = I.prev.obs || new Set(), nowObs = new Set();
+    for (const s of r.setups) { if (!s.invalid && /esperando/.test(s.stage)) nowObs.add(s.id); else if (s.invalid && prevObs.has(s.id)) alert(`inv|${s.id}`, "Setup invalidado", "baja", `${s.dir} patrón ${s.pattern} invalidado: ${s.invalid}.`); }
+    I.prev.obs = nowObs;
+    // eventos macro próximos y riesgo diario
+    for (const e of I.macro) if (e.time > t && e.time - t <= 60 * 60e3) alert(`mac|${e.id}`, "Evento macro próximo", e.impact === "alto" ? "alta" : "media", `${e.name} a las ${hm(e.time)} (Costa Rica). ${e.impact === "alto" ? `Bloqueo de nuevas entradas desde ${M.before_min} min antes hasta ${M.after_min} min después.` : ""}`);
+    if (ledger.realizedTodayPct <= -R.max_daily_loss_pct) alert(`dl|${Math.floor(t / 86400e3)}`, "Riesgo diario excedido", "alta", `Pérdida simulada del día ${ledger.realizedTodayPct.toFixed(2)} %: sin nuevas señales hasta el próximo día UTC.`);
+  }
+  // gestión de las operaciones simuladas con cada vela de 1m cerrada de BTC
+  function manage(bar) {
+    if (follower()) return;
+    for (const tr of I.trades.filter((x) => !x.exit_time)) {
+      if (BTCI.stepTrade(tr, bar, R, P.max_hold_bars * TF[P.exec_tf]))
+        alert(`tc|${tr.id}`, "Operación simulada cerrada", "media", `${tr.dir} patrón ${tr.pattern}: ${tr.exit_reason} en ${fp(tr.exit_price)} · ${tr.r >= 0 ? "+" : ""}${tr.r.toFixed(2)}R (${pctS(tr.pnl_pct)} de la cuenta).`);
+    }
+  }
+  let runT = null;
+  window.__onKlineHook = (sym, tf, c) => {
+    if (sym !== SYM) return;
+    I.recv[tf] = Date.now();
+    if (tf === "1m") { manage(c); clearTimeout(runT); runT = setTimeout(run, 1500); }     // espera a que lleguen los cierres de 5m/15m/1h del mismo minuto
+  };
+  setInterval(() => { if (Date.now() - I.lastRun > 90e3) run(); }, 30e3);   // si el WebSocket calla, la calidad de datos lo refleja igual
+
+  // ------------------------------------------------------------ insignia del botón
+  function badge() {
+    const b = $("intelBadge"); if (!b || !I.r) return;
+    const s = I.r.decision.state;
+    b.textContent = s === "LONG CONFIRMADO" ? "LONG" : s === "SHORT CONFIRMADO" ? "SHORT" : s === "EN OBSERVACIÓN" ? "observando" : "no operar";
+    b.className = "ibadge " + (s.startsWith("LONG") ? "long" : s.startsWith("SHORT") ? "short" : s === "EN OBSERVACIÓN" ? "obs" : "");
+  }
+
+  // ------------------------------------------------------------ panel
+  const pill = (st) => `<span class="pill ${st === "Favorable" ? "fav" : st === "Contradictorio" ? "con" : st === "Neutral" ? "neu" : "nd"}">${esc(st)}</span>`;
+  const kv = (k, v, cls = "") => `<div class="ivk"><span>${k}</span><b class="${cls}">${v}</b></div>`;
+  const ul = (arr, empty = "—") => (arr && arr.length ? `<ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="faint">${empty}</p>`);
+  const stCls = (s) => (s.startsWith("LONG") ? "long" : s.startsWith("SHORT") ? "short" : s === "EN OBSERVACIÓN" ? "obs" : "no");
+  const MXN = { A: "Régimen del mercado", B: "Alineación entre temporalidades", C: "Estructura SMC", D: "Localización respecto a liquidez", E: "Volumen y VWAP", F: "Order flow", G: "Open interest y funding", H: "Liquidaciones", I: "Riesgo macroeconómico", J: "Ejecución y beneficio/riesgo" };
+
+  function topHtml() {
+    const r = I.r, q = I.q || {}, rg = Object.fromEntries(r.regimes.map((x) => [x.tf, x])), L = I.ledger;
+    const blocked = r.vetoes.filter((v) => /Pérdida|Máximo|Suspensión/.test(v));
+    return `<div class="ivtop">${kv("Precio BTC", fp(+q.lastPrice || r.liquidity.price))}${kv("Variación 24 h", pctS(q.price24hPcnt ? +q.price24hPcnt * 100 : NaN), +q.price24hPcnt >= 0 ? "buy" : "sell")}` +
+      kv("Volumen 24 h", q.turnover24h ? `${(+q.turnover24h / 1e9).toFixed(2)} mil M USDT` : "—") +
+      kv("Tendencia principal", `1D ${rg["1d"] && rg["1d"].ok ? rg["1d"].label.replace("Tendencia ", "") : "—"} · 4H ${rg["4h"] && rg["4h"].ok ? rg["4h"].label.replace("Tendencia ", "") : "—"}`) +
+      kv("Volatilidad (15m)", rg["15m"] && rg["15m"].ok ? rg["15m"].vol.replace(" de volatilidad", "") : "—") +
+      kv("Riesgo", blocked.length ? "Bloqueado" : `${L.tradesToday}/${R.max_trades_day} hoy · ${pctS(L.realizedTodayPct)}`, blocked.length ? "sell" : "") +
+      kv("Fuentes", I.dq.ok ? "OK" : "Degradadas", I.dq.ok ? "buy" : "sell") + kv("Actualizado", hm(I.lastRun)) + `</div>`;
+  }
+  function signalHtml(s) {
+    if (!s) return "";
+    return `<div class="ivc"><h3>Ficha de la señal</h3><table class="ivt"><tbody>` +
+      [["Instrumento", `${s.symbol} · ${s.exchange} · ${s.market}`], ["Dirección", `<b class="${s.dir === "LONG" ? "buy" : "sell"}">${s.dir}</b>`], ["Estrategia", esc(s.strategy)], ["Fecha y hora", `${crT(s.time)} (Costa Rica) · ${s.tf}`],
+        ["Precio actual / entrada", `${fp(s.price_now)} / <b>${fp(s.entry)}</b>`], ["Zona de entrada", s.entry_zone ? `${fp(Math.min(...s.entry_zone))} – ${fp(Math.max(...s.entry_zone))}` : "—"],
+        ["Stop Loss", `<b class="sell">${fp(s.stop)}</b>`], ["Take Profit principal", `<b class="buy">${fp(s.tp)}</b> (${esc(s.tp_kind)})`], ["Objetivos secundarios", s.tp2.length ? s.tp2.map((x) => `${fp(x.price)} (${esc(x.kind)})`).join(" · ") : "—"],
+        ["Riesgo monetario", `${s.risk_amount.toFixed(2)} USDT (${R.risk_pct} % de ${R.account_capital})`], ["Tamaño de posición", `${s.quantity.toFixed(3)} BTC · ${s.notional.toFixed(0)} USDT`],
+        ["Apalancamiento", `${s.leverage}x (máx. ${R.max_leverage}x) · margen ${s.margin_mode}`], ["R/B neto estimado", `<b>${s.rr_net.toFixed(2)}</b> (bruto ${s.rr_gross.toFixed(2)})`],
+        ["Spread y costos", `${isNum(s.spread_pct) ? s.spread_pct.toFixed(4) + " %" : "—"} · ${s.costs.toFixed(2)} USDT estimados`], ["Invalidación", esc(s.invalidation)], ["Expira", crT(s.expires)], ["Estado", esc(s.status)],
+      ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("") + `</tbody></table>` +
+      `<h4>Confirmaciones</h4>${ul(s.confirmations)}<h4>Señales contradictorias</h4>${ul(s.contradictions, "ninguna relevante")}${s.sizing_info.length ? `<p class="gold">${esc(s.sizing_info.join(" "))}</p>` : ""}` +
+      `<p class="faint">Simulación (paper trading). La app no envía órdenes del analizador a Bybit.</p></div>`;
+  }
+  function resumenHtml() {
+    const r = I.r, d = r.decision, x = r.ready[0] || null;
+    const pend = r.setups.filter((s) => !s.invalid && s.stage !== "vencido").slice(-4);
+    return topHtml() +
+      `<div class="ivc"><div class="dec"><span class="st ${stCls(d.state)}">${d.state}</span><span class="muted">${esc(d.why || (r.signal ? `${r.signal.strategy} · calidad ${r.signal.quality}` : ""))}</span></div>` +
+      (r.vetoes.length ? `<h4>Bloqueos activos (ningún puntaje los anula)</h4>${ul(r.vetoes)}` : "") + `</div>` +
+      signalHtml(r.signal) +
+      `<div class="ivg"><div class="ivc"><h3>Matriz de evaluación (A–J)</h3>` +
+      (x ? `<table class="ivt"><tbody>${Object.entries(x.mx).map(([k, v]) => `<tr><td><b>${k}</b> ${MXN[k]}</td><td>${pill(v.st)}</td><td>${esc(v.why)}</td></tr>`).join("")}</tbody></table><p class="faint">Estados cualitativos, sin pesos ni porcentajes inventados. Los vetos se aplican aparte.</p>`
+        : `<p class="faint">La matriz se calcula cuando un setup completa sus pasos. Ahora: ${pend.length ? "hay setups en formación (abajo)" : "no hay setup en formación"}.</p>`) + `</div>` +
+      `<div class="ivc"><h3>Setups en formación</h3>${pend.length ? pend.map((s) => `<h4>${s.dir} · Patrón ${s.pattern} — ${esc(s.name)} <span class="pill ${s.stage === "CONFIRMADO" ? "fav" : "neu"}">${esc(s.stage)}</span></h4><ol class="steps">${s.steps.map((st) => `<li class="${st.ok ? "ok" : "no"}">${esc(st.text)}</li>`).join("")}</ol>`).join("") : '<p class="faint">Ningún patrón A (barrida + MSS + FVG) ni B (ruptura + retesteo) en curso en ' + P.exec_tf + ".</p>"}` +
+      `<p class="faint">Estrategia 3 (agotamiento tras liquidaciones): desactivada hasta tener datos de liquidaciones (fase 4).</p></div></div>` +
+      `<div class="ivc"><h3>¿Por qué el analizador tomó esta decisión?</h3><dl class="why">${BTCI.explain(r).map((e) => `<dt>${esc(e.q)}</dt><dd>${esc(e.a)}</dd>`).join("")}</dl>` +
+      `<p class="faint">Texto armado con reglas a partir de los resultados calculados por el motor (versión ${r.version}); no lo genera una IA ni usa fuentes externas.</p></div>`;
+  }
+  function mercadoHtml() {
+    const r = I.r, A = r.alignment;
+    const reg = `<div class="ivc"><h3>Régimen por temporalidad</h3><p class="${A.conflict ? "gold" : "muted"}">${esc(A.text)}</p><div class="ivscroll"><table class="ivt"><thead><tr><th>TF</th><th>Clasificación</th><th>Volatilidad</th><th>EMA 20/50/200</th><th>RSI 14</th><th>ATR</th><th>Vol. rel.</th><th>Fundamento</th></tr></thead><tbody>` +
+      r.regimes.map((x) => `<tr><td><b>${x.tf.toUpperCase()}</b></td><td><b class="${x.dir > 0 ? "buy" : x.dir < 0 ? "sell" : ""}">${esc(x.label)}</b></td><td>${esc(x.vol)}${isNum(x.vol_pctl) ? ` (p${x.vol_pctl.toFixed(0)})` : ""}</td>` +
+        `<td>${x.ok ? `${fp(x.ema20)} / ${fp(x.ema50)} / ${x.ema200 ? fp(x.ema200) : "—"}` : "—"}</td><td>${isNum(x.rsi) ? x.rsi.toFixed(1) : "—"}</td><td>${isNum(x.atr_pct) ? x.atr_pct.toFixed(2) + " %" : "—"}</td><td>${isNum(x.rel_vol) ? x.rel_vol.toFixed(2) + "×" : "—"}</td><td>${esc((x.basis || []).join("; "))}</td></tr>`).join("") +
+      `</tbody></table></div><p class="faint">"Movimiento impulsado por liquidaciones" necesita datos de liquidaciones (fase 4): no se clasifica todavía.</p></div>`;
+    const stH = (sx) => !sx ? "" : `<div class="ivc"><h3>Estructura ${sx.tf}</h3>` +
+      `<h4>Giros</h4><p>${[...sx.swings.highs.slice(-3).map((p) => `${p.label || "máx"} ${fp(p.price)}`), ...sx.swings.lows.slice(-3).map((p) => `${p.label || "mín"} ${fp(p.price)}`)].join(" · ") || "—"}</p>` +
+      `<h4>Rupturas</h4>${ul(sx.events.slice(-4).reverse().map((e) => `${e.kind} ${e.direction} en ${fp(e.level)} · ${hm(e.availableAt)}`))}` +
+      `<h4>Estructura interna (MSS)</h4>${ul(sx.internal.slice(-3).reverse().map((e) => `${e.kind} ${e.direction} en ${fp(e.level)} · ${hm(e.availableAt)}`))}` +
+      `<h4>FVG sin mitigar</h4>${ul(sx.fvg.slice(-4).reverse().map((g) => `${g.dir} ${fp(g.bottom)}–${fp(g.top)} · ${g.status} · ${g.size_atr.toFixed(2)} ATR`))}` +
+      `<h4>Order Blocks (región técnica candidata, no prueba de órdenes institucionales)</h4>${ul(sx.obs.slice(-3).map((o) => `${o.direction} ${fp(o.bottom)}–${fp(o.top)} · ${o.origin}`))}</div>`;
+    const L = r.liquidity, row = (l) => `<tr><td><b>${fp(l.price)}</b></td><td>${pctS(((l.price - L.price) / L.price) * 100)}</td><td>${esc(l.kind.split(" · ").slice(0, 3).join(" · "))}</td></tr>`;
+    const liq = `<div class="ivc"><h3>Liquidez estimada</h3><p class="faint">Zonas donde puede haber stops según la estructura. No son órdenes vistas en el libro (eso llega con el Liquidity Radar, fase 4).</p>` +
+      `<h4>BSL (encima)</h4><table class="ivt"><tbody>${L.bsl.slice(0, 6).map(row).join("") || "<tr><td>—</td></tr>"}</tbody></table><h4>SSL (debajo)</h4><table class="ivt"><tbody>${L.ssl.slice(0, 6).map(row).join("") || "<tr><td>—</td></tr>"}</tbody></table>` +
+      `<h4>Barridas recientes (${P.exec_tf})</h4>${ul(BTCI.sweepsAsof(bundleAns(), r.t, P, 48).slice(-4).reverse().map((s) => `${s.side} ${s.kind} ${fp(s.level)} · ${hm(s.availableAt)}`), "ninguna en las últimas 4 h")}</div>`;
+    const v = r.vwap, vw = !v ? "" : `<div class="ivc"><h3>Volumen y VWAP</h3><table class="ivt"><tbody>` +
+      `<tr><td>VWAP de sesión (00:00 UTC)</td><td><b>${fp(v.vwap)}</b> · precio ${v.side} (${pctS(v.vwap_dist_pct)})${v.vwap_event ? " · " + esc(v.vwap_event) : ""}</td></tr>` +
+      `<tr><td>VWAP anclado</td><td>${isNum(v.avwap) ? `<b>${fp(v.avwap)}</b> · ${esc(v.avwap_anchor)}` : "—"}</td></tr>` +
+      (v.profile_prev ? `<tr><td>Perfil del día anterior (rango fijo)</td><td>POC <b>${fp(v.profile_prev.poc)}</b> · VAH ${fp(v.profile_prev.vah)} · VAL ${fp(v.profile_prev.val)}<br>HVN ${v.profile_prev.hvn.map(fp).join(", ") || "—"} · LVN ${v.profile_prev.lvn.map(fp).join(", ") || "—"}</td></tr>` : "") +
+      (v.profile_today ? `<tr><td>Perfil de hoy (hasta ahora)</td><td>POC <b>${fp(v.profile_today.poc)}</b> · VAH ${fp(v.profile_today.vah)} · VAL ${fp(v.profile_today.val)}</td></tr>` : "") +
+      `<tr><td>Aceptación</td><td>${esc(v.acceptance || "—")}</td></tr></tbody></table>` +
+      `<p class="faint">Perfil: ${v.profile_prev ? esc(v.profile_prev.method) : "15m"}. El color o reparto del perfil no equivale a compras o ventas agresivas reales.</p></div>`;
+    const xt = r.extreme, xh = `<div class="ivc"><h3>Detector de movimientos extremos</h3><div class="dec"><span class="st ${xt.state === "NORMAL" ? "no" : xt.state === "EXPANSIÓN INICIADA" ? "short" : "obs"}" style="font-size:20px">${xt.state}</span></div>${ul(xt.reasons)}<p class="faint">${esc(xt.cascade)}</p></div>`;
+    return reg + `<div class="ivg">${xh}${vw}</div><div class="ivg">${stH(r.structure)}${stH(r.structure15)}${liq}</div>`;
+  }
+  function escenariosHtml() {
+    const s = I.r.scenarios, card = (c, cls) => `<div class="ivc ${cls}"><h3>${c.title}</h3>` +
+      (c.support ? `<h4>A favor</h4>${ul(c.support, "nada a favor ahora")}<h4>En contra</h4>${ul(c.against, "nada en contra")}<h4>Qué lo confirmaría</h4><p>${esc(c.confirm)}</p><h4>Qué lo invalidaría</h4><p>${esc(c.invalidate)}</p><h4>Objetivos técnicos (liquidez)</h4>${ul(c.targets)}`
+        : `<h4>Qué impide una entrada confiable</h4>${ul(c.reasons)}<h4>Rango de referencia</h4><p>${esc(c.range)}</p>`) + `</div>`;
+    return `<div class="sc3">${card(s.bull, "bull")}${card(s.bear, "bear")}${card(s.neutral, "neu")}</div>` +
+      `<div class="ivg"><div class="ivc"><h3>Por horizonte</h3><table class="ivt"><thead><tr><th>Horizonte</th><th>Sesgo cualitativo</th><th>Base</th><th>Probabilidad</th></tr></thead><tbody>${s.horizons.map((h) => `<tr><td><b>${h.horizon}</b></td><td>${esc(h.bias)}</td><td>${esc(h.basis)}</td><td class="faint">${esc(h.probability)}</td></tr>`).join("")}<tr><td><b>3 días</b></td><td colspan="3" class="faint">Sin información suficiente: no se evalúa.</td></tr></tbody></table></div>` +
+      `<div class="ivc"><h3>Cuatro objetivos distintos (no se mezclan)</h3><table class="ivt"><tbody><tr><td><b>1. Dirección prevista</b></td><td>${esc(s.objectives.direction)}</td></tr><tr><td><b>2. Riesgo de volatilidad extrema</b></td><td>${esc(s.objectives.extreme_risk)}</td></tr>` +
+      `<tr><td><b>3. Llegar a una zona antes que a otra</b></td><td class="faint">${esc(s.objectives.zone_first)}</td></tr><tr><td><b>4. Calidad de una entrada</b></td><td>${esc(s.objectives.entry_quality)}</td></tr></tbody></table>` +
+      `<p class="faint">Vigencia de este análisis: hasta el cierre de 15m de las ${hm(s.valid_until)} (Costa Rica). Fuentes: velas y precio en vivo de Bybit (BTCUSDT perpetuo).</p></div></div>`;
+  }
+  function riesgoHtml() {
+    const L = I.ledger, f = (k, lab, step = "any") => `<label>${lab}<input data-rk="${k}" type="number" step="${step}" value="${R[k]}"></label>`;
+    const ev = I.macro.slice().sort((a, b) => a.time - b.time);
+    return `<div class="ivg"><div class="ivc"><h3>Gestión del riesgo</h3><div class="ivform">${f("account_capital", "Capital (USDT)")}${f("risk_pct", "Riesgo por operación (%)")}${f("max_daily_loss_pct", "Pérdida diaria máxima (%)")}` +
+      `${f("max_trades_day", "Máx. operaciones por día", 1)}${f("max_consec_losses", "Suspender tras N pérdidas seguidas", 1)}${f("min_rr", "R/B neto mínimo")}${f("max_leverage", "Apalancamiento máximo (≤ 5x)")}${f("taker_fee_pct", "Comisión taker (%)")}${f("slippage_pct", "Deslizamiento estimado (%)")}</div>` +
+      `<p><button id="ivSaveRisk" class="primary">Guardar</button> <span class="faint" id="ivRiskMsg"></span></p>` +
+      `<div class="warnbox">Tamaño = riesgo monetario ÷ (distancia al stop + costos de entrada y salida). El apalancamiento solo define el margen: no cambia cuánto se arriesga. La exposición nunca supera capital × apalancamiento máximo; si lo haría, la cantidad se recorta. Se recomienda margen aislado. Nunca se amplía un stop ni se sube el apalancamiento para recuperar pérdidas.</div></div>` +
+      `<div class="ivc"><h3>Estado de hoy (simulación)</h3><table class="ivt"><tbody><tr><td>Operaciones hoy</td><td><b>${L.tradesToday}</b> de ${R.max_trades_day}</td></tr><tr><td>Resultado del día</td><td><b class="${L.realizedTodayPct >= 0 ? "buy" : "sell"}">${pctS(L.realizedTodayPct)}</b> (límite −${R.max_daily_loss_pct} %)</td></tr>` +
+      `<tr><td>Pérdidas seguidas</td><td><b>${L.consecLosses}</b> (suspensión a las ${R.max_consec_losses})</td></tr><tr><td>Posiciones abiertas</td><td><b>${L.openPositions}</b></td></tr><tr><td>Instrumento</td><td>${I.instr ? `tick ${I.instr.tick} · paso ${I.instr.qtyStep} BTC · mínimo ${I.instr.minQty} BTC` : esc(I.instrErr || "cargando…")}</td></tr></tbody></table>` +
+      `<p class="faint">Profundidad del libro y funding todavía no se usan para ajustar el tamaño (fase 4).</p></div></div>` +
+      `<div class="ivc"><h3>Eventos macroeconómicos</h3><div class="warnbox">No hay un calendario económico verificado conectado: la app no inventa eventos. Registre aquí los que conozca (CPI, PPI, NFP, decisiones de la Fed…). Los de impacto alto bloquean nuevas entradas desde <b>${M.before_min} min</b> antes hasta <b>${M.after_min} min</b> después.</div>` +
+      `<div class="ivform" style="margin-top:8px"><label>Evento<input id="mxName" placeholder="CPI de EE. UU."></label><label>Fecha y hora (Costa Rica)<input id="mxTime" type="datetime-local"></label><label>Impacto<select id="mxImp"><option value="alto">alto</option><option value="medio">medio</option><option value="bajo">bajo</option></select></label>` +
+      `<label>Bloqueo antes (min)<input id="mxB" type="number" value="${M.before_min}"></label><label>Bloqueo después (min)<input id="mxA" type="number" value="${M.after_min}"></label></div><p><button id="mxAdd" class="primary">Agregar evento</button></p>` +
+      `<table class="ivt"><thead><tr><th>Evento</th><th>Fecha y hora (CR)</th><th>Impacto</th><th>Estado</th><th></th></tr></thead><tbody>${ev.map((e) => { const blk = I.r.macro.block.some((b) => b.id === e.id); return `<tr><td><b>${esc(e.name)}</b></td><td>${crT(e.time)}</td><td>${e.impact}</td><td>${blk ? '<span class="pill con">bloqueo activo</span>' : e.time < Date.now() ? "pasado" : "pendiente"} · fuente: registrado por usted</td><td><button class="mini" data-mxdel="${e.id}">Quitar</button></td></tr>`; }).join("") || '<tr><td colspan="5" class="faint">Sin eventos registrados.</td></tr>'}</tbody></table></div>`;
+  }
+  function statsOf(T) {
+    const c = T.filter((x) => x.exit_time); if (!c.length) return null;
+    const w = c.filter((x) => x.r > 0), sum = c.reduce((a, x) => a + x.r, 0);
+    return { n: c.length, win: (100 * w.length) / c.length, exp: sum / c.length, tot: sum };
+  }
+  function historialHtml() {
+    const st = statsOf(I.trades);
+    const tr = I.trades.slice().reverse().slice(0, 40), al = I.alerts.slice(0, 60), di = I.discards.slice().reverse().slice(0, 30);
+    return `<div class="ivc"><h3>Operaciones simuladas del analizador</h3><p class="muted">${st ? `${st.n} cerradas · ${st.win.toFixed(0)} % ganadoras · expectativa ${st.exp.toFixed(2)}R · total ${st.tot.toFixed(2)}R${st.n < 100 ? " · muestra todavía pequeña para sacar conclusiones" : ""}` : "Sin operaciones cerradas todavía."}</p>` +
+      `<div class="ivscroll"><table class="ivt"><thead><tr><th>Hora (CR)</th><th>Dir.</th><th>Patrón</th><th>Entrada</th><th>SL</th><th>TP</th><th>Salida</th><th>R</th></tr></thead><tbody>${tr.map((x) => `<tr><td>${crT(x.time)}</td><td><b class="${x.dir === "LONG" ? "buy" : "sell"}">${x.dir}</b></td><td>${x.pattern}</td><td>${fp(x.entry)}</td><td>${fp(x.stop)}</td><td>${fp(x.tp)}</td><td>${x.exit_time ? `${esc(x.exit_reason)} ${fp(x.exit_price)}` : '<span class="pill neu">abierta</span>'}</td><td>${isNum(x.r) ? `<b class="${x.r >= 0 ? "buy" : "sell"}">${x.r.toFixed(2)}</b>` : "—"}</td></tr>`).join("") || '<tr><td colspan="8" class="faint">—</td></tr>'}</tbody></table></div>` +
+      `<p><button id="ivExport">Exportar señales y operaciones (JSON con traza)</button></p></div>` +
+      `<div class="ivg"><div class="ivc"><h3>Señales descartadas</h3>${di.length ? `<table class="ivt"><tbody>${di.map((d) => `<tr><td>${crT(d.time)}</td><td><b class="${d.dir === "LONG" ? "buy" : "sell"}">${d.dir}</b> ${d.pattern}</td><td>${esc(d.reasons.join(" · "))}</td></tr>`).join("")}</tbody></table>` : '<p class="faint">Ninguna todavía.</p>'}</div>` +
+      `<div class="ivc"><h3>Registro de alertas</h3>${al.length ? `<table class="ivt"><tbody>${al.map((a) => `<tr><td>${crT(a.time)}</td><td><span class="pill ${a.prio === "alta" ? "con" : a.prio === "media" ? "neu" : "nd"}">${a.prio}</span></td><td><b>${esc(a.type)}</b><br>${esc(a.text)}${a.expires < Date.now() ? ' <span class="faint">(caducada)</span>' : ""}</td></tr>`).join("")}</tbody></table>` : '<p class="faint">Sin alertas todavía. Cada condición se avisa una sola vez.</p>'}</div></div>`;
+  }
+  function labHtml() {
+    const L = window.BTCI_LAB;
+    const row = (nm, s) => !s || !s.n ? `<tr><td>${nm}</td><td colspan="7" class="faint">sin operaciones</td></tr>` : `<tr><td><b>${nm}</b></td><td>${s.n}</td><td>${s.win_pct} %</td><td>${s.expectancy_R}</td><td>${s.profit_factor}</td><td>${s.max_dd_R}</td><td>${s.t_stat}</td><td>${s.max_losing_streak}</td></tr>`;
+    const tbl = (res) => `<div class="ivscroll"><table class="ivt"><thead><tr><th></th><th>Operaciones</th><th>Ganadoras</th><th>Expectativa (R)</th><th>Profit factor</th><th>Máx. caída (R)</th><th>t</th><th>Racha perdedora</th></tr></thead><tbody>` +
+      row("Total", res.total) + row("2023 (dentro de muestra)", res.muestra_2023) + row("2024 (fuera de muestra)", res.fuera_de_muestra_2024) + row("Patrón A", res.patron_A) + row("Patrón B", res.patron_B) + row("LONG", res.long) + row("SHORT", res.short) + `</tbody></table></div>`;
+    return `<div class="ivc"><h3>BTC Strategy Lab</h3>` + (L ? L.map((res) => `<h4>${esc(res.label)}</h4><p class="faint">${esc(res.data.symbol)} · ${res.data.from} a ${res.data.to} (${res.data.bars_1m.toLocaleString("es-CR")} velas de 1m reales) · costos ${esc(res.costs)} · motor ${res.engine} · ${res.señales} señales de ${res.setups_confirmados} setups confirmados</p>${tbl(res)}` +
+      `<p class="faint">Descartes más frecuentes: ${res.descartes.slice(0, 5).map(([k, n]) => `${esc(k)} (${n})`).join(" · ")}</p>`).join("") + `<div class="warnbox">${esc(L[0].verdict || "")}</div>` : '<p class="faint">Sin resultados cargados.</p>') +
+      `<h4>Cómo se probó</h4><ul><li>El mismo código del analizador (intel.js) corre vela a vela; cada decisión solo ve velas cerradas hasta ese momento.</li><li>Entrada al cierre de la vela de confirmación; stop y objetivo con velas de 1m (si una vela toca ambos, cuenta el stop).</li><li>Mismos vetos, límites diarios y tamaño de posición que en vivo. Spread mínimo simulado (BTC suele cotizar a un tick).</li><li>Sin funding (pendiente) y sin optimizar parámetros: son los valores definidos antes de la prueba.</li></ul>` +
+      `<h4>Modelos probabilísticos</h4><p class="muted">No activados. Requieren una base de señales registradas, separación por tiempo (entrenar/validar/probar), validación walk-forward, comparación con referencias simples y calibración. Hasta entonces el analizador muestra "evidencia insuficiente" en lugar de porcentajes.</p></div>`;
+  }
+  function datosHtml() {
+    const dq = I.dq;
+    return `<div class="ivc"><h3>Calidad de los datos</h3><p class="${dq.ok ? "buy" : "sell"}">${dq.ok ? "Todos los datos críticos están completos y al día." : "Datos críticos con problemas: " + esc(dq.critical.join("; ")) + ". Las señales están bloqueadas."}</p>` +
+      `<div class="ivscroll"><table class="ivt"><thead><tr><th>Dato</th><th>Fuente</th><th>Instrumento</th><th>Última vela / dato</th><th>Recibido</th><th>Edad</th><th>Velas</th><th>Estado</th></tr></thead><tbody>${dq.rows.map((r) => `<tr><td><b>${esc(r.tf)}</b></td><td>${esc(r.source)}</td><td>${esc(r.instrument)}${r.market ? " · " + r.market : ""}</td><td>${r.ts ? crT(r.ts, { timeStyle: "medium", dateStyle: "short" }) : "—"}</td><td>${r.recvAt ? hm(r.recvAt) : "—"}</td><td>${isNum(r.age_s) ? r.age_s.toFixed(0) + " s" : "—"}</td><td>${r.bars ?? "—"}</td><td><span class="pill ${r.valid === true ? "fav" : r.valid === false ? "con" : "nd"}">${esc(r.status)}</span></td></tr>`).join("")}</tbody></table></div>` +
+      `<p class="faint">Revisión de duplicados, huecos, orden y retraso en las últimas 300 velas de cada serie. Solo se usan velas cerradas. Críticas para señales: ${P.exec_tf}, 15m, 1h, precio en vivo y WebSocket.</p></div>` +
+      `<div class="ivc"><h3>Qué existe y qué falta</h3><table class="ivt"><tbody>` +
+      [["Datos, calidad y frescura", "Listo", "velas 1m–1W y precio en vivo de Bybit, con bloqueo por datos vencidos"], ["Régimen multi-temporalidad", "Listo", "1W, 1D, 4H, 1H, 15M, 5M con alineación"], ["Estructura SMC", "Listo", "HH/HL/LH/LL, BOS, CHoCH/MSS, EQH/EQL, BSL/SSL, barridas, FVG con mitigación, OB"],
+        ["VWAP y perfil de volumen", "Listo", "VWAP de sesión y anclado, perfil de rango fijo (ayer) y de hoy, HVN/LVN"], ["Patrones A y B, decisión y vetos", "Listo", "LONG / SHORT / EN OBSERVACIÓN / NO OPERAR con traza"], ["Riesgo", "Listo", "tamaño con costos, límites diarios, suspensión, 5x máximo"],
+        ["Detector de movimientos", "Parcial", "sin CASCADA ACTIVA hasta tener liquidaciones"], ["Escenarios", "Cualitativo", "sin probabilidades hasta tener un modelo validado"], ["Order flow (CVD real), libro L2", "Pendiente", "fase 4"], ["Open interest, funding, liquidaciones, basis", "Pendiente", "fase 4"],
+        ["Liquidity Radar multi-exchange", "Pendiente", "fase 4"], ["Calendario macro verificado, DXY, Nasdaq, ETF", "Pendiente", "sin fuente conectada; eventos manuales disponibles"], ["Modelos probabilísticos", "Pendiente", "después de acumular señales"]]
+        .map(([a, b, c]) => `<tr><td><b>${a}</b></td><td><span class="pill ${b === "Listo" ? "fav" : b === "Pendiente" ? "nd" : "neu"}">${b}</span></td><td>${c}</td></tr>`).join("") + `</tbody></table></div>`;
+  }
+  const TABS = { resumen: resumenHtml, mercado: mercadoHtml, escenarios: escenariosHtml, riesgo: riesgoHtml, historial: historialHtml, lab: labHtml, datos: datosHtml };
+  function render() {
+    const v = $("intelView"); if (!v || v.hidden) return;
+    document.querySelectorAll("#ivTabs [data-iv]").forEach((b) => b.classList.toggle("on", b.dataset.iv === I.tab));
+    const body = $("ivBody");
+    if (I.loading) { body.innerHTML = '<div class="ivc"><p>Cargando BTCUSDT en 1m, 5m, 15m, 1h, 4h, 1D y 1S…</p></div>'; return; }
+    if (I.err && !I.r) { body.innerHTML = `<div class="ivc"><p class="sell">${esc(I.err)}</p></div>`; return; }
+    if (document.activeElement && body.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName)) return;   // no borrar lo que el usuario está escribiendo
+    const sy = window.scrollY, ivs = v.scrollTop;
+    body.innerHTML = (I.err ? `<div class="ivc"><p class="sell">${esc(I.err)}</p></div>` : "") + TABS[I.tab]();
+    v.scrollTop = ivs; window.scrollTo(0, sy);
+  }
+
+  // ------------------------------------------------------------ eventos de la interfaz
+  const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("ssp-btci") : null;
+  const base = location.href.split("#")[0].split("?")[0];
+  // botón del encabezado: abre (o trae al frente) la pestaña del analizador
+  $("intelBtn").addEventListener("click", () => { const w = window.open(base + "?analizador", "ssp-analizador"); if (w) w.focus(); else { toast("El navegador bloqueó la pestaña nueva: permita ventanas emergentes para este sitio", "info"); } });
+  if (ALONE) {
+    document.title = "Analizador BTC · ScalpSignal Pro";
+    document.body.classList.add("iv-alone");
+    $("intelView").hidden = false; document.body.style.overflow = "hidden";
+    $("ivClose").textContent = "Ir a la app"; $("ivClose").setAttribute("aria-label", "Ir a la app principal");
+    $("ivClose").addEventListener("click", () => { let ok = false; if (bc) { bc.postMessage({ cmd: "focus" }); } setTimeout(() => { if (!ok) window.open(base, "ssp-main"); }, 400); if (bc) bc.onmessage = (e) => { if (e.data && e.data.ack) ok = true; }; });
+  } else $("ivClose").addEventListener("click", () => { $("intelView").hidden = true; document.body.style.overflow = ""; });
+  // la app principal obedece a la pestaña del analizador ("ver en el gráfico") y avisa que está abierta
+  function chartBTC() {
+    if (!S.show.smc) { S.show.smc = true; LS.set("show", S.show); }
+    if (!S.symbols.includes(SYM)) X.addSymbol(SYM); else if (S.sel !== SYM) X.selectSymbol(SYM); else X.refreshChart();   // BTC se agrega a la lista para poder verlo
+    if (!["5m", "15m"].includes(S.tf)) X.setTf(P.exec_tf);
+    X.renderLegend();
+  }
+  $("ivChart").addEventListener("click", () => {
+    if (!ALONE) { $("intelView").hidden = true; document.body.style.overflow = ""; chartBTC(); return; }
+    let ok = false; if (bc) { bc.onmessage = (e) => { if (e.data && e.data.ack) ok = true; }; bc.postMessage({ cmd: "chartBTC" }); }
+    setTimeout(() => { if (!ok) window.open(base + "?ver=btc", "ssp-main"); else toast("Listo: BTCUSDT con la capa SMC en la pestaña de la app", "info"); }, 400);
+  });
+  if (!ALONE && bc) bc.onmessage = (e) => { const c = e.data && e.data.cmd; if (!c) return; bc.postMessage({ ack: true }); if (c === "chartBTC") chartBTC(); window.focus(); };
+  if (!ALONE && new URLSearchParams(location.search).has("ver")) setTimeout(chartBTC, 1500);
+  addEventListener("storage", (e) => { if (e.key && e.key.startsWith("ssp:btci") && e.key !== "ssp:btciLeader" && follower()) { reloadShared(); render(); } });
+  $("ivTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-iv]"); if (!b) return; I.tab = b.dataset.iv; LS.set("btciTab", I.tab); render(); $("intelView").scrollTop = 0; });
+  $("ivBody").addEventListener("click", (e) => {
+    if (e.target.id === "ivSaveRisk") {
+      const msgs = [];
+      document.querySelectorAll("[data-rk]").forEach((inp) => {
+        const k = inp.dataset.rk; let v = +inp.value;
+        if (!isNum(v) || v < 0) { msgs.push(`${k}: valor inválido`); return; }
+        const lim = BTCI.RISK_LIMITS[k]; if (lim && (v < lim[0] || v > lim[1])) { msgs.push(`${k} limitado a ${lim[0]}–${lim[1]}`); v = Math.min(lim[1], Math.max(lim[0], v)); }
+        R[k] = v;
+      });
+      if (R.risk_pct > 1) msgs.push("Atención: más de 1 % de riesgo por operación es agresivo");
+      LS.set("btciR", R); run(); I.tab = "riesgo"; render();
+      const m = $("ivRiskMsg"); if (m) m.textContent = msgs.length ? msgs.join(" · ") : "Guardado.";
+    }
+    if (e.target.id === "mxAdd") {
+      const name = $("mxName").value.trim(), v = $("mxTime").value;
+      if (!name || !v) { toast("Escriba el nombre y la fecha del evento", "info"); return; }
+      const [d, h] = v.split("T"), [Y, Mo, D] = d.split("-").map(Number), [hh, mm] = h.split(":").map(Number);
+      const time = SSP.zonedToUtc(Y, Mo - 1, D, hh, mm, "America/Costa_Rica");   // mes 0–11
+      I.macro.push({ id: "m" + Date.now(), name, time, impact: $("mxImp").value, before: +$("mxB").value || M.before_min, after: +$("mxA").value || M.after_min, source: "registrado por el usuario" });
+      save(); run();
+    }
+    const del = e.target.closest("[data-mxdel]"); if (del) { I.macro = I.macro.filter((x) => x.id !== del.dataset.mxdel); save(); run(); }
+    if (e.target.id === "ivExport") {
+      const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), engine: BTCI.VERSION, params: P, risk: R, signals: I.signals, trades: I.trades, discards: I.discards, alerts: I.alerts }, null, 1)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `btc-analizador-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+  });
+  document.addEventListener("keydown", (e) => { if (!ALONE && e.key === "Escape" && !$("intelView").hidden) $("ivClose").click(); });
+
+  // ------------------------------------------------------------ capa SMC en el gráfico
+  const cache = { key: "", v: null };
+  function smcFor(sym, tf) {
+    const an = S.an[k2(sym, tf)]; if (!an || an.n < 60) return null;
+    const t = an.d.closeTime[an.n - 1], key = `${sym}|${tf}|${t}|${sym === SYM && I.r ? I.r.t : 0}`;
+    if (cache.key === key) return cache.v;
+    const ans = {}; for (const x of ["5m", "15m", "1h", "4h", "1d", "1w", tf]) if (S.an[k2(sym, x)]) ans[x] = S.an[k2(sym, x)];
+    const p2 = Object.assign({}, P, { exec_tf: tf });
+    const v = { an, ev: an.structure.events.filter((e) => e.availableAt <= t).slice(-10), fvg: BTCI.fvgAsof(an, t, p2, 10), liq: BTCI.liquidityAsof(ans, t, p2), sw: BTCI.sweepsAsof(ans, t, p2, 120) };
+    cache.key = key; cache.v = v; return v;
+  }
+  window.__drawHook = (g, o) => {
+    if (!o.shw("smc")) return;
+    const v = smcFor(o.sym, o.tf); if (!v) return;
+    const { X: Xc, Y, ts, W, H, ms, st, vis, hexA } = o, x = (t) => { const c = ts.timeToCoordinate(t / 1000); return c === null ? null : c; };
+    g.font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    if (vis("smc.fvg")) for (const f of v.fvg) {
+      const xa = x(f.time), ya = Y(f.top), yb = Y(f.bottom); if (ya === null || yb === null) continue;
+      const x0 = xa === null ? 0 : xa, col = st("smc.fvg").c;
+      g.fillStyle = hexA(col, f.status === "parcial" ? 0.08 : 0.14); g.fillRect(x0, Math.min(ya, yb), W - x0, Math.abs(yb - ya));
+      if (!ms) { g.fillStyle = hexA(col, 0.9); g.fillText(`FVG${f.status === "parcial" ? " parcial" : ""}`, x0 + 3, Math.min(ya, yb) + 10); }
+    }
+    if (vis("smc.bos")) for (const e of v.ev) {
+      const xa = x(e.pivotTime), xb = x(e.time), y = Y(e.level); if (y === null || (xa === null && xb === null)) continue;
+      const a = xa === null ? 0 : xa, b = xb === null ? W : xb, col = e.kind === "CHoCH" ? "#ff9f5a" : st("smc.bos").c;
+      g.strokeStyle = col; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(a, y + 0.5); g.lineTo(b, y + 0.5); g.stroke(); g.setLineDash([]);
+      g.fillStyle = col; g.textAlign = "center"; g.fillText(e.kind === "CHoCH" ? "CHoCH" : "BOS", (a + b) / 2, e.direction === "alcista" ? y - 3 : y + 11); g.textAlign = "start";
+    }
+    if (vis("smc.liq")) {
+      const col = st("smc.liq").c, n = ms ? 2 : 4;
+      for (const l of [...v.liq.bsl.slice(0, n), ...v.liq.ssl.slice(0, n)]) {
+        const y = Y(l.price); if (y === null || y < 0 || y > H) continue;
+        g.strokeStyle = hexA(col, 0.7); g.setLineDash([2, 4]); g.beginPath(); g.moveTo(W * 0.55, y + 0.5); g.lineTo(W, y + 0.5); g.stroke(); g.setLineDash([]);
+        g.fillStyle = col; const lab = `${l.side} · ${l.kind.split(" · ")[0]}`; g.fillText(lab, W - g.measureText(lab).width - 64, y - 3);
+      }
+    }
+    if (vis("smc.sweep")) for (const s of v.sw.slice(-6)) {
+      const xc = x(s.time), y = Y(s.extreme); if (xc === null || y === null) continue;
+      const up = s.dir === "alcista", col = st("smc.sweep").c;
+      g.fillStyle = col; g.beginPath(); if (up) { g.moveTo(xc, y + 4); g.lineTo(xc - 4, y + 11); g.lineTo(xc + 4, y + 11); } else { g.moveTo(xc, y - 4); g.lineTo(xc - 4, y - 11); g.lineTo(xc + 4, y - 11); } g.fill();
+      if (!ms) { g.textAlign = "center"; g.fillText("barrida", xc, up ? y + 22 : y - 14); g.textAlign = "start"; }
+    }
+    // zona, stop y objetivo del analizador (solo BTC)
+    if (o.sym === SYM && vis("smc.zone") && I.r) {
+      const tr = I.trades.filter((t2) => !t2.exit_time).slice(-1)[0], s = I.r.signal;
+      const z = tr ? { entry: tr.entry, stop: tr.stop, tp: tr.tp, t: tr.time, zone: null, lab: `${tr.dir} simulado` } : s ? { entry: s.entry, stop: s.stop, tp: s.tp, t: s.time, zone: s.entry_zone, lab: s.dir } : null;
+      if (z) {
+        const xa = x(z.t) ?? W * 0.7, col = st("smc.zone").c;
+        if (z.zone) { const ya = Y(Math.max(...z.zone)), yb = Y(Math.min(...z.zone)); if (ya !== null && yb !== null) { g.fillStyle = hexA(col, 0.15); g.fillRect(xa, ya, W - xa, yb - ya); } }
+        for (const [p, c2, nm] of [[z.entry, col, "Entrada " + z.lab], [z.stop, "#ff6170", "SL analizador"], [z.tp, "#2fd3a0", "TP analizador"]]) {
+          const y = Y(p); if (y === null) continue;
+          g.strokeStyle = c2; g.lineWidth = 1.5; g.beginPath(); g.moveTo(xa, y + 0.5); g.lineTo(W, y + 0.5); g.stroke(); g.lineWidth = 1;
+          g.fillStyle = c2; g.fillText(`${nm} ${fp(p)}`, xa + 4, y - 3);
+        }
+      }
+    }
+  };
+
+  window.__btci = { I, P, R, M, run, render };
+  load();
 })();
 
 </script>
