@@ -371,6 +371,11 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .wh-t{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0}.wh-t th,.wh-t td{text-align:left;padding:3px 4px;border-bottom:1px solid var(--rule)}.wh-t th{font-weight:600;color:#8fa0b8}
 .wh-t .lnk{background:none;border:0;color:#8fa0b8;cursor:pointer;padding:0 2px}
 #whBtn.on{color:#0b1220;background:var(--gold)}
+.wh-tip{position:absolute;z-index:30;max-width:300px;background:rgba(14,21,34,.96);border:1px solid var(--rule2);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.35;color:#d7e0ee;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.wh-leg{font-size:12px;line-height:1.5;padding:8px 10px;margin:0 0 10px;border:1px solid var(--rule2);border-radius:8px;background:var(--deck)}
+.wh-leg>div{margin-top:3px}.wh-leg .c{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-2px;margin-right:3px;border:2px solid}
+.wh-leg .c.sm{width:8px;height:8px;vertical-align:0}.wh-leg .g{border-color:#26c281}.wh-leg .r{border-color:#ef5350}.wh-leg .v{border-color:#b48cff;background:#b48cff66}
+.wh-leg .ring.g{background:#26c2811f}.wh-leg .ring.r{background:#ef53501f}.wh-leg .fill.g{background:#26c28166}.wh-leg .fill.r{background:#ef535066}.wh-leg .gold{box-shadow:0 0 0 2px #f0c75e}
 .t5p-seg button{font-weight:600;font-size:12.5px;padding:4px 9px}.t5p-seg button.on{background:var(--gold-bg);color:var(--gold);border-color:rgba(240,199,94,.5)}
 .t5p-panel{position:absolute;left:8px;bottom:34px;z-index:6;background:rgba(14,22,36,.92);border:1px solid var(--rule2);border-radius:var(--r-md);padding:8px 10px;max-width:330px;font-size:12px;color:var(--ink2);backdrop-filter:blur(4px)}
 .t5p-panel h5{margin:0 0 4px;font-size:12.5px;color:var(--ink);display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -5257,8 +5262,9 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     for (const o of orders) {
       if (o.time < first || o.time >= last) continue;
       const ot = Math.floor((o.time - first) / tfMs) * tfMs + first;   // las velas son consecutivas en la serie de Bybit
-      const b = res.get(ot) || { buy: 0, sell: 0, n: 0, max: null };
+      const b = res.get(ot) || { buy: 0, sell: 0, n: 0, max: null, side: { buy: { n: 0, max: null }, sell: { n: 0, max: null } } };
       b[o.side] += o.usd; b.n++; if (!b.max || o.usd > b.max.usd) b.max = o;
+      const sd = b.side[o.side]; sd.n++; if (!sd.max || o.usd > sd.max.usd) sd.max = o;
       res.set(ot, b);
     }
     return res;
@@ -5366,7 +5372,26 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     return b + "-USD";
   }
 
-  const API = { WHALE_VERSION, autoThreshold, aggBybit, cbTakerSide, CbAggregator, bucket, netWindow, premiumSeries, resampleCb, ema, premiumReading, txBtc, dormancy, MANUAL_KINDS, validManual, manualDaily, mergeOrders, cbProduct };
+  // Historial de "ballenas" en cualquier tramo del gráfico: velas con volumen anómalo (≥ mult × la media de las n velas
+  // ANTERIORES, sin incluir la propia vela). Dirección = color de la vela. Es una huella indirecta de órdenes grandes:
+  // no identifica a nadie y no separa compras de ventas dentro de la vela.
+  function volBubbles(rows, n = 20, mult = 2.5) {
+    const out = []; let sum = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const v = +rows[i].volume;
+      if (i >= n) {
+        const avg = sum / n;
+        if (avg > 0 && v >= mult * avg) out.push({ openTime: rows[i].openTime, ratio: v / avg, dir: rows[i].close >= rows[i].open ? "buy" : "sell", vol: v, usd: v * rows[i].close, high: rows[i].high, low: rows[i].low });
+        sum -= +rows[i - n].volume;
+      }
+      sum += v;
+    }
+    return out;
+  }
+  // radio de un círculo (en píxeles) según la intensidad, con tope
+  function radius(x, base = 3, k = 3.5, max = 18) { return Math.max(base, Math.min(max, base + k * Math.sqrt(Math.max(0, x)))); }
+
+  const API = { volBubbles, radius, WHALE_VERSION, autoThreshold, aggBybit, cbTakerSide, CbAggregator, bucket, netWindow, premiumSeries, resampleCb, ema, premiumReading, txBtc, dormancy, MANUAL_KINDS, validManual, manualDaily, mergeOrders, cbProduct };
   if (typeof module !== "undefined" && module.exports) module.exports = API; else root.WHALE = API;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -5393,7 +5418,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   const thr = () => { const u = W.thrUser[W.sym]; if (u > 0) return u; const q = S.quotes[W.sym] || {}; return WH.autoThreshold(q.turnover24h); };
   const money = (v) => { const a = Math.abs(v); return (v < 0 ? "−" : "") + (a >= 1e9 ? (a / 1e9).toFixed(2) + " mil M" : a >= 1e6 ? (a / 1e6).toFixed(2) + " M" : a >= 1e3 ? (a / 1e3).toFixed(0) + " mil" : a.toFixed(0)); };
   const crT = (t) => new Intl.DateTimeFormat("es-CR", { timeZone: "America/Costa_Rica", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(t));
-  const KEEP = 3 * 86400e3;
+  const KEEP = 7 * 86400e3;
 
   // ------------------------------------------------------------ almacenamiento compacto de órdenes grandes (compartido entre pestañas)
   const pack = (o) => [o.time, o.side === "buy" ? 1 : -1, Math.round(o.usd), +o.qty.toPrecision(6), o.venue === "Coinbase" ? "C" : "B", o.block ? 1 : 0, o.id];
@@ -5403,7 +5428,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   let dirty = false;
   function saveOrders() {
     if (!dirty || !W.sym) return; dirty = false;
-    const merged = WH.mergeOrders(loadOrders(W.sym), W.orders, KEEP, Date.now(), 1500);
+    const merged = WH.mergeOrders(loadOrders(W.sym), W.orders, KEEP, Date.now(), 3000);
     W.orders = merged;
     try { localStorage.setItem(stKey(W.sym), JSON.stringify(merged.map(pack))); } catch { /* lleno: se queda en memoria */ }
   }
@@ -5412,7 +5437,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     if (!o || o.usd < thr()) return;
     if (W.orders.some((x) => x.id === o.id)) return;
     W.orders.push(o); dirty = true;
-    if (W.orders.length > 2000) W.orders.splice(0, W.orders.length - 1500);
+    if (W.orders.length > 4000) W.orders.splice(0, W.orders.length - 3000);
     if (o.usd >= thr() * 4) toast(`${W.sym.replace(/USDT$/, "")} · orden ${o.side === "buy" ? "de COMPRA" : "de VENTA"} de ${money(o.usd)} USD en ${o.venue}${o.block ? " (en bloque)" : ""}`, "info");
     bump();
   }
@@ -5468,7 +5493,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     if (premBusy || (!force && W.prem.key === key && Date.now() - W.prem.at < 60000)) return;
     premBusy = true;
     try {
-      const [g, k] = GRAN[tf], pages = Math.min(4, k), [cbRaw, uRaw] = await Promise.all([cbCandles(product, g, pages), cbCandles("USDT-USD", g, pages).catch(() => [])]);
+      const [g, k] = GRAN[tf], an0 = S.an[k2(sym, tf)], pages = Math.min(8, Math.max(1, Math.ceil(Math.min(an0 ? an0.n : 300, 1000) * k / 300))), [cbRaw, uRaw] = await Promise.all([cbCandles(product, g, pages), cbCandles("USDT-USD", g, pages).catch(() => [])]);
       if (sym !== W.sym || tf !== S.tf) return;
       const off = tf === "1w" ? 4 * 86400e3 : 0;
       const cb = k > 1 ? WH.resampleCb(cbRaw, TFMS[tf], off) : cbRaw, us = k > 1 ? WH.resampleCb(uRaw, TFMS[tf], off) : uRaw;
@@ -5537,49 +5562,112 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     if (W.byAt && Date.now() - W.byAt > 60000) W.byStatus = "sin operaciones en el último minuto";
   }, 1500);
 
-  // ------------------------------------------------------------ dibujo en el gráfico: burbujas por vela + franja de la prima
+  // ------------------------------------------------------------ dibujo en el gráfico: todo en círculos
+  //  ○ anillo   = vela con volumen anómalo (historial completo del gráfico)   · verde bajo la vela = compra, rojo sobre la vela = venta
+  //  ● relleno  = orden grande real registrada en Bybit o Coinbase (desde que alguna pestaña está abierta; se guarda 7 días)
+  //  fila de abajo  = prima de Coinbase por vela (verde = Coinbase más caro = compra de EE. UU.; rojo = venta)
+  //  fila de arriba = cadena de BTC (violeta; borde dorado = monedas dormidas) y registros manuales de ETF / empresas (dorado)
+  const VB = { key: "", list: [] };
+  const volMult = () => +LS.get("whVolMult", 2.5) || 2.5;
+  function volHist(sym, tf) {
+    const k = k2(sym, tf), cl = S.closed[k] || [], dp = (S.deep && S.deep[k]) || [], first = cl.length ? cl[0].openTime : Infinity;
+    const key = `${k}|${dp.length}|${cl.length}|${cl.length ? cl[cl.length - 1].openTime : 0}|${volMult()}`;
+    if (VB.key !== key) { const rows = dp.filter((x) => x.openTime < first).concat(cl); VB.key = key; VB.list = WH.volBubbles(rows, 20, volMult()); VB.map = new Map(VB.list.map((x) => [x.openTime, x])); }
+    return VB;
+  }
+  let hits = []; window.__whaleHits = () => hits;      // círculos dibujados, para mostrar el detalle al pasar el mouse o tocar
+  const GREEN = "#26c281", RED = "#ef5350", VIO = "#b48cff", GOLD = "#f0c75e";
+  function circle(g, x, y, r, col, filled, ring2) {
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+    g.fillStyle = filled ? col + "66" : col + "1f"; g.fill();
+    g.lineWidth = filled ? 1.3 : 1.8; g.strokeStyle = col; g.stroke();
+    if (ring2) { g.beginPath(); g.arc(x, y, r + 2.5, 0, Math.PI * 2); g.lineWidth = 1.5; g.strokeStyle = ring2; g.stroke(); }
+  }
   (window.__drawHooks = window.__drawHooks || []).push((g, o) => {
+    hits = [];
     if (!W.on || o.sym !== W.sym) return;
     const cd = o.data && o.data.candles; if (!cd || !cd.length) return;
     const { Y, ts, W: Wd, H, ms } = o, tfMs = TFMS[o.tf], vr = ts.getVisibleRange && ts.getVisibleRange();
     const tFrom = vr ? vr.from * 1000 : cd[0].time * 1000, tTo = (vr ? vr.to * 1000 : cd[cd.length - 1].time * 1000) + 2 * tfMs;
     const byT = new Map(cd.map((c) => [c.time * 1000, c])), lv = S.live[k2(o.sym, o.tf)];
-    if (lv && lv.openTime) byT.set(lv.openTime, lv);                  // vela en formación
-    const first = Math.floor(tFrom / tfMs) * tfMs, opens = [];        // velas alineadas desde el inicio visible
-    const vis0 = cd.find((c) => c.time * 1000 >= tFrom); const t0 = vis0 ? vis0.time * 1000 : first;
+    if (lv && lv.openTime) byT.set(lv.openTime, lv);
+    const vis0 = cd.find((c) => c.time * 1000 >= tFrom), t0 = vis0 ? vis0.time * 1000 : Math.floor(tFrom / tfMs) * tfMs, opens = [];
     for (let t = t0; t <= tTo; t += tfMs) opens.push(t);
-    const bk = WH.bucket(W.orders, opens, tfMs), T = thr(), q = S.quotes[o.sym] || {};
+    const lastT = Math.max(cd[cd.length - 1].time * 1000, lv && lv.openTime ? lv.openTime : 0);
+    const X = (t) => { const x = ts.timeToCoordinate(Math.min(t, lastT) / 1000); return x; }, q = S.quotes[o.sym] || {}, T = thr(), MAXR = ms ? 13 : 18;   // lo más nuevo cae en la última vela
     g.font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    const label = (txt, x, y, col) => { g.fillStyle = col; g.fillText(txt, x - g.measureText(txt).width / 2, y); };
+    // 1) historial: velas con volumen anómalo (anillos)
+    const vb = volHist(o.sym, o.tf), offs = new Map();
+    for (const b of vb.list) {
+      if (b.openTime < t0 || b.openTime > tTo) continue;
+      const x = X(b.openTime); if (x === null) continue;
+      const buy = b.dir === "buy", r = WH.radius(b.ratio - volMult() + 1, 3, 3.2, MAXR), y = buy ? Y(b.low) + r + 4 : Y(b.high) - r - 4;
+      if (y === null || y < -20 || y > H + 20) continue;
+      circle(g, x, y, r, buy ? GREEN : RED, false);
+      offs.set(b.openTime + (buy ? "b" : "s"), r * 2 + 6);
+      if (b.ratio >= volMult() * 1.8) label("×" + b.ratio.toFixed(1), x, buy ? y + r + 11 : y - r - 4, buy ? GREEN : RED);
+      hits.push({ x, y, r, text: `${buy ? "Compra" : "Venta"} con volumen anómalo: ${b.ratio.toFixed(1)} × la media de 20 velas (${money(b.usd)} USD aprox.) · vela ${crT(b.openTime)}` });
+    }
+    // 2) órdenes grandes reales (círculos rellenos), por vela; si ya hay anillo, se dibuja más afuera
+    const bk = WH.bucket(W.orders, opens, tfMs);
     for (const [ot, b] of bk) {
-      const x = ts.timeToCoordinate(ot / 1000); if (x === null) continue;
-      const c = byT.get(ot), lp = +q.lastPrice, hi = c ? c.high : lp, lo = c ? c.low : lp; if (!(hi > 0)) continue;
-      const draw = (usd, buy) => {
-        if (!usd) return;
-        const r = Math.max(3, Math.min(ms ? 14 : 20, 3 + 4 * Math.sqrt(usd / T))), y = buy ? Y(lo) + r + 4 : Y(hi) - r - 4;
-        if (y === null || y < -20 || y > H + 20) return;
-        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = buy ? "rgba(38,194,129,.35)" : "rgba(239,83,80,.35)"; g.fill();
-        g.lineWidth = 1.2; g.strokeStyle = buy ? "#26c281" : "#ef5350"; g.stroke();
-        if (usd >= T * 3) { const t = "$" + money(usd); g.fillStyle = buy ? "#26c281" : "#ef5350"; g.fillText(t, x - g.measureText(t).width / 2, buy ? y + r + 11 : y - r - 4); }
-      };
-      draw(b.buy, true); draw(b.sell, false);
+      const x = X(ot); if (x === null) continue;
+      const c = byT.get(Math.min(ot, lastT)), lp = +q.lastPrice, hi = c ? c.high : lp, lo = c ? c.low : lp; if (!(hi > 0)) continue;
+      for (const buy of [true, false]) {
+        const usd = buy ? b.buy : b.sell; if (!usd) continue;
+        const r = WH.radius(usd / T - 1, 4, 4, MAXR), off = offs.get(ot + (buy ? "b" : "s")) || 0, y = buy ? Y(lo) + off + r + 4 : Y(hi) - off - r - 4;
+        if (y === null || y < -20 || y > H + 20) continue;
+        circle(g, x, y, r, buy ? GREEN : RED, true);
+        if (usd >= T * 3) label("$" + money(usd), x, buy ? y + r + 11 : y - r - 4, buy ? GREEN : RED);
+        hits.push({ x, y, r, text: `${buy ? "COMPRAS" : "VENTAS"} grandes reales: ${money(usd)} USD en ${b.side[buy ? "buy" : "sell"].n} orden(es) · mayor: ${money(b.side[buy ? "buy" : "sell"].max.usd)} USD en ${b.side[buy ? "buy" : "sell"].max.venue}${b.side[buy ? "buy" : "sell"].max.block ? " (en bloque)" : ""} · vela ${crT(ot)}` });
+      }
     }
-    // franja inferior con la prima de Coinbase (barras por vela)
-    const ser = W.prem.series; if (!ser.length && !WM) return;
-    const hS = ms ? 38 : 52, y0 = H - hS - 4, mid = y0 + hS / 2;
-    g.fillStyle = "rgba(10,16,28,.72)"; g.fillRect(0, y0, Wd, hS);
-    g.strokeStyle = "rgba(143,160,184,.35)"; g.beginPath(); g.moveTo(0, mid + 0.5); g.lineTo(Wd, mid + 0.5); g.stroke();
-    const vis = ser.filter((p) => p.time >= opens[0] && p.time <= opens[opens.length - 1]);
-    const mx = Math.max(0.1, ...vis.map((p) => Math.abs(p.pct)));
-    const bw = Math.max(1, (ts.options().barSpacing || 6) * 0.7);
-    for (const p of vis) {
-      const x = ts.timeToCoordinate(p.time / 1000); if (x === null) continue;
-      const hgt = (p.pct / mx) * (hS / 2 - 3);
-      g.fillStyle = p.pct >= 0 ? "rgba(38,194,129,.85)" : "rgba(239,83,80,.85)"; g.fillRect(x - bw / 2, hgt >= 0 ? mid - hgt : mid, bw, Math.abs(hgt) || 0.5);
+    // 3) fila inferior: prima de Coinbase
+    const yP = H - (ms ? 11 : 14), thrP = 0.02;
+    g.fillStyle = "rgba(199,210,227,.75)"; g.fillText(ms ? "Prima CB" : "Prima Coinbase", 4, yP - (ms ? 10 : 13));
+    for (const p of W.prem.series) {
+      if (p.time < t0 || p.time > tTo || Math.abs(p.pct) < thrP) continue;
+      const x = X(p.time); if (x === null) continue;
+      const r = WH.radius(Math.abs(p.pct) / 0.05 - 0.4, 2, 3, ms ? 8 : 10), up = p.pct > 0;
+      circle(g, x, yP, r, up ? GREEN : RED, true);
+      hits.push({ x, y: yP, r: Math.max(r, 5), text: `Prima de Coinbase ${up ? "+" : ""}${p.pct.toFixed(3)} % · vela ${crT(p.time)} · ${up ? "Coinbase más caro: compra spot de EE. UU." : "Coinbase más barato: venta spot de EE. UU."}` });
     }
-    const lp = livePremium(), rd = WH.premiumReading(ser);
-    const lab = `Prima de Coinbase ${W.prem.product || ""}: ${lp !== null ? (lp >= 0 ? "+" : "") + lp.toFixed(3) + " % ahora" : rd ? (rd.last >= 0 ? "+" : "") + rd.last.toFixed(3) + " % (última vela)" : W.prem.status}  ·  escala ±${mx.toFixed(2)} %`;
-    g.fillStyle = "#c7d2e3"; g.fillText(lab, 6, y0 + 11);
+    // 4) fila superior: cadena de BTC y registros manuales
+    const yC = ms ? 30 : 36;
+    const atBar = (t) => { const b = Math.floor((t - t0) / tfMs) * tfMs + t0; return b >= t0 && b <= tTo ? b : null; };
+    for (const e of W.chain.list) {
+      const b = atBar(e.time); if (b === null) continue;
+      const x = X(b); if (x === null) continue;
+      const r = WH.radius(Math.log2(e.btc / W.chain.thr), 4, 4, MAXR), dorm = e.dorm && e.dorm.dormant;
+      circle(g, x, yC, r, VIO, true, dorm ? GOLD : null);
+      if (e.btc >= W.chain.thr * 2 || dorm) label(Math.round(e.btc).toLocaleString("es-CR") + " BTC", x, yC + r + 11, VIO);
+      hits.push({ x, y: yC, r, text: `Cadena de BTC: ${e.btc.toLocaleString("es-CR", { maximumFractionDigits: 1 })} BTC movidos${dorm ? ` · monedas dormidas desde ${e.dorm.year}${e.dorm.satoshiEra ? " (época de Satoshi)" : ""}` : ""} · ${crT(e.time)} · no indica compra ni venta` });
+    }
+    for (const d of WH.manualDaily(W.manual)) {
+      const t = Date.parse(d.date + "T00:00:00Z"), b = atBar(Math.max(t, t0)); if (b === null || t > tTo) continue;
+      const x = X(b); if (x === null) continue;
+      const v = d.etf + d.other, r = WH.radius(Math.abs(v) / 100, 5, 3, MAXR), y = yC + (ms ? 30 : 38);
+      circle(g, x, y, r, v >= 0 ? GREEN : RED, true, GOLD);
+      label(`${d.items.some((e) => e.kind === "ETF") ? "ETF " : ""}${v >= 0 ? "+" : ""}${v.toFixed(0)} M`, x, y + r + 12, GOLD);
+      hits.push({ x, y, r, text: `${d.date}: ` + d.items.map((e) => `${e.kind} ${e.entity}${e.usd_m !== null ? ` ${e.usd_m >= 0 ? "+" : ""}${e.usd_m} M USD` : ""}${e.btc !== null ? ` ${e.btc >= 0 ? "+" : ""}${e.btc} BTC` : ""}`).join(" · ") + " (registro manual)" });
+    }
   });
+  // detalle al pasar el mouse (o tocar) un círculo
+  const tip = document.createElement("div"); tip.className = "wh-tip"; tip.hidden = true;
+  const wrap = document.querySelector(".chartwrap"); if (wrap) wrap.appendChild(tip);
+  function tipAt(cx, cy) {
+    const cv = $("overlay"); if (!cv || !W.on) { tip.hidden = true; return; }
+    const rc = cv.getBoundingClientRect(), x = cx - rc.left, y = cy - rc.top;
+    const h = hits.find((c) => (c.x - x) ** 2 + (c.y - y) ** 2 <= (c.r + 3) ** 2);
+    if (!h) { tip.hidden = true; return; }
+    const wr = wrap.getBoundingClientRect();
+    tip.textContent = h.text; tip.hidden = false;
+    tip.style.left = Math.min(wr.width - tip.offsetWidth - 6, Math.max(6, cx - wr.left + 12)) + "px"; tip.style.top = Math.max(6, cy - wr.top - tip.offsetHeight - 10) + "px";
+  }
+  if (wrap) { wrap.addEventListener("mousemove", (e) => tipAt(e.clientX, e.clientY)); wrap.addEventListener("mouseleave", () => { tip.hidden = true; }); wrap.addEventListener("click", (e) => tipAt(e.clientX, e.clientY)); }
+  // la otra pestaña puede registrar movimientos en la cadena o registros manuales: se releen
+  setInterval(() => { if (!WM) { W.chain.list = LS.get("whChain", []); W.manual = LS.get("whManual", []); } }, 15000);
 
   // ------------------------------------------------------------ botón en la barra del gráfico (pestaña principal)
   const tbtn = $("whBtn");
@@ -5594,7 +5682,13 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   function bump() { ver++; }
   if (!WM) return;
   const box = $("tab-mercado");
-  box.innerHTML = `<div id="whRead"></div>
+  box.innerHTML = `<div class="wh-leg"><b>Cómo leer los círculos del gráfico</b> <span class="faint">(pase el mouse o toque uno para ver el detalle)</span>
+      <div><i class="c ring g"></i><i class="c ring r"></i> Vela con volumen anómalo (≥ <span id="whVMs">${volMult()}</span> × la media de 20 velas): verde abajo = compra, rojo arriba = venta. Historial de todo el gráfico.</div>
+      <div><i class="c fill g"></i><i class="c fill r"></i> Órdenes grandes reales de Bybit y Coinbase en esa vela (se guardan 7 días).</div>
+      <div><i class="c fill g sm"></i><i class="c fill r sm"></i> Fila de abajo: prima de Coinbase (verde = compra de EE. UU. / ETF, rojo = venta).</div>
+      <div><i class="c fill v"></i> Fila de arriba: BTC movidos en la cadena (borde dorado = monedas dormidas). <i class="c fill g gold"></i> Registros de ETF / empresas.</div>
+      <div class="faint">El tamaño del círculo crece con la intensidad.</div></div>
+    <div id="whRead"></div>
     <h3 class="wh-h">Flujos de ETF y compras institucionales (registro manual)</h3>
     <p class="faint">Los flujos netos diarios de los ETF se publican después del cierre de EE. UU. y las fuentes gratuitas no permiten leerlos desde la app. Anótelos aquí desde
     <a href="https://farside.co.uk/btc/" target="_blank" rel="noopener">Farside</a>, <a href="https://sosovalue.com/assets/etf/us-btc-spot" target="_blank" rel="noopener">SoSoValue</a>,
@@ -5611,6 +5705,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     <div id="whMan"></div>
     <h3 class="wh-h">Configuración</h3>
     <div class="wh-form"><label>Orden grande desde (USD) <input id="whThr" type="number" min="1000" step="1000" placeholder="automático"></label>
+    <label>Volumen anómalo desde (× media) <input id="whVM" type="number" min="1.5" max="10" step="0.1" value="${volMult()}"></label>
     <label>Cadena de BTC desde (BTC) <input id="whCThr" type="number" min="10" step="10" value="${W.chain.thr}"></label><button id="whSaveCfg" type="button">Guardar</button></div>`;
   $("whD").value = new Date().toISOString().slice(0, 10);
   $("whForm").addEventListener("submit", (ev) => {
@@ -5626,6 +5721,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     if (v > 0) W.thrUser[W.sym] = v; else delete W.thrUser[W.sym];
     LS.set("whThr", W.thrUser);
     if (c >= 10) { W.chain.thr = c; LS.set("whChainThr", c); }
+    const vm = +$("whVM").value; if (vm >= 1.5 && vm <= 10) { LS.set("whVolMult", vm); $("whVMs").textContent = vm; X.chart.draw(); }
     toast("Guardado. El nuevo umbral aplica a las órdenes que lleguen desde ahora.", "info"); bump();
   });
   function renderMan() {
@@ -5670,19 +5766,6 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   setInterval(bump, 10000);   // relojes y ventanas de tiempo
   window.__whaleMarket = () => {};
   chainConnect();
-  // registros manuales en el gráfico (días con flujo de ETF u otras compras/ventas)
-  window.__drawHooks.push((g, o) => {
-    if (!W.manual.length || TFMS[o.tf] < 3600e3) return;
-    const a = S.an[k2(o.sym, o.tf)]; if (!a || !a.n) return;
-    g.font = '600 10px "IBM Plex Sans", system-ui, sans-serif';
-    for (const d of WH.manualDaily(W.manual)) {
-      const t = Date.parse(d.date + "T00:00:00Z"); let i = a.d.openTime.findIndex((x) => x + TFMS[o.tf] > t); if (i < 0) continue;
-      const x = o.ts.timeToCoordinate(a.d.openTime[i] / 1000); if (x === null) continue;
-      const v = d.etf + d.other, txt = `${d.items.some((e) => e.kind === "ETF") ? "ETF " : ""}${v >= 0 ? "+" : ""}${v.toFixed(0)} M`;
-      g.fillStyle = v >= 0 ? "#26c281" : "#ef5350"; g.fillText(txt, x - g.measureText(txt).width / 2, 14);
-      g.strokeStyle = v >= 0 ? "rgba(38,194,129,.35)" : "rgba(239,83,80,.35)"; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, 18); g.lineTo(x, o.H); g.stroke(); g.setLineDash([]);
-    }
-  });
 })();
 
 </script>
