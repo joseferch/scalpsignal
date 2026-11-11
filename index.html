@@ -382,7 +382,16 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .t5p-panel h5 button{background:none;border:0;color:var(--ink3);padding:0 2px;font-size:13px;cursor:pointer}
 .t5p-panel ol{margin:0;padding-left:18px}.t5p-panel li{margin:2px 0}.t5p-panel li.ok{color:var(--ink)}.t5p-panel li.ok::marker{color:var(--buy)}.t5p-panel li.no::marker{color:var(--ink3)}
 .t5p-panel .stg{margin-top:4px;font-weight:600}.t5p-panel ol{list-style:none;padding-left:0}
-@media(max-width:700px){.t5p-panel{max-width:62vw;font-size:11px;bottom:30px;left:4px;padding:6px 8px}}
+.t5p-panel .sh{display:none}
+@media(max-width:700px){
+  .t5p-panel{max-width:calc(100% - 70px);font-size:10.5px;bottom:28px;left:4px;padding:4px 7px}
+  .t5p-panel h5{font-size:11px;margin-bottom:2px}
+  .t5p-panel ol{display:flex;flex-wrap:wrap;gap:1px 8px}.t5p-panel li{margin:0}
+  .t5p-panel .lg,.t5p-panel li br,.t5p-panel li .muted,.t5p-panel .h1l{display:none}.t5p-panel .sh{display:inline}
+  .t5p-panel .stg{margin-top:2px}
+  .iv-hd{flex-wrap:wrap}.iv-hd>div:first-child{flex:1 1 100%}
+  .mode-t5p #t5pBtns{order:-1}.mode-t5p .tfbar #tfs{order:0}
+}
 /* ---------- analizador BTC ---------- */
 .intel-btn{background:var(--info-bg);border-color:rgba(98,168,255,.35);font-weight:600;font-size:13px;padding:6px 10px;white-space:nowrap}
 .ibadge{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:999px;font-size:11px;background:var(--deck);color:var(--ink2)}
@@ -416,6 +425,16 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .ivform{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.ivform label{font-size:12px;color:var(--ink3)}
 .warnbox{border:1px dashed var(--rule2);border-radius:var(--r-md);padding:8px 10px;color:var(--ink2);font-size:12.5px}
 @media(max-width:700px){.iv{padding:10px 12px 40px}.intel-btn{font-size:12px;padding:5px 8px}.dec .st{font-size:21px}.iv-hd h2{font-size:17px}}
+/* teléfono: los botones de las pestañas aparte pasan a una segunda fila del encabezado (antes empujaban la página a ~570 px y el navegador la achicaba) */
+@media(max-width:700px){
+  .top-row{flex-wrap:wrap!important;row-gap:6px}
+  .top-right{display:contents}
+  #conn{margin-left:auto}
+  #cfgBtn{order:1}
+  .top-row .intel-btn{order:2;flex:1 1 26%;min-width:0;justify-content:center;text-align:center;font-size:12px;padding:5px 4px;overflow:hidden;text-overflow:ellipsis}
+  #intelBadge{font-size:10px;padding:0 4px;margin-left:2px}
+  #installBtn{order:1}
+}
 @media(max-width:560px){.trend-chips .tchip:not(:first-child){display:none}#price{font-size:19px}.levels{grid-template-columns:repeat(2,1fr)}.pair{grid-template-columns:1fr auto 70px 22px}.pair .tr{display:none}}
 </style>
 </head>
@@ -5138,11 +5157,12 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     panel.hidden = !view; if (!view) return;
     const r = compute(), need = view === "T5P" ? ["P1", "P2", "P3", "P4", "P5"] : ["P2", "P3", "P4", "P5"];
     const lab = { P1: "Acumulación 15m", P2: "Impulso", P3: "Retroceso", P4: "Fibonacci 38,2–61,8 %", P5: "Entrada (envolvente/martillo)" };
+    const sh = { P1: "Acum.", P2: "Impulso", P3: "Retroceso", P4: "Fibo", P5: "Entrada" };   // etiquetas cortas para el teléfono
     const st = r ? (r.stage === "CONFIRMADO" ? `<span class="${r.dir === "LONG" ? "buy" : "sell"}">${r.dir} CONFIRMADO al cierre de la vela</span>` : r.stage === "confirmado antes" ? `<span class="gold">${r.dir} confirmado en una vela anterior</span>` : esc(r.stage) + (r.invalid ? " · " + esc(r.invalid) : "")) : "esperando velas";
     panel.className = "t5p-panel" + (min ? " min" : "");
     panel.innerHTML = `<h5><span>${view} · ${S.sel.replace("USDT", "")} ${execTf()}${r && r.dir ? ` · ${r.dir === "LONG" ? "compra" : "venta"}` : ""}</span><span><button data-min title="${min ? "Ver el detalle de cada paso" : "Ver solo los pasos"}">${min ? "＋" : "－"}</button><button data-off title="Quitar ${view}">✕</button></span></h5>` +
-      `<ol>${need.map((id) => { const x = r && r.steps.find((q) => q.id === id); return `<li class="${x && x.ok ? "ok" : "no"}" title="${x ? esc(x.text) : "pendiente"}">${x && x.ok ? "✓" : x ? "✗" : "…"} ${lab[id]}${x && !min ? `<br><span class="muted">${esc(x.text.replace(/^[^:]*: /, ""))}</span>` : ""}</li>`; }).join("")}</ol>` +
-      `<div class="stg">${st}</div>` + (r && r.h1 ? `<div class="faint">1H 2 días: máx. ${fmt(r.h1.hi)} · mín. ${fmt(r.h1.lo)}</div>` : "");
+      `<ol>${need.map((id) => { const x = r && r.steps.find((q) => q.id === id); return `<li class="${x && x.ok ? "ok" : "no"}" title="${x ? esc(x.text) : "pendiente"}">${x && x.ok ? "✓" : x ? "✗" : "…"} <span class="lg">${lab[id]}</span><span class="sh">${sh[id]}</span>${x && !min ? `<br><span class="muted">${esc(x.text.replace(/^[^:]*: /, ""))}</span>` : ""}</li>`; }).join("")}</ol>` +
+      `<div class="stg">${st}</div>` + (r && r.h1 ? `<div class="faint h1l">1H 2 días: máx. ${fmt(r.h1.hi)} · mín. ${fmt(r.h1.lo)}</div>` : "");
   }
   function setView(v) {
     view = v; LS.set("t5pView", v);
