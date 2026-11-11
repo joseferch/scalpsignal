@@ -359,6 +359,18 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .iv-sym{display:inline-block;width:auto!important;min-width:0;font:inherit;font-size:.8em;font-weight:700;background:var(--deck2);color:var(--gold);border:1px solid var(--rule2);border-radius:8px;padding:2px 6px;margin-left:6px;vertical-align:middle;max-width:60vw}
 .mode-t5p #intelBtn,.mode-t5p #t5pOpen,.mode-t5p .main-only{display:none!important}
 .mode-t5p .brand::after{content:" · T5P / T2P";color:var(--gold);font-weight:600}
+.mode-wh #intelBtn,.mode-wh #t5pOpen,.mode-wh #whOpen,.mode-wh .main-only,.mode-wh #signalCard,.mode-wh .wh-seg,.mode-wh [data-tab="operar"],.mode-wh [data-tab="riesgo"]{display:none!important}
+.mode-wh .brand::after{content:" · Ballenas e instituciones";color:var(--gold);font-weight:600}
+.mode-t5p .wh-seg,.mode-t5p #whOpen{display:none!important}
+.wh-h{font-size:13px;margin:14px 0 6px;color:var(--gold)}
+.wh-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.wh-form input,.wh-form select{font:inherit;font-size:12px;background:var(--deck2);color:inherit;border:1px solid var(--rule2);border-radius:6px;padding:4px 6px;min-width:0;max-width:100%}
+.wh-form #whE,.wh-form #whN{flex:1 1 140px}.wh-form #whU,.wh-form #whB{width:110px}
+.wh-form button{font:inherit;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--rule2);background:var(--deck2);color:var(--gold);cursor:pointer}
+.wh-form label{font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.wh-t{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0}.wh-t th,.wh-t td{text-align:left;padding:3px 4px;border-bottom:1px solid var(--rule)}.wh-t th{font-weight:600;color:#8fa0b8}
+.wh-t .lnk{background:none;border:0;color:#8fa0b8;cursor:pointer;padding:0 2px}
+#whBtn.on{color:#0b1220;background:var(--gold)}
 .t5p-seg button{font-weight:600;font-size:12.5px;padding:4px 9px}.t5p-seg button.on{background:var(--gold-bg);color:var(--gold);border-color:rgba(240,199,94,.5)}
 .t5p-panel{position:absolute;left:8px;bottom:34px;z-index:6;background:rgba(14,22,36,.92);border:1px solid var(--rule2);border-radius:var(--r-md);padding:8px 10px;max-width:330px;font-size:12px;color:var(--ink2);backdrop-filter:blur(4px)}
 .t5p-panel h5{margin:0 0 4px;font-size:12.5px;color:var(--ink);display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -413,12 +425,14 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
       <span id="conn" class="conn"><i></i><span id="connTx">Conectando…</span></span>
       <button id="installBtn" class="primary" hidden>Instalar app</button>
       <button id="t5pOpen" class="intel-btn t5p-open" title="Abre la pestaña de las estrategias T5P y T2P (solo esas estrategias y sus indicadores)">T5P / T2P ↗</button>
+      <button id="whOpen" class="intel-btn wh-open" title="Abre la pestaña de ballenas e instituciones: órdenes grandes, prima de Coinbase (ETF de EE. UU.), movimientos en la cadena de BTC y flujos de ETF">Ballenas ↗</button>
       <button id="intelBtn" class="intel-btn" title="Abre el analizador profesional (BTC u otro par) en una pestaña aparte">Analizador ↗ <span id="intelBadge" class="ibadge">—</span></button>
       <button id="cfgBtn" aria-label="Configuración" title="Configuración">⚙</button>
     </span>
   </div>
   <nav class="tfbar">
     <span class="seg" id="tfs" role="group" aria-label="Temporalidad"></span>
+    <span class="seg wh-seg"><button id="whBtn" aria-pressed="false" title="Ballenas: marca en el gráfico las órdenes grandes (compra abajo en verde, venta arriba en rojo) y la prima de Coinbase en la franja inferior">Ballenas</button></span>
     <span class="seg t5p-seg" id="t5pBtns" role="group" aria-label="Estrategias T5P y T2P"><button data-t5p="T5P" title="T5P: dibuja los 5 pasos en el gráfico (1H 2 días + Fibonacci, acumulación 15m, impulso, retroceso, Fibonacci y entrada)">T5P</button><button data-t5p="T2P" title="T2P: impulso + retroceso Fibonacci + vela de entrada">T2P</button></span>
     <button id="indBtn" class="btn-ind" title="Activar, ocultar y ajustar indicadores">Indicadores <span id="indCount" class="badge">0</span></button>
   </nav>
@@ -2315,13 +2329,18 @@ if (typeof module !== "undefined") module.exports = SSP;
   // Pestaña aparte de T5P/T2P (?t5p): misma app, pero solo con esas dos estrategias y sus indicadores. Guarda aparte sus
   // señales, operaciones, eventos, par, temporalidad e indicadores para no mezclarse con la pestaña principal.
   const T5M = new URLSearchParams(location.search).has("t5p");
+  // Pestaña aparte de ballenas e instituciones (?ballenas): sin estrategias; solo órdenes grandes, prima de Coinbase,
+  // movimientos en la cadena y registros manuales (ETF, empresas, gobiernos).
+  const WM = !T5M && new URLSearchParams(location.search).has("ballenas");
+  const SEP = T5M || WM;                                    // pestaña separada (no la principal)
   const T5NS = new Set(["signals", "trades", "events", "sel", "tf", "show", "custom", "legendFolded", "disp"]);
-  const lsKey = (k) => (T5M && T5NS.has(k) ? "ssp:t5p:" : "ssp:") + k;
+  const lsKey = (k) => (SEP && T5NS.has(k) ? (T5M ? "ssp:t5p:" : "ssp:wh:") : "ssp:") + k;
   const LS = {
     get(k, d) { try { const v = localStorage.getItem(lsKey(k)); return v === null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem(lsKey(k), JSON.stringify(v)); } catch { /* almacenamiento no disponible */ } },
   };
   if (T5M) { document.documentElement.classList.add("mode-t5p"); document.title = "T5P / T2P · ScalpSignal Pro"; }
+  if (WM) { document.documentElement.classList.add("mode-wh"); document.title = "Ballenas e instituciones · ScalpSignal Pro"; }
   const CFG = Object.assign({ rest: "https://api.bybit.com", ws: "wss://stream.bybit.com/v5/public/linear", history: 1000, maxDelayS: 20, tgToken: "", tgChat: "", topN: 40, minTurnoverM: 50, adxKey: 23 }, LS.get("cfg", {}));
   // Lista inicial = top por volumen de Bybit. La marca "topDone" se guarda SOLO cuando la carga termina,
   // así una carga interrumpida (cerrar la app a medias) se reintenta en la próxima apertura.
@@ -2349,8 +2368,8 @@ if (typeof module !== "undefined") module.exports = SSP;
 
   const S = {
     symbols: LS.get("watch", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"]),
-    sel: LS.get("sel", "UNIUSDT"), tf: LS.get("tf", "5m"), tz: LS.get("tz", "America/Costa_Rica"),
-    show: Object.assign(T5M ? { bb: false, vwap: false, ob: false, vrvp: false, fib: false, dmi: false, sqz: false, ew: false, sess: false, smc: false }
+    sel: LS.get("sel", WM ? "BTCUSDT" : "UNIUSDT"), tf: LS.get("tf", "5m"), tz: LS.get("tz", "America/Costa_Rica"),
+    show: Object.assign(SEP ? { bb: false, vwap: false, ob: false, vrvp: false, fib: false, dmi: false, sqz: false, ew: false, sess: false, smc: false }
       : { bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true, smc: false }, LS.get("show", {})), sound: LS.get("sound", true),
     closed: {}, live: {}, an: {}, quotes: {}, conn: { state: "iniciando", detail: "" }, health: {}, errors: {},
     signals: LS.get("signals", []), trades: LS.get("trades", {}), events: LS.get("events", []), hist: "sig",
@@ -2370,7 +2389,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     { key: "e6", eng: engine6, title: "Estrategia 6 · T2P (impulso + retroceso Fibonacci + entrada)", short: "T2P · impulso + retroceso", labels: SSP.T5P_LABELS, defOff: !T5M }];
   // cada pestaña trabaja solo con sus estrategias: la principal con E1–E4, la de T5P/T2P con E5 y E6
   const chipName = (E, n) => (E.key === "e5" ? "T5P" : E.key === "e6" ? "T2P" : "E" + (n + 1));
-  const ENGINES = ALL_ENGINES.filter((E) => (T5M ? ["e5", "e6"] : ["e1", "e2", "e3", "e4"]).includes(E.key));
+  const ENGINES = ALL_ENGINES.filter((E) => (WM ? [] : T5M ? ["e5", "e6"] : ["e1", "e2", "e3", "e4"]).includes(E.key));
   // activación por par: {"e4|BTCUSDT": true, ...}; sin entrada = valor por defecto (E1–E3 encendidas, E4 apagada)
   const STRAT_SYM = LS.get("stratSym", {});
   const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled, e5: !!T5PP.enabled, e6: !!T5PP.enabled })[E.key];
@@ -2466,6 +2485,13 @@ if (typeof module !== "undefined") module.exports = SSP;
   // par del analizador profesional (BTCUSDT por defecto; se puede cambiar a cualquier par de Bybit)
   let INTEL_SYM = (() => { const v = LS.get("intelSym", "BTCUSDT"); return typeof v === "string" && /^[A-Z0-9]{2,20}USDT$/.test(v) ? v : "BTCUSDT"; })();
   const INTEL_TFS = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"];   // series que mantiene el analizador
+  // suscripciones adicionales pedidas por otros módulos (p. ej. publicTrade.BTCUSDT para las órdenes grandes)
+  const WS_EXTRA = new Set();
+  function wsSub(topic, on) {
+    if (on ? WS_EXTRA.has(topic) : !WS_EXTRA.has(topic)) return;
+    if (on) WS_EXTRA.add(topic); else WS_EXTRA.delete(topic);
+    if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify({ op: on ? "subscribe" : "unsubscribe", args: [topic] })); } catch { /* */ } }
+  }
   // pares con operaciones simuladas abiertas del analizador: su vela de 1m se mantiene suscrita para poder gestionarlas
   const KEEP1M = new Set();
   function keep1m(sym) {
@@ -2515,6 +2541,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     // analizador: su par en todas sus temporalidades y su precio en vivo, aunque no esté en la lista de pares
     for (const tf of INTEL_TFS) args.push(`kline.${BYBIT_INT[tf]}.${INTEL_SYM}`); args.push(`tickers.${INTEL_SYM}`);
     for (const k of KEEP1M) args.push(`kline.1.${k}`);
+    for (const k of WS_EXTRA) args.push(k);
     for (let i = args.length - 1; i >= 0; i--) if (args.indexOf(args[i]) !== i) args.splice(i, 1);
     sock.onopen = () => {
       for (let i = 0; i < args.length; i += 10) sock.send(JSON.stringify({ op: "subscribe", args: args.slice(i, i + 10) }));
@@ -2539,7 +2566,8 @@ if (typeof module !== "undefined") module.exports = SSP;
         for (const [k, v] of Object.entries(msg.data || {})) if (v !== "" && v !== null && v !== undefined) q[k] = v;
         q.ts = Date.now();
         if (sym === S.sel) renderTop();
-      } else if (msg.op === "subscribe" && msg.success === false) showErr("Suscripción rechazada por Bybit: " + msg.ret_msg);
+      } else if (topic && window.__wsHook) { try { window.__wsHook(topic, msg); } catch (e) { console.error(e); } }
+      else if (msg.op === "subscribe" && msg.success === false) showErr("Suscripción rechazada por Bybit: " + msg.ret_msg);
     };
     sock.onclose = () => {
       clearInterval(pingT);
@@ -2824,7 +2852,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       } else requestAnimationFrame(() => { try { c.panes()[1]?.setHeight(extra > 0 ? 130 : 170); for (let i = 2; i < c.panes().length; i++) c.panes()[i].setHeight(110); } catch { /* */ } });
     }
     // en la pestaña T5P el panel de SQZMOM/ADX se encoge casi a cero mientras ambos estén apagados
-    const oscOff = () => T5M && !shw("sqz") && !shw("dmi");
+    const oscOff = () => SEP && !shw("sqz") && !shw("dmi");
     let lastOsc = null;
     function styleCustomPanes() { if (lastNar !== NARROW() || lastOsc !== oscOff()) paneSizes(); }
     function styleCustom() {
@@ -3319,7 +3347,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     const folded = LS.get("legendFolded", NARROW());
     $("indCount").textContent = Object.keys(LEG).filter((k) => S.show[k]).length + CUST.filter((x) => x.v !== false).length;
     if (folded) { $("legend").innerHTML = `<button class="fold" data-fold="0" aria-label="Mostrar la leyenda">Leyenda ▸</button>`; return; }
-    $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).filter(([k]) => !T5M || S.show[k]).map(([k, L]) => `<div class="li${shw(k) ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
+    $("legend").innerHTML = `<button class="fold" data-fold="1" aria-label="Ocultar la leyenda" title="Ocultar la leyenda">◂</button>` + Object.entries(LEG).filter(([k]) => !SEP || S.show[k]).map(([k, L]) => `<div class="li${shw(k) ? "" : " off"}"><span class="sw" style="background:${L.sw()}"></span>` +
       `<span>${L.name} <span class="faint">${S.show[k] && !tfOk(k) ? "no visible en " + TF_LABEL(S.tf) : esc(L.sub())}</span></span>` +
       `<button data-eye="${k}" aria-label="${S.show[k] ? "Ocultar" : "Mostrar"} ${L.name}" title="${S.show[k] ? "Ocultar" : "Mostrar"}">${S.show[k] ? "◉" : "○"}</button>` +
       `<button data-edit="${k}" aria-label="Ajustar ${L.name}" title="Ajustar">⚙</button></div>`).join("") +
@@ -3422,6 +3450,7 @@ if (typeof module !== "undefined") module.exports = SSP;
 
   // ------------------------------------------------------------ lectura del mercado
   function renderMarket() {
+    if (WM) { if (window.__whaleMarket) window.__whaleMarket(); return; }   // la pestaña de ballenas dibuja su propio panel
     const a = S.an[k2(S.sel, S.tf)], box = $("tab-mercado");
     if (!a || !a.n) { box.innerHTML = '<p class="faint">Cargando datos del par…</p>'; return; }
     const i = a.n - 1, r = a.rowAt(i), t = a.d.closeTime[i], rows = [];
@@ -4008,10 +4037,10 @@ if (typeof module !== "undefined") module.exports = SSP;
     $("clock").textContent = "";
     renderWatch(); renderTop();
     connectWS();
-    if (AUTO_TOP) addTopVolume();
+    if (AUTO_TOP && !SEP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { T5M, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
+  window.__ssp = { T5M, WM, wsSub, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
     bootstrap, bybit, k2, telegram, notify, addSymbol, refreshChart, renderLegend, get INTEL_SYM() { return INTEL_SYM; }, setIntelSym, keep1m, INTEL_TFS, IND, CFG, setTf: (tf) => { const b = document.querySelector(`[data-tf="${tf}"]`); if (b) b.click(); } };   // acceso para depuración
   start();
 })();
@@ -4626,7 +4655,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   "use strict";
   const X = window.__ssp;
   if (!X || typeof BTCI === "undefined") return;
-  if (X.T5M) return;            // la pestaña de T5P/T2P no lleva el analizador
+  if (X.T5M || X.WM) return;   // las pestañas de T5P/T2P y de ballenas no llevan el analizador
   const { S, LS, toast, esc, beep, bootstrap, bybit, k2, telegram, notify, INTEL_TFS } = X;
   let SYM = X.INTEL_SYM;                                   // par analizado (se elige en el encabezado del analizador)
   const coin = () => SYM.replace(/USDT$/, "");             // BTC, ETH, SOL…
@@ -5165,6 +5194,495 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     }
   });
   setView(view);
+})();
+
+/* Ballenas e instituciones — lógica pura (sin DOM), para poder probarla con Node.
+   Fuentes y qué significa cada una:
+   · Órdenes grandes: operaciones del mercado (Bybit publicTrade y Coinbase "matches") agrupadas por orden del que
+     toma liquidez. Lado = el del que agrede (compra a mercado = presión compradora).
+   · Prima de Coinbase: (precio Coinbase USD − precio Bybit USDT convertido a USD) / precio Bybit. Coinbase es el
+     custodio de casi todos los ETF de EE. UU. y su mercado spot refleja la demanda institucional estadounidense.
+   · Movimientos en la cadena: transacciones de BTC grandes en el mempool. No dicen si es compra o venta.
+   Nada aquí identifica a una entidad concreta: son señales indirectas y así se rotulan. */
+(function (root) {
+  "use strict";
+  const WHALE_VERSION = "ballenas-1.0";
+
+  // umbral automático en USD para "orden grande": 0,003 % del volumen de 24 h, entre 25 mil y 500 mil USD
+  function autoThreshold(turnover24hUsd) {
+    const t = +turnover24hUsd;
+    if (!isFinite(t) || t <= 0) return 100000;
+    const v = t * 3e-5;
+    return Math.round(Math.min(500000, Math.max(25000, v)) / 5000) * 5000;
+  }
+
+  // Bybit publicTrade: cada fill = {T, S:"Buy"|"Sell", v, p, i, BT, seq}. Los fills de una misma orden agresora
+  // llegan con el mismo T, lado y seq → se suman en una sola orden.
+  function aggBybit(fills) {
+    const out = new Map();
+    for (const f of fills || []) {
+      const T = +f.T, side = f.S === "Buy" ? "buy" : "sell", key = `${T}|${side}|${f.seq ?? ""}`;
+      const q = +f.v, p = +f.p; if (!(q > 0) || !(p > 0)) continue;
+      const o = out.get(key) || { venue: "Bybit", time: T, side, qty: 0, usd: 0, block: false, id: "by:" + (f.i || key), fills: 0 };
+      o.qty += q; o.usd += q * p; o.fills++; o.block = o.block || !!f.BT;
+      out.set(key, o);
+    }
+    return [...out.values()].map((o) => Object.assign(o, { price: o.usd / o.qty }));
+  }
+
+  // Coinbase "match": {side (del que estaba en el libro), size, price, time, taker_order_id, trade_id}.
+  // El agresor es el lado contrario al de la orden en el libro: side "sell" ⇒ alguien compró a mercado.
+  function cbTakerSide(m) { return m.side === "sell" ? "buy" : "sell"; }
+  // agrupador incremental: suma los fills con el mismo taker_order_id (llegan seguidos)
+  function CbAggregator(onOrder, gapMs = 1500) {
+    const open = new Map();
+    function flush(now, all = false) {
+      for (const [k, o] of open) if (all || now - o.last > gapMs) { open.delete(k); onOrder(Object.assign(o, { price: o.usd / o.qty })); }
+    }
+    return {
+      add(m) {
+        const q = +m.size, p = +m.price; if (!(q > 0) || !(p > 0)) return;
+        const t = Date.parse(m.time) || Date.now(), k = m.taker_order_id || "t" + m.trade_id;
+        const o = open.get(k) || { venue: "Coinbase", time: t, side: cbTakerSide(m), qty: 0, usd: 0, block: false, id: "cb:" + k, fills: 0, last: t };
+        o.qty += q; o.usd += q * p; o.fills++; o.last = t; open.set(k, o);
+      },
+      flush,
+    };
+  }
+
+  // suma compras y ventas grandes por vela (openTime → {buy, sell, n, max})
+  function bucket(orders, openTimes, tfMs) {
+    const res = new Map(); if (!openTimes || !openTimes.length) return res;
+    const first = openTimes[0], last = openTimes[openTimes.length - 1] + tfMs;
+    for (const o of orders) {
+      if (o.time < first || o.time >= last) continue;
+      const ot = Math.floor((o.time - first) / tfMs) * tfMs + first;   // las velas son consecutivas en la serie de Bybit
+      const b = res.get(ot) || { buy: 0, sell: 0, n: 0, max: null };
+      b[o.side] += o.usd; b.n++; if (!b.max || o.usd > b.max.usd) b.max = o;
+      res.set(ot, b);
+    }
+    return res;
+  }
+
+  // presión neta de órdenes grandes en una ventana [now - ms, now]
+  function netWindow(orders, now, ms, venue = null) {
+    let buy = 0, sell = 0, n = 0, blocks = 0;
+    for (const o of orders) {
+      if (o.time > now || o.time < now - ms) continue;
+      if (venue && o.venue !== venue) continue;
+      if (o.side === "buy") buy += o.usd; else sell += o.usd;
+      n++; if (o.block) blocks++;
+    }
+    const tot = buy + sell;
+    return { buy, sell, net: buy - sell, n, blocks, buyShare: tot > 0 ? buy / tot : null };
+  }
+
+  // Prima de Coinbase por vela: cb = velas de Coinbase (BASE-USD), usdt = velas USDT-USD de Coinbase (opcional),
+  // by = {openTime[], close[]} de Bybit. Las tres se alinean por la hora de apertura de la vela.
+  // Coinbase entrega [time(s), low, high, open, close, volume].
+  function premiumSeries(cb, usdt, by) {
+    const cbMap = new Map(), uMap = new Map();
+    for (const r of cb || []) cbMap.set(r[0] * 1000, +r[4]);
+    for (const r of usdt || []) uMap.set(r[0] * 1000, +r[4]);
+    const out = [];
+    for (let i = 0; i < by.openTime.length; i++) {
+      const t = by.openTime[i], c = cbMap.get(t), b = by.close[i]; if (c === undefined || !(b > 0)) continue;
+      const u = uMap.get(t), bUsd = b * (u > 0 ? u : 1);
+      out.push({ time: t, pct: ((c - bUsd) / bUsd) * 100, cb: c, by: b, usdt: u ?? null });
+    }
+    return out;
+  }
+  // agrega velas de Coinbase de una granularidad menor a otra mayor (p. ej. 1 h → 4 h, 1 d → 1 semana)
+  function resampleCb(rows, tfMs, offMs = 0) {
+    const m = new Map();
+    for (const r of [...(rows || [])].sort((a, b) => a[0] - b[0])) {
+      const t = Math.floor((r[0] * 1000 - offMs) / tfMs) * tfMs + offMs, x = m.get(t);
+      if (!x) m.set(t, [t / 1000, r[1], r[2], r[3], r[4], r[5]]);
+      else { x[1] = Math.min(x[1], r[1]); x[2] = Math.max(x[2], r[2]); x[4] = r[4]; x[5] += r[5]; }
+    }
+    return [...m.values()];
+  }
+  function ema(arr, n) { const k = 2 / (n + 1); let e = null; return arr.map((v) => (e = e === null ? v : v * k + e * (1 - k))); }
+
+  // lectura de la prima: valor actual, media de las últimas n velas y una interpretación prudente
+  function premiumReading(series, n = 12, thr = 0.05) {
+    if (!series || !series.length) return null;
+    const last = series[series.length - 1], sl = series.slice(-n), avg = sl.reduce((a, x) => a + x.pct, 0) / sl.length;
+    const above = sl.filter((x) => x.pct > thr).length, below = sl.filter((x) => x.pct < -thr).length;
+    let state = "neutral", text = "Precio en Coinbase en línea con Bybit: sin sesgo institucional de EE. UU. visible.";
+    if (avg > thr && above >= Math.ceil(sl.length * 0.6)) { state = "compra"; text = "Coinbase cotiza por encima de Bybit de forma sostenida: demanda spot de EE. UU. (ETF / institucional) más fuerte."; }
+    else if (avg < -thr && below >= Math.ceil(sl.length * 0.6)) { state = "venta"; text = "Coinbase cotiza por debajo de Bybit de forma sostenida: presión vendedora spot de EE. UU."; }
+    else if (Math.abs(last.pct) > thr) text = `Prima ${last.pct > 0 ? "positiva" : "negativa"} en la última vela, pero todavía no sostenida.`;
+    return { last: last.pct, avg, n: sl.length, state, text };
+  }
+
+  // transacción en la cadena (formato de blockchain.info "utx"): total movido en BTC
+  function txBtc(x) {
+    const ins = (x.inputs || []).reduce((a, i) => a + ((i.prev_out && +i.prev_out.value) || 0), 0);
+    const outs = (x.out || []).reduce((a, o) => a + (+o.value || 0), 0);
+    return { inBtc: ins / 1e8, outBtc: outs / 1e8, maxOutBtc: (x.out || []).reduce((a, o) => Math.max(a, (+o.value || 0) / 1e8), 0) };
+  }
+  // antigüedad de las monedas: años desde el bloque más viejo de las entradas
+  function dormancy(oldestBlockTimeS, nowMs) {
+    if (!oldestBlockTimeS) return null;
+    const yrs = (nowMs / 1000 - oldestBlockTimeS) / (365.25 * 86400), y = new Date(oldestBlockTimeS * 1000).getUTCFullYear();
+    return { years: yrs, year: y, satoshiEra: y <= 2011, dormant: yrs >= 5 };
+  }
+
+  // registros manuales (flujos de ETF, compras de empresas, ventas de gobiernos): validación
+  const MANUAL_KINDS = ["ETF", "Empresa", "Gobierno", "Exchange", "Ballena", "Otro"];
+  function validManual(e) {
+    const errs = [];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || "")) errs.push("fecha (AAAA-MM-DD)");
+    if (!MANUAL_KINDS.includes(e.kind)) errs.push("tipo");
+    if (!(e.entity || "").trim()) errs.push("entidad");
+    const usd = e.usd_m === "" || e.usd_m === null || e.usd_m === undefined ? null : +e.usd_m, btc = e.btc === "" || e.btc === null || e.btc === undefined ? null : +e.btc;
+    if (usd === null && btc === null) errs.push("monto en millones de USD o en BTC");
+    if ((usd !== null && !isFinite(usd)) || (btc !== null && !isFinite(btc))) errs.push("número válido");
+    return errs;
+  }
+  function manualDaily(list) {   // suma por día (ET/ETF no se mezclan con los otros tipos)
+    const m = new Map();
+    for (const e of list || []) {
+      const d = m.get(e.date) || { date: e.date, etf: 0, other: 0, btc: 0, items: [] };
+      if (e.usd_m !== null && e.usd_m !== undefined && e.usd_m !== "") { if (e.kind === "ETF") d.etf += +e.usd_m; else d.other += +e.usd_m; }
+      if (e.btc !== null && e.btc !== undefined && e.btc !== "") d.btc += +e.btc;
+      d.items.push(e); m.set(e.date, d);
+    }
+    return [...m.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
+  }
+
+  // guarda las órdenes grandes recientes sin duplicar y con tope
+  function mergeOrders(a, b, keepMs, now, cap = 4000) {
+    const seen = new Set(), out = [];
+    for (const o of [...(a || []), ...(b || [])]) { if (!o || seen.has(o.id) || o.time < now - keepMs) continue; seen.add(o.id); out.push(o); }
+    out.sort((x, y) => x.time - y.time);
+    return out.slice(-cap);
+  }
+  // producto de Coinbase para un par de Bybit: BTCUSDT → BTC-USD, 1000PEPEUSDT → null (no existe con ese tamaño)
+  function cbProduct(sym) {
+    const b = (sym || "").replace(/USDT$/, "");
+    if (!b || /^\d/.test(b)) return null;
+    return b + "-USD";
+  }
+
+  const API = { WHALE_VERSION, autoThreshold, aggBybit, cbTakerSide, CbAggregator, bucket, netWindow, premiumSeries, resampleCb, ema, premiumReading, txBtc, dormancy, MANUAL_KINDS, validManual, manualDaily, mergeOrders, cbProduct };
+  if (typeof module !== "undefined" && module.exports) module.exports = API; else root.WHALE = API;
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Ballenas e instituciones — interfaz.
+   Pestaña principal: botón "Ballenas ↗" (abre la pestaña aparte) y botón "Ballenas" en la barra del gráfico que dibuja
+   las órdenes grandes y la prima de Coinbase sobre el gráfico.
+   Pestaña ?ballenas: lo mismo siempre activo + panel con lecturas, órdenes grandes, movimientos en la cadena de BTC y
+   registros manuales (flujos de ETF, compras de empresas, gobiernos). Nada se inventa: sin datos = "Datos no disponibles". */
+(() => {
+  "use strict";
+  const X = window.__ssp; if (!X || !window.WHALE) return;
+  const WH = window.WHALE, { S, LS, k2, esc, fp, toast } = X, $ = (id) => document.getElementById(id);
+  const base = location.href.split("#")[0].split("?")[0], WM = !!X.WM;
+  const openBtn = $("whOpen");
+  if (openBtn && !WM) openBtn.addEventListener("click", () => { const w = window.open(base + "?ballenas", "ssp-wh"); if (w) w.focus(); else toast("El navegador bloqueó la pestaña nueva: permita ventanas emergentes para este sitio", "info"); });
+  if (X.T5M) return;
+  const TFMS = SSP.TF_MS, CB = "https://api.exchange.coinbase.com";
+  const W = {
+    on: WM ? true : !!LS.get("whOn", false), sym: null, orders: [], thrUser: LS.get("whThr", {}), cb: { ws: null, product: null, last: null, status: "—", lastAt: 0 },
+    prem: { key: "", series: [], status: "—", usdtLast: null, at: 0 }, chain: { ws: null, list: LS.get("whChain", []), status: "—", thr: +LS.get("whChainThr", 500) || 500, seen: 0 },
+    manual: LS.get("whManual", []), byStatus: "—", byAt: 0,
+  };
+  window.__whale = W;
+  const thr = () => { const u = W.thrUser[W.sym]; if (u > 0) return u; const q = S.quotes[W.sym] || {}; return WH.autoThreshold(q.turnover24h); };
+  const money = (v) => { const a = Math.abs(v); return (v < 0 ? "−" : "") + (a >= 1e9 ? (a / 1e9).toFixed(2) + " mil M" : a >= 1e6 ? (a / 1e6).toFixed(2) + " M" : a >= 1e3 ? (a / 1e3).toFixed(0) + " mil" : a.toFixed(0)); };
+  const crT = (t) => new Intl.DateTimeFormat("es-CR", { timeZone: "America/Costa_Rica", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(t));
+  const KEEP = 3 * 86400e3;
+
+  // ------------------------------------------------------------ almacenamiento compacto de órdenes grandes (compartido entre pestañas)
+  const pack = (o) => [o.time, o.side === "buy" ? 1 : -1, Math.round(o.usd), +o.qty.toPrecision(6), o.venue === "Coinbase" ? "C" : "B", o.block ? 1 : 0, o.id];
+  const unpack = (a) => ({ time: a[0], side: a[1] > 0 ? "buy" : "sell", usd: a[2], qty: a[3], price: a[2] / a[3], venue: a[4] === "C" ? "Coinbase" : "Bybit", block: !!a[5], id: a[6] });
+  const stKey = (sym) => "ssp:whOrd:" + sym;
+  function loadOrders(sym) { try { return (JSON.parse(localStorage.getItem(stKey(sym))) || []).map(unpack); } catch { return []; } }
+  let dirty = false;
+  function saveOrders() {
+    if (!dirty || !W.sym) return; dirty = false;
+    const merged = WH.mergeOrders(loadOrders(W.sym), W.orders, KEEP, Date.now(), 1500);
+    W.orders = merged;
+    try { localStorage.setItem(stKey(W.sym), JSON.stringify(merged.map(pack))); } catch { /* lleno: se queda en memoria */ }
+  }
+  setInterval(saveOrders, 15000); addEventListener("pagehide", saveOrders);
+  function addOrder(o) {
+    if (!o || o.usd < thr()) return;
+    if (W.orders.some((x) => x.id === o.id)) return;
+    W.orders.push(o); dirty = true;
+    if (W.orders.length > 2000) W.orders.splice(0, W.orders.length - 1500);
+    if (o.usd >= thr() * 4) toast(`${W.sym.replace(/USDT$/, "")} · orden ${o.side === "buy" ? "de COMPRA" : "de VENTA"} de ${money(o.usd)} USD en ${o.venue}${o.block ? " (en bloque)" : ""}`, "info");
+    bump();
+  }
+
+  // ------------------------------------------------------------ Bybit: operaciones públicas del par
+  window.__wsHook = (topic, msg) => {
+    if (!topic.startsWith("publicTrade.")) return;
+    const sym = topic.slice(12); if (sym !== W.sym) return;
+    W.byAt = Date.now(); W.byStatus = "en vivo";
+    for (const o of WH.aggBybit(msg.data)) addOrder(o);
+  };
+
+  // ------------------------------------------------------------ Coinbase: operaciones (canal público "matches")
+  let cbAgg = null, cbBack = 1000, cbGen = 0;
+  function cbConnect() {
+    const gen = ++cbGen, product = WH.cbProduct(W.sym);
+    try { W.cb.ws && W.cb.ws.close(); } catch { /* */ }
+    W.cb.ws = null; W.cb.product = product; W.cb.last = null;
+    if (!product) { W.cb.status = "este par no cotiza en Coinbase"; return; }
+    W.cb.status = "conectando";
+    cbAgg = WH.CbAggregator((o) => addOrder(o));
+    let sock; try { sock = new WebSocket("wss://ws-feed.exchange.coinbase.com"); } catch (e) { W.cb.status = "Datos no disponibles: " + e.message; return; }
+    W.cb.ws = sock;
+    sock.onopen = () => { cbBack = 1000; sock.send(JSON.stringify({ type: "subscribe", product_ids: [product], channels: ["matches"] })); };
+    sock.onmessage = (m) => {
+      if (gen !== cbGen) return;
+      let d; try { d = JSON.parse(m.data); } catch { return; }
+      if (d.type === "error") { W.cb.status = `${product} no disponible en Coinbase (${d.reason || d.message})`; try { sock.close(); } catch { /* */ } return; }
+      if (d.type === "subscriptions") { W.cb.status = "en vivo"; return; }
+      if (d.type === "match" || d.type === "last_match") { W.cb.last = +d.price; W.cb.lastAt = Date.now(); W.cb.status = "en vivo"; if (d.type === "match") cbAgg.add(d); }
+    };
+    sock.onclose = () => { if (gen !== cbGen) return; if (!/no disponible/.test(W.cb.status)) { W.cb.status = "reconectando"; setTimeout(() => { if (gen === cbGen) cbConnect(); }, cbBack); cbBack = Math.min(cbBack * 2, 60000); } };
+    sock.onerror = () => {};
+  }
+  setInterval(() => { if (cbAgg) cbAgg.flush(Date.now()); }, 1000);
+
+  // ------------------------------------------------------------ prima de Coinbase (historia con velas REST + valor en vivo)
+  const GRAN = { "1m": [60, 1], "3m": [60, 3], "5m": [300, 1], "15m": [900, 1], "1h": [3600, 1], "4h": [3600, 4], "1d": [86400, 1], "1w": [86400, 7] };
+  async function cbCandles(product, gran, pages) {
+    const out = [], step = gran * 300 * 1000; let end = Date.now();
+    for (let p = 0; p < pages; p++) {
+      const u = `${CB}/products/${product}/candles?granularity=${gran}&start=${new Date(end - step).toISOString()}&end=${new Date(end).toISOString()}`;
+      const r = await fetch(u); if (!r.ok) throw new Error(r.status === 404 ? "el par no existe en Coinbase" : "Coinbase respondió " + r.status);
+      const j = await r.json(); if (!Array.isArray(j) || !j.length) break;
+      out.push(...j); end -= step;
+    }
+    return out;
+  }
+  let premBusy = false;
+  async function loadPremium(force = false) {
+    const sym = W.sym, tf = S.tf, product = WH.cbProduct(sym), key = `${sym}|${tf}`;
+    if (!product) { W.prem = { key, series: [], status: "Datos no disponibles: este par no cotiza en Coinbase", at: Date.now() }; bump(); return; }
+    if (premBusy || (!force && W.prem.key === key && Date.now() - W.prem.at < 60000)) return;
+    premBusy = true;
+    try {
+      const [g, k] = GRAN[tf], pages = Math.min(4, k), [cbRaw, uRaw] = await Promise.all([cbCandles(product, g, pages), cbCandles("USDT-USD", g, pages).catch(() => [])]);
+      if (sym !== W.sym || tf !== S.tf) return;
+      const off = tf === "1w" ? 4 * 86400e3 : 0;
+      const cb = k > 1 ? WH.resampleCb(cbRaw, TFMS[tf], off) : cbRaw, us = k > 1 ? WH.resampleCb(uRaw, TFMS[tf], off) : uRaw;
+      const a = S.an[k2(sym, tf)];
+      const series = a ? WH.premiumSeries(cb, us, { openTime: a.d.openTime, close: a.d.close }) : [];
+      const lastU = [...uRaw].sort((x, y) => y[0] - x[0])[0];
+      W.prem = { key, series, status: series.length ? "OK" : "Datos no disponibles (sin velas coincidentes)", usdtLast: lastU ? +lastU[4] : null, at: Date.now(), product };
+    } catch (e) { W.prem = { key, series: [], status: "Datos no disponibles: " + e.message, at: Date.now() }; }
+    finally { premBusy = false; bump(); }
+  }
+  function livePremium() {
+    const q = S.quotes[W.sym] || {}, by = +q.lastPrice, cb = W.cb.last;
+    if (!(by > 0) || !(cb > 0) || Date.now() - W.cb.lastAt > 120000) return null;
+    const bUsd = by * (W.prem.usdtLast > 0 ? W.prem.usdtLast : 1);
+    return ((cb - bUsd) / bUsd) * 100;
+  }
+
+  // ------------------------------------------------------------ cadena de BTC: transacciones grandes del mempool (solo en la pestaña de ballenas)
+  let chBack = 2000;
+  function chainConnect() {
+    let sock; try { sock = new WebSocket("wss://ws.blockchain.info/inv"); } catch (e) { W.chain.status = "Datos no disponibles: " + e.message; return; }
+    W.chain.ws = sock; W.chain.status = "conectando";
+    sock.onopen = () => { chBack = 2000; sock.send(JSON.stringify({ op: "unconfirmed_sub" })); W.chain.status = "en vivo"; };
+    sock.onmessage = (m) => {
+      let d; try { d = JSON.parse(m.data); } catch { return; }
+      if (d.op !== "utx" || !d.x) return;
+      W.chain.seen++;
+      const v = WH.txBtc(d.x); if (v.outBtc < W.chain.thr) return;
+      if (W.chain.list.some((e) => e.hash === d.x.hash)) return;
+      const e = { hash: d.x.hash, btc: v.outBtc, maxOut: v.maxOutBtc, nIn: (d.x.inputs || []).length, nOut: (d.x.out || []).length, time: (d.x.time || Date.now() / 1000) * 1000, dorm: null };
+      W.chain.list.push(e); W.chain.list = W.chain.list.filter((x) => Date.now() - x.time < 7 * 86400e3).slice(-200);
+      LS.set("whChain", W.chain.list); ageOf(e); bump();
+      toast(`Cadena de BTC: se mueven ${e.btc.toLocaleString("es-CR", { maximumFractionDigits: 0 })} BTC en una transacción`, "info");
+    };
+    sock.onclose = () => { W.chain.status = "reconectando"; setTimeout(chainConnect, chBack); chBack = Math.min(chBack * 2, 60000); };
+    sock.onerror = () => {};
+  }
+  // antigüedad de las monedas que se mueven (bloque más viejo de hasta 6 entradas), con mempool.space
+  async function ageOf(e) {
+    try {
+      const tx = await (await fetch(`https://mempool.space/api/tx/${e.hash}`)).json();
+      const prev = [...new Set((tx.vin || []).map((v) => v.txid))].slice(0, 6);
+      let oldest = null;
+      for (const id of prev) { const s = await (await fetch(`https://mempool.space/api/tx/${id}/status`)).json(); if (s && s.block_time && (!oldest || s.block_time < oldest)) oldest = s.block_time; }
+      e.dorm = WH.dormancy(oldest, Date.now()) || { unknown: true };
+      if (e.dorm && e.dorm.dormant) toast(`Cadena de BTC: se mueven monedas dormidas desde ${e.dorm.year}${e.dorm.satoshiEra ? " (época de Satoshi)" : ""}`, "info");
+    } catch { e.dorm = { unknown: true }; }
+    LS.set("whChain", W.chain.list); bump();
+  }
+
+  // ------------------------------------------------------------ cambio de par / temporalidad
+  function setSym(sym) {
+    if (sym === W.sym) return;
+    saveOrders();
+    if (W.sym) X.wsSub(`publicTrade.${W.sym}`, false);
+    W.sym = sym; W.orders = loadOrders(sym); W.byStatus = "conectando"; W.byAt = 0;
+    X.wsSub(`publicTrade.${sym}`, true);
+    cbConnect(); W.prem.key = ""; loadPremium(true); bump();
+  }
+  function stop() { if (W.sym) X.wsSub(`publicTrade.${W.sym}`, false); cbGen++; try { W.cb.ws && W.cb.ws.close(); } catch { /* */ } W.sym = null; }
+  setInterval(() => {
+    if (!W.on) { if (W.sym) stop(); return; }
+    if (S.sel !== W.sym) setSym(S.sel);
+    else if (W.prem.key !== `${W.sym}|${S.tf}`) loadPremium(true);
+    else loadPremium(false);
+    if (W.byAt && Date.now() - W.byAt > 60000) W.byStatus = "sin operaciones en el último minuto";
+  }, 1500);
+
+  // ------------------------------------------------------------ dibujo en el gráfico: burbujas por vela + franja de la prima
+  (window.__drawHooks = window.__drawHooks || []).push((g, o) => {
+    if (!W.on || o.sym !== W.sym) return;
+    const cd = o.data && o.data.candles; if (!cd || !cd.length) return;
+    const { Y, ts, W: Wd, H, ms } = o, tfMs = TFMS[o.tf], vr = ts.getVisibleRange && ts.getVisibleRange();
+    const tFrom = vr ? vr.from * 1000 : cd[0].time * 1000, tTo = (vr ? vr.to * 1000 : cd[cd.length - 1].time * 1000) + 2 * tfMs;
+    const byT = new Map(cd.map((c) => [c.time * 1000, c])), lv = S.live[k2(o.sym, o.tf)];
+    if (lv && lv.openTime) byT.set(lv.openTime, lv);                  // vela en formación
+    const first = Math.floor(tFrom / tfMs) * tfMs, opens = [];        // velas alineadas desde el inicio visible
+    const vis0 = cd.find((c) => c.time * 1000 >= tFrom); const t0 = vis0 ? vis0.time * 1000 : first;
+    for (let t = t0; t <= tTo; t += tfMs) opens.push(t);
+    const bk = WH.bucket(W.orders, opens, tfMs), T = thr(), q = S.quotes[o.sym] || {};
+    g.font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    for (const [ot, b] of bk) {
+      const x = ts.timeToCoordinate(ot / 1000); if (x === null) continue;
+      const c = byT.get(ot), lp = +q.lastPrice, hi = c ? c.high : lp, lo = c ? c.low : lp; if (!(hi > 0)) continue;
+      const draw = (usd, buy) => {
+        if (!usd) return;
+        const r = Math.max(3, Math.min(ms ? 14 : 20, 3 + 4 * Math.sqrt(usd / T))), y = buy ? Y(lo) + r + 4 : Y(hi) - r - 4;
+        if (y === null || y < -20 || y > H + 20) return;
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = buy ? "rgba(38,194,129,.35)" : "rgba(239,83,80,.35)"; g.fill();
+        g.lineWidth = 1.2; g.strokeStyle = buy ? "#26c281" : "#ef5350"; g.stroke();
+        if (usd >= T * 3) { const t = "$" + money(usd); g.fillStyle = buy ? "#26c281" : "#ef5350"; g.fillText(t, x - g.measureText(t).width / 2, buy ? y + r + 11 : y - r - 4); }
+      };
+      draw(b.buy, true); draw(b.sell, false);
+    }
+    // franja inferior con la prima de Coinbase (barras por vela)
+    const ser = W.prem.series; if (!ser.length && !WM) return;
+    const hS = ms ? 38 : 52, y0 = H - hS - 4, mid = y0 + hS / 2;
+    g.fillStyle = "rgba(10,16,28,.72)"; g.fillRect(0, y0, Wd, hS);
+    g.strokeStyle = "rgba(143,160,184,.35)"; g.beginPath(); g.moveTo(0, mid + 0.5); g.lineTo(Wd, mid + 0.5); g.stroke();
+    const vis = ser.filter((p) => p.time >= opens[0] && p.time <= opens[opens.length - 1]);
+    const mx = Math.max(0.1, ...vis.map((p) => Math.abs(p.pct)));
+    const bw = Math.max(1, (ts.options().barSpacing || 6) * 0.7);
+    for (const p of vis) {
+      const x = ts.timeToCoordinate(p.time / 1000); if (x === null) continue;
+      const hgt = (p.pct / mx) * (hS / 2 - 3);
+      g.fillStyle = p.pct >= 0 ? "rgba(38,194,129,.85)" : "rgba(239,83,80,.85)"; g.fillRect(x - bw / 2, hgt >= 0 ? mid - hgt : mid, bw, Math.abs(hgt) || 0.5);
+    }
+    const lp = livePremium(), rd = WH.premiumReading(ser);
+    const lab = `Prima de Coinbase ${W.prem.product || ""}: ${lp !== null ? (lp >= 0 ? "+" : "") + lp.toFixed(3) + " % ahora" : rd ? (rd.last >= 0 ? "+" : "") + rd.last.toFixed(3) + " % (última vela)" : W.prem.status}  ·  escala ±${mx.toFixed(2)} %`;
+    g.fillStyle = "#c7d2e3"; g.fillText(lab, 6, y0 + 11);
+  });
+
+  // ------------------------------------------------------------ botón en la barra del gráfico (pestaña principal)
+  const tbtn = $("whBtn");
+  if (tbtn) {
+    const paint = () => { tbtn.classList.toggle("on", W.on); tbtn.setAttribute("aria-pressed", String(W.on)); };
+    paint();
+    tbtn.addEventListener("click", () => { if (WM) return; W.on = !W.on; LS.set("whOn", W.on); paint(); if (W.on) toast("Ballenas: se marcan las órdenes grandes desde ahora (y las ya guardadas) y la prima de Coinbase", "info"); X.chart.draw(); });
+  }
+
+  // ------------------------------------------------------------ panel de la pestaña de ballenas
+  let ver = 0, shown = -1;
+  function bump() { ver++; }
+  if (!WM) return;
+  const box = $("tab-mercado");
+  box.innerHTML = `<div id="whRead"></div>
+    <h3 class="wh-h">Flujos de ETF y compras institucionales (registro manual)</h3>
+    <p class="faint">Los flujos netos diarios de los ETF se publican después del cierre de EE. UU. y las fuentes gratuitas no permiten leerlos desde la app. Anótelos aquí desde
+    <a href="https://farside.co.uk/btc/" target="_blank" rel="noopener">Farside</a>, <a href="https://sosovalue.com/assets/etf/us-btc-spot" target="_blank" rel="noopener">SoSoValue</a>,
+    <a href="https://www.strategy.com/purchases" target="_blank" rel="noopener">Strategy</a> o <a href="https://bitcointreasuries.net/" target="_blank" rel="noopener">BitcoinTreasuries</a>. Entradas = positivo, salidas o ventas = negativo.</p>
+    <form id="whForm" class="wh-form">
+      <input type="date" id="whD" required aria-label="Fecha">
+      <select id="whK" aria-label="Tipo">${WH.MANUAL_KINDS.map((k) => `<option>${k}</option>`).join("")}</select>
+      <input id="whE" placeholder="Entidad (p. ej. IBIT, Strategy)" maxlength="40" aria-label="Entidad">
+      <input id="whU" type="number" step="any" placeholder="Millones USD (±)" aria-label="Millones de USD">
+      <input id="whB" type="number" step="any" placeholder="BTC (±)" aria-label="BTC">
+      <input id="whN" placeholder="Nota / fuente" maxlength="80" aria-label="Nota">
+      <button type="submit">Agregar</button><span id="whFMsg" class="faint"></span>
+    </form>
+    <div id="whMan"></div>
+    <h3 class="wh-h">Configuración</h3>
+    <div class="wh-form"><label>Orden grande desde (USD) <input id="whThr" type="number" min="1000" step="1000" placeholder="automático"></label>
+    <label>Cadena de BTC desde (BTC) <input id="whCThr" type="number" min="10" step="10" value="${W.chain.thr}"></label><button id="whSaveCfg" type="button">Guardar</button></div>`;
+  $("whD").value = new Date().toISOString().slice(0, 10);
+  $("whForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const e = { id: Date.now().toString(36), date: $("whD").value, kind: $("whK").value, entity: $("whE").value.trim(), usd_m: $("whU").value === "" ? null : +$("whU").value, btc: $("whB").value === "" ? null : +$("whB").value, note: $("whN").value.trim() };
+    const errs = WH.validManual(e);
+    if (errs.length) { $("whFMsg").textContent = "Falta: " + errs.join(", "); return; }
+    W.manual.push(e); LS.set("whManual", W.manual); $("whFMsg").textContent = "Agregado"; $("whE").value = $("whU").value = $("whB").value = $("whN").value = ""; renderMan(); X.chart.draw();
+  });
+  $("whMan").addEventListener("click", (ev) => { const b = ev.target.closest("[data-whdel]"); if (!b) return; W.manual = W.manual.filter((x) => x.id !== b.dataset.whdel); LS.set("whManual", W.manual); renderMan(); X.chart.draw(); });
+  $("whSaveCfg").addEventListener("click", () => {
+    const v = +$("whThr").value, c = +$("whCThr").value;
+    if (v > 0) W.thrUser[W.sym] = v; else delete W.thrUser[W.sym];
+    LS.set("whThr", W.thrUser);
+    if (c >= 10) { W.chain.thr = c; LS.set("whChainThr", c); }
+    toast("Guardado. El nuevo umbral aplica a las órdenes que lleguen desde ahora.", "info"); bump();
+  });
+  function renderMan() {
+    const days = WH.manualDaily(W.manual).slice(-30).reverse();
+    $("whMan").innerHTML = days.length ? `<table class="wh-t"><thead><tr><th>Fecha</th><th>ETF neto</th><th>Otros</th><th>Detalle</th></tr></thead><tbody>` +
+      days.map((d) => `<tr><td>${d.date}</td><td class="${d.etf > 0 ? "buy" : d.etf < 0 ? "sell" : ""}">${d.items.some((x) => x.kind === "ETF") ? (d.etf >= 0 ? "+" : "") + d.etf.toFixed(1) + " M" : "—"}</td><td class="${d.other > 0 ? "buy" : d.other < 0 ? "sell" : ""}">${d.items.some((x) => x.kind !== "ETF" && x.usd_m !== null) ? (d.other >= 0 ? "+" : "") + d.other.toFixed(1) + " M" : "—"}</td><td>` +
+        d.items.map((x) => `${esc(x.kind)} · <b>${esc(x.entity)}</b>${x.usd_m !== null ? ` ${x.usd_m >= 0 ? "+" : ""}${x.usd_m} M USD` : ""}${x.btc !== null ? ` ${x.btc >= 0 ? "+" : ""}${x.btc} BTC` : ""}${x.note ? ` <span class="faint">(${esc(x.note)})</span>` : ""} <button class="lnk" data-whdel="${x.id}" title="Borrar">✕</button>`).join("<br>") + `</td></tr>`).join("") + `</tbody></table>`
+      : '<p class="faint">Todavía no hay registros.</p>';
+  }
+  renderMan();
+  // lecturas (se repinta solo cuando hay datos nuevos)
+  function renderRead() {
+    const el = $("whRead"); if (!el) return;
+    const now = Date.now(), c = W.sym ? W.sym.replace(/USDT$/, "") : "—", T = thr(), rd = WH.premiumReading(W.prem.series), lp = livePremium();
+    const win = (ms, v) => WH.netWindow(W.orders, now, ms, v);
+    const line = (lab, w) => w.n ? `<tr><td>${lab}</td><td class="buy">${money(w.buy)}</td><td class="sell">${money(w.sell)}</td><td class="${w.net >= 0 ? "buy" : "sell"}"><b>${w.net >= 0 ? "+" : ""}${money(w.net)}</b></td><td>${Math.round(w.buyShare * 100)} %</td><td>${w.n}${w.blocks ? ` (${w.blocks} en bloque)` : ""}</td></tr>` : `<tr><td>${lab}</td><td colspan="5" class="faint">sin órdenes grandes registradas</td></tr>`;
+    const h1 = win(3600e3), h4 = win(4 * 3600e3), d1 = win(86400e3), cb4 = win(4 * 3600e3, "Coinbase"), by4 = win(4 * 3600e3, "Bybit");
+    const firstAt = W.orders.length ? W.orders[0].time : null;
+    let verdict = "Sin datos suficientes todavía", vcls = "";
+    if (h4.n >= 3) {
+      const s = h4.buyShare;
+      if (s >= 0.62) { verdict = `Las órdenes grandes COMPRAN (${Math.round(s * 100)} % del volumen grande en 4 h)`; vcls = "buy"; }
+      else if (s <= 0.38) { verdict = `Las órdenes grandes VENDEN (${Math.round((1 - s) * 100)} % del volumen grande en 4 h)`; vcls = "sell"; }
+      else verdict = `Órdenes grandes equilibradas en 4 h (${Math.round(s * 100)} % compra)`;
+    }
+    const recent = [...W.orders].slice(-12).reverse();
+    const ch = [...W.chain.list].slice(-12).reverse();
+    el.innerHTML = `<div class="reading"><span class="dot ${vcls}"></span><h4>Ballenas en ${esc(c)}<span class="${vcls}">${verdict}</span></h4>
+      <p>Orden grande = una orden a mercado de <b>${money(T)} USD</b> o más${W.thrUser[W.sym] ? " (umbral suyo)" : " (automático: 0,003 % del volumen de 24 h)"}. El lado es el de quien agrede: compra a mercado = presión compradora.
+      Bybit: ${esc(W.byStatus)} · Coinbase: ${esc(W.cb.status)}.${firstAt ? ` Registro desde ${crT(firstAt)}: las órdenes solo se ven mientras alguna pestaña de la app está abierta.` : ""}</p>
+      <table class="wh-t"><thead><tr><th>Ventana</th><th>Compras</th><th>Ventas</th><th>Neto USD</th><th>% compra</th><th>Órdenes</th></tr></thead><tbody>${line("1 h", h1)}${line("4 h", h4)}${line("24 h", d1)}${line("4 h · solo Coinbase (EE. UU.)", cb4)}${line("4 h · solo Bybit", by4)}</tbody></table></div>
+      <div class="reading"><span class="dot ${rd ? (rd.state === "compra" ? "buy" : rd.state === "venta" ? "sell" : "") : ""}"></span><h4>Prima de Coinbase (instituciones de EE. UU.)<span>${lp !== null ? `${lp >= 0 ? "+" : ""}${lp.toFixed(3)} % ahora` : rd ? `${rd.last >= 0 ? "+" : ""}${rd.last.toFixed(3)} %` : "—"}</span></h4>
+      <p>${rd ? `${esc(rd.text)} Media de las últimas ${rd.n} velas de ${esc(S.tf)}: ${rd.avg >= 0 ? "+" : ""}${rd.avg.toFixed(3)} %.` : esc(W.prem.status)} Coinbase custodia la mayoría de los ETF de bitcoin de EE. UU. (IBIT de BlackRock, FBTC de Fidelity usa su propio custodio). La prima es una señal indirecta, no muestra a una entidad concreta. Precio de Bybit convertido de USDT a USD con el par USDT-USD de Coinbase.</p></div>
+      <div class="reading"><span class="dot info"></span><h4>Cadena de BTC · movimientos de ${W.chain.thr} BTC o más<span>${esc(W.chain.status)}</span></h4>
+      <p>Transacciones en el mempool de Bitcoin (fuente: blockchain.info; antigüedad: mempool.space). No indica si es compra o venta: suele ser un exchange, un custodio o una ballena moviendo fondos. Las monedas que no se movían hace 5 años o más se marcan como "dormidas".</p>
+      ${ch.length ? `<table class="wh-t"><thead><tr><th>Hora (CR)</th><th>BTC</th><th>Antigüedad</th><th></th></tr></thead><tbody>${ch.map((e) => `<tr><td>${crT(e.time)}</td><td><b>${e.btc.toLocaleString("es-CR", { maximumFractionDigits: 1 })}</b> <span class="faint">(${e.nIn}→${e.nOut})</span></td><td>${e.dorm ? (e.dorm.unknown ? "—" : `${e.dorm.dormant ? `<b class="gold">dormidas desde ${e.dorm.year}</b>${e.dorm.satoshiEra ? " · época de Satoshi" : ""}` : `desde ${e.dorm.year}`}`) : "consultando…"}</td><td><a href="https://mempool.space/tx/${esc(e.hash)}" target="_blank" rel="noopener">ver</a></td></tr>`).join("")}</tbody></table>` : `<p class="faint">Ninguna todavía en esta sesión (${W.chain.seen} transacciones revisadas).</p>`}</div>
+      <div class="reading"><span class="dot"></span><h4>Últimas órdenes grandes en ${esc(c)}</h4>
+      ${recent.length ? `<table class="wh-t"><thead><tr><th>Hora (CR)</th><th>Lado</th><th>USD</th><th>Precio</th><th>Dónde</th></tr></thead><tbody>${recent.map((o) => `<tr><td>${crT(o.time)}</td><td class="${o.side === "buy" ? "buy" : "sell"}"><b>${o.side === "buy" ? "COMPRA" : "VENTA"}</b></td><td>${money(o.usd)}</td><td>${fp(o.price)}</td><td>${o.venue}${o.block ? " · en bloque" : ""}</td></tr>`).join("")}</tbody></table>` : '<p class="faint">Todavía ninguna desde que se abrió la pestaña.</p>'}</div>`;
+    const ti = $("whThr"); if (ti && document.activeElement !== ti) ti.placeholder = `automático (${money(thr())})`;
+  }
+  setInterval(() => { if (document.hidden || shown === ver) return; shown = ver; renderRead(); }, 1000);
+  setInterval(bump, 10000);   // relojes y ventanas de tiempo
+  window.__whaleMarket = () => {};
+  chainConnect();
+  // registros manuales en el gráfico (días con flujo de ETF u otras compras/ventas)
+  window.__drawHooks.push((g, o) => {
+    if (!W.manual.length || TFMS[o.tf] < 3600e3) return;
+    const a = S.an[k2(o.sym, o.tf)]; if (!a || !a.n) return;
+    g.font = '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    for (const d of WH.manualDaily(W.manual)) {
+      const t = Date.parse(d.date + "T00:00:00Z"); let i = a.d.openTime.findIndex((x) => x + TFMS[o.tf] > t); if (i < 0) continue;
+      const x = o.ts.timeToCoordinate(a.d.openTime[i] / 1000); if (x === null) continue;
+      const v = d.etf + d.other, txt = `${d.items.some((e) => e.kind === "ETF") ? "ETF " : ""}${v >= 0 ? "+" : ""}${v.toFixed(0)} M`;
+      g.fillStyle = v >= 0 ? "#26c281" : "#ef5350"; g.fillText(txt, x - g.measureText(txt).width / 2, 14);
+      g.strokeStyle = v >= 0 ? "rgba(38,194,129,.35)" : "rgba(239,83,80,.35)"; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, 18); g.lineTo(x, o.H); g.stroke(); g.setLineDash([]);
+    }
+  });
 })();
 
 </script>
