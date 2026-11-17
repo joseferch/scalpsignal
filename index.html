@@ -608,7 +608,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   <h4 class="dj-only">Estrategia Doji <small>(se activa por par en la pestaña Pares; los filtros "obligatorio" en 1 exigen esa condición, en 0 solo se informa)</small></h4>
   <div class="grid3 dj-only">
     <label class="f">Activa (1/0)<input data-k="doji.enabled" inputmode="numeric"></label>
-    <label class="f">Temporalidad de ejecución (5m, 15m o 1h)<input data-k="doji.exec_tf"></label>
+    <label class="f">Temporalidad (auto = la del gráfico, o 1m…1w)<input data-k="doji.exec_tf"></label>
     <label class="f">Cuerpo máximo (fracción del rango)<input data-k="doji.body_max" inputmode="decimal"></label>
     <label class="f">Rango mínimo de la vela (× ATR)<input data-k="doji.min_range_atr" inputmode="decimal"></label>
     <label class="f">Movimiento previo: velas<input data-k="doji.prior_bars" inputmode="numeric"></label>
@@ -2139,7 +2139,7 @@ const SSP = (() => {
      Filtros opcionales: volumen alto en el doji, RSI en extremo y SQZMOM girando a favor en la vela de confirmación.
      Libélula solo compra, lápida solo vende; el doji normal y el de patas largas sirven para ambos lados.
      Todo se evalúa con velas cerradas (doji = vela i, confirmación = vela i+1 recién cerrada). */
-  const DEFAULT_DOJI = { enabled: true, exec_tf: "1h", body_max: 0.1, min_range_atr: 0.5, prior_bars: 5, prior_atr: 1.0, zone_tol_atr: 0.25,
+  const DEFAULT_DOJI = { enabled: true, exec_tf: "auto", body_max: 0.1, min_range_atr: 0.5, prior_bars: 5, prior_atr: 1.0, zone_tol_atr: 0.25,
     use_bb: true, use_h1: true, use_vwap: true, use_ob: true, vol_mult: 1.3, req_vol: true, rsi_len: 14, rsi_long: 40, rsi_short: 60, req_rsi: false,
     req_sqz: false, stop_buf_atr: 0.1, rr: 2, max_hold_bars: 24, allow_long: true, allow_short: true };
   const DOJI_LABELS = { D0: "Datos completos y actualizados", D1: "Vela doji", D2: "Movimiento previo en contra (agotamiento)", D3: "Doji en zona clave",
@@ -2220,14 +2220,15 @@ const SSP = (() => {
     _dojiHist.set(a, { key, list });
     return list;
   }
+  const dojiTf = (p, ctx) => (p.exec_tf === "auto" || !TF_MS[p.exec_tf] ? (ctx && ctx.chartTf && TF_MS[ctx.chartTf] ? ctx.chartTf : "1h") : p.exec_tf);
   class DojiStrategy { constructor(params) { this.name = "doji_zona_clave"; this.label = "Doji en zona clave"; this.p = Object.assign({}, DEFAULT_DOJI, params || {}); } }
   class DojiEngine extends SignalEngine {
     constructor(exchange, risk, strategy, autoPaper = true, book = null) { super(exchange, risk, strategy || new DojiStrategy(), autoPaper, book); this.condLabels = DOJI_LABELS; }
     _stepSlot(ctx, s) {
       if (s.state === ST.OPEN) return this._manageTrade(ctx, s);
-      const st = this.strategy, p = st.p, M = TF_MS[p.exec_tf], want = s.direction;
-      if (ctx.t % M !== 0) return [];
-      const a = ctx.tf[p.exec_tf]; if (!a) return [];
+      const st = this.strategy, p = st.p, want = s.direction, tf = dojiTf(p, ctx), M = TF_MS[tf];   // "auto" = la temporalidad del gráfico
+      if (!M || (ctx.t - (tf === "1w" ? 4 * 86400e3 : 0)) % M !== 0) return [];
+      const a = ctx.tf[tf]; if (!a) { s.conditions = [{ id: "D0", label: DOJI_LABELS.D0, passed: false, detail: `Sin velas de ${tf} para este par (solo el par que se ve tiene 4h, 1D y 1S)` }]; return []; }
       const j = a.idxAsof(ctx.t); if (j < 30 || a.d.closeTime[j] !== ctx.t) return [];
       if ((want === "LONG" && !p.allow_long) || (want === "SHORT" && !p.allow_short)) { s.conditions = [{ id: "D0", label: "Lado desactivado en Configuración", passed: false, detail: "" }]; return []; }
       // ¿la vela recién cerrada confirma un doji anterior? si no, ¿es ella misma un doji (pendiente de confirmar)?
@@ -2242,16 +2243,16 @@ const SSP = (() => {
       if (!plan.valid) return [];
       const [g, nn] = rrNet(want, entry, stop, tp, this.risk);
       s.levels = { entry, stop_loss: stop, tp1: tp, tp2: tp, tp3: tp, risk_per_unit: r.lv.risk, rr_gross: Math.round(g * 1000) / 1000, rr_net: Math.round(nn * 1000) / 1000,
-        notes: [`Doji ${DOJI_KIND_LABEL[r.kind]} en ${r.zones.map((z) => z.name).join(", ")}; entrada al cierre de la vela de confirmación; SL al otro lado del doji; objetivo ${p.rr}:1.`] };
+        notes: [`Doji ${DOJI_KIND_LABEL[r.kind]} de ${tf} en ${r.zones.map((z) => z.name).join(", ")}; entrada al cierre de la vela de confirmación; SL al otro lado del doji; objetivo ${p.rr}:1.`] };
       s.plan = plan; s.state = up ? ST.CONF_L : ST.CONF_S; s.signalId = uid();
       const zone = { top: a.d.high[r.i], bottom: a.d.low[r.i], sources: r.zones.map((z) => z.name) };
       s.setup = { zone };
-      const signal = { id: s.signalId, symbol: s.symbol, exchange: this.exchange, strategy: st.name, strategy_label: st.label, direction: want, created_at: ctx.t, timeframes: [p.exec_tf, "1h"],
+      const signal = { id: s.signalId, symbol: s.symbol, exchange: this.exchange, strategy: st.name, strategy_label: `${st.label} (${tf})`, direction: want, created_at: ctx.t, timeframes: [tf, "1h"],
         activation_price: entry, reference_price: up ? ctx.ask ?? null : ctx.bid ?? null, stop_loss: stop, tp1: tp, tp2: tp, tp3: tp, rr_net: s.levels.rr_net, rr_gross: s.levels.rr_gross,
         conditions_met: conds.filter((x) => x.passed), conditions_missing: conds.filter((x) => !x.passed), zone, notes: s.levels.notes, plan, data_status: ctx.dataReason, params: Object.assign({}, p), order: "mercado" };
       const out = [this._ev(s, ctx, "confirmada", `${s.symbol} — ${want} CONFIRMADO (${st.label}) entrada ${fmt(entry)} SL ${fmt(stop)} TP ${fmt(tp)}`, { signal })];
       if (this.autoPaper) {
-        s.trade = { signal_id: s.signalId, direction: want, entry, stop, tp1: tp, tp2: tp, tp3: tp, quantity: plan.quantity, opened_at: ctx.t, tp1_hit: false, exit_price: null, exit_time: null, exit_reason: null, result_r: null, pnl: null, fees: null };
+        s.trade = { signal_id: s.signalId, direction: want, entry, stop, tp1: tp, tp2: tp, tp3: tp, quantity: plan.quantity, opened_at: ctx.t, tf, tp1_hit: false, exit_price: null, exit_time: null, exit_reason: null, result_r: null, pnl: null, fees: null };
         s.state = ST.OPEN; out.push(this._ev(s, ctx, "operacion_abierta", `${s.symbol} — operación simulada ${want} abierta en ${fmt(entry)}`));
       } else { s.setup = null; s.state = ST.SIN; }
       return out;
@@ -2262,7 +2263,8 @@ const SSP = (() => {
       const up = tr.direction === "LONG", hitSl = up ? bar.low <= tr.stop : bar.high >= tr.stop, hitTp = up ? bar.high >= tr.tp1 : bar.low <= tr.tp1;
       if (hitSl) return this._close(ctx, s, tr.stop, "Stop Loss" + (hitTp ? " (vela tocó SL y TP: se asume SL)" : ""));
       if (hitTp) return this._close(ctx, s, tr.tp1, "Take Profit");
-      if (ctx.t - tr.opened_at >= p.max_hold_bars * TF_MS[p.exec_tf]) return this._close(ctx, s, bar.close, `Cierre por tiempo (${p.max_hold_bars} velas)`);
+      const ttf = tr.tf || dojiTf(p, ctx);
+      if (ctx.t - tr.opened_at >= p.max_hold_bars * TF_MS[ttf]) return this._close(ctx, s, bar.close, `Cierre por tiempo (${p.max_hold_bars} velas de ${ttf})`);
       return [];
     }
   }
@@ -2513,7 +2515,7 @@ const SSP = (() => {
     DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, DEFAULT_T5P, T5P_LABELS, h1Range, t5pAsof, T5PStrategy, T5PEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, elliottHistory, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
-    DEFAULT_DOJI, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
+    DEFAULT_DOJI, dojiTf, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
   };
 })();
 if (typeof module !== "undefined") module.exports = SSP;
@@ -2808,6 +2810,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     }
     const tfs = {};
     for (const tf of ENGINE_TFS) { tfs[tf] = S.an[k2(sym, tf)]; if (!tfs[tf]) return; }
+    for (const tf of EXTRA_TFS) if (S.an[k2(sym, tf)]) tfs[tf] = S.an[k2(sym, tf)];   // 4h, 1D y 1S (solo el par que se ve): para la estrategia Doji en "auto"
     let ok = true, reason = "Datos completos y actualizados";
     const delay = (Date.now() - t) / 1000;
     if (miss.length) { ok = false; reason = "Faltan velas cerradas de: " + miss.join(", "); }
@@ -2816,7 +2819,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     else { const g = ENGINE_TFS.find((tf) => hasGaps(sym, tf)); if (g) { ok = false; reason = `Hueco de datos en ${g}`; } }
     S.health[sym] = { ok, reason, t };
     const q = S.quotes[sym] || {};
-    const ctx = { symbol: sym, exchange: "bybit", t, tf: tfs, dataOk: ok, dataReason: reason, bid: q.bid1Price ? +q.bid1Price : null, ask: q.ask1Price ? +q.ask1Price : null };
+    const ctx = { symbol: sym, exchange: "bybit", t, chartTf: S.tf, tf: tfs, dataOk: ok, dataReason: reason, bid: q.bid1Price ? +q.bid1Price : null, ask: q.ask1Price ? +q.ask1Price : null };
     const evs = [];
     for (const E of ENGINES) {
       const slots = ["LONG", "SHORT"].map((d) => E.eng.slot(sym, d));
@@ -3665,9 +3668,10 @@ if (typeof module !== "undefined") module.exports = SSP;
     row(t1 === "alcista" ? "buy" : t1 === "bajista" ? "sell" : "gold", "Tendencia", `1H ${t1} · 15m ${t15} · 5m ${t5}`,
       agree && t1 !== "lateral" ? `Las tres temporalidades coinciden: contexto ${t1} claro.` : t1 === "lateral" ? "La tendencia principal (1H) está lateral: los rompimientos fallan más a menudo." : "Las temporalidades no coinciden: más riesgo de señales falsas.");
     if (DM) {    // pestaña Doji: el doji más reciente y cada condición; debajo siguen SQZMOM, ADX, VWAP y Elliott
-      const x = window.__ssp.dojiCompute ? window.__ssp.dojiCompute() : null, ex = DOJIP.exec_tf;
-      const L = window.DOJI_LAB;
-      if (L) row("sell", "Prueba histórica (BTC 2023–2026)", `${L.total.expectancy_R >= 0 ? "+" : ""}${L.total.expectancy_R}R por operación`, esc(L.verdict));
+      const x = window.__ssp.dojiCompute ? window.__ssp.dojiCompute() : null, ex = SSP.dojiTf(DOJIP, { chartTf: S.tf });
+      const L = window.DOJI_LAB, lt = L && L.por_tf && L.por_tf[ex];
+      if (L) row(lt && lt.n >= 30 && lt.E > 0 ? "buy" : lt && lt.n >= 30 ? "sell" : "gold", `Prueba histórica en ${TF_LABEL(ex)} (BTC 2023–2026)`, lt ? `${lt.E >= 0 ? "+" : ""}${lt.E}R por operación · ${lt.n} operaciones` : "sin probar",
+        esc(lt ? lt.text : `Esta temporalidad no se probó con datos históricos (faltan velas de 1m). Las probadas: ${Object.entries(L.por_tf).map(([k, v]) => `${TF_LABEL(k)} ${v.E >= 0 ? "+" : ""}${v.E}R (${v.n})`).join(" · ")}.`) + (DOJIP.exec_tf === "auto" ? " La estrategia usa la temporalidad del gráfico; cámbiela arriba." : ""));
       if (!x) row("", "Doji", "—", `Esperando velas de ${ex}.`);
       else if (!x.cur) row("", `Doji en ${ex}`, "ninguno reciente", `No hay doji en las últimas velas cerradas de ${ex}.${x.last ? ` El último fue ${SSP.DOJI_KIND_LABEL[x.last.kind]} (${x.last.ok ? "confirmado" : "sin confirmar"}).` : ""}`);
       else {
@@ -4197,7 +4201,7 @@ if (typeof module !== "undefined") module.exports = SSP;
       else obj[f] = i.value.trim();
     });
     if (!["3m", "5m"].includes(T5PP.exec_tf)) { T5PP.exec_tf = "5m"; toast("T5P/T2P: la temporalidad de ejecución debe ser 5m o 3m (se dejó 5m)", "info"); }
-    if (!["5m", "15m", "1h"].includes(DOJIP.exec_tf)) { DOJIP.exec_tf = "15m"; toast("Doji: la temporalidad de ejecución debe ser 5m, 15m o 1h (se dejó 15m)", "info"); }
+    if (DOJIP.exec_tf !== "auto" && !TFS.includes(DOJIP.exec_tf)) { DOJIP.exec_tf = "auto"; toast("Doji: temporalidad no válida; se dejó «auto» (la del gráfico)", "info"); }
     LS.set("doji", DOJIP);
     LS.set("risk", RISK); LS.set("tc", TC); LS.set("cfg", CFG); LS.set("fib", FIBP); LS.set("rsi3", RSI3P); LS.set("sc4", SC4P); LS.set("t5p", T5PP);
     engine.risk = Object.assign({}, RISK); engine.strategy.p = Object.assign({}, TC);
@@ -5988,7 +5992,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
 
 
 /* Resultado real de la prueba histórica de la estrategia Doji (lab/backtest_doji.js). */
-window.DOJI_LAB = {"generated": "2026-11-17T19:38:30.315Z", "data": "BTCUSDT perpetuo (Binance Futures, data.binance.vision) 2023-01 a 2026-10", "costs": "taker 0,055 % + deslizamiento 0,02 % por lado; salidas con velas de 5m; si una vela toca SL y TP cuenta SL", "total": {"n": 92, "win_pct": 39.1, "expectancy_R": -0.058, "t_stat": -0.49, "total_R": -5.3, "profit_factor": 0.89, "max_dd_R": -20.6, "exits": {"tp": 26, "sl": 47, "tiempo": 19}}, "muestra_2023_2024": {"n": 47, "win_pct": 46.8, "expectancy_R": 0.165, "t_stat": 0.96, "total_R": 7.7, "profit_factor": 1.36, "max_dd_R": -3.9, "exits": {"tp": 16, "sl": 19, "tiempo": 12}}, "fuera_de_muestra_2025_2026": {"n": 45, "win_pct": 31.1, "expectancy_R": -0.291, "t_stat": -1.86, "total_R": -13.1, "profit_factor": 0.56, "max_dd_R": -19, "exits": {"tp": 10, "sl": 28, "tiempo": 7}}, "variantes": [["Por defecto (1h, volumen obligatorio, 2:1)", 92, -0.058, -0.291], ["1h + RSI obligatorio", 67, -0.127, -0.354], ["1h objetivo 3:1", 91, -0.107, -0.398], ["15m (volumen obligatorio, 2:1)", 383, -0.25, -0.307], ["15m sin filtro de volumen", 886, -0.271, -0.29], ["15m + RSI + SQZMOM obligatorios", 133, -0.211, -0.192], ["5m", 1226, -0.378, -0.346]], "verdict": "Con 1h, volumen alto y objetivo 2:1 hubo 92 operaciones en BTC (ene 2023 – oct 2026): −0,06R por operación después de costos (t = −0,49, sin ventaja demostrada). Ganó en 2023–2024 (+0,17R) y perdió en 2025–2026 (−0,29R). En 15m y 5m pierde claramente: antes de costos el doji confirmado da casi cero y la comisión se lleva 0,37R por operación en 15m. Úsela solo como simulación o como filtro dentro de otro plan; no hay base para operar dinero real con ella."};
+window.DOJI_LAB = {"generated": "2026-11-17T20:55:18.297Z", "data": "BTCUSDT perpetuo (Binance Futures, data.binance.vision) 2023-01 a 2026-10", "costs": "taker 0,055 % + deslizamiento 0,02 % por lado; salidas con velas de 5m; si una vela toca SL y TP cuenta SL", "por_tf": {"1h": {"n": 92, "E": -0.058, "t": -0.49, "oos": -0.291, "text": "92 operaciones, -0.058R por operación después de costos (t = -0.49): sin ventaja demostrada. 2023–2024: 0.165R · 2025–2026: -0.291R."}, "4h": {"n": 21, "E": 0.302, "t": 1.17, "oos": 0.296, "text": "Solo 21 operaciones en casi 4 años (+0.302R por operación): muy pocas para saber si funciona. 2023–2024: 0.308R · 2025–2026: 0.296R."}, "1d": {"n": 3, "E": -0.665, "t": -1.99, "oos": -1, "text": "Solo 3 operaciones en casi 4 años (-0.665R por operación): muy pocas para saber si funciona. 2023–2024: -0.498R · 2025–2026: -1R."}, "15m": {"n": 383, "E": -0.25, "t": -5.35, "oos": -0.307, "text": "383 operaciones, -0.25R por operación después de costos (t = -5.35): pierde con claridad; la comisión pesa demasiado en velas tan cortas. 2023–2024: -0.197R · 2025–2026: -0.307R."}, "5m": {"n": 1226, "E": -0.378, "t": -16.97, "oos": -0.346, "text": "1226 operaciones, -0.378R por operación después de costos (t = -16.97): pierde con claridad; la comisión pesa demasiado en velas tan cortas. 2023–2024: -0.405R · 2025–2026: -0.346R."}}, "verdict": "Antes de costos el doji confirmado da casi cero en BTC; en 5m y 15m la comisión lo vuelve claramente perdedor. 4h fue positiva pero con solo 21 operaciones. Úsela como simulación o filtro, no para dinero real."};
 
 /* Estrategia Doji (pestaña ?doji): círculos en cada doji del gráfico, panel con los pasos del doji más reciente y
    detalle al pasar el mouse. En la pestaña principal solo conecta el botón "Doji ↗". */
@@ -5998,12 +6002,12 @@ window.DOJI_LAB = {"generated": "2026-11-17T19:38:30.315Z", "data": "BTCUSDT per
   const base = location.href.split("#")[0].split("?")[0], $ = (id) => document.getElementById(id);
   const ob = $("djOpen");
   if (!X.DM) { if (ob) ob.addEventListener("click", () => { const w = window.open(base + "?doji", "ssp-doji"); if (w) w.focus(); else X.toast("El navegador bloqueó la pestaña nueva: permita ventanas emergentes para este sitio", "info"); }); return; }
-  const { S, LS, k2, esc, fp } = X, P = () => X.DOJIP, KL = SSP.DOJI_KIND_LABEL;
+  const { S, LS, k2, esc, fp } = X, P = () => X.DOJIP, KL = SSP.DOJI_KIND_LABEL, ETF = () => SSP.dojiTf(X.DOJIP, { chartTf: S.tf }), TL = (tf) => (tf === "1d" ? "1D" : tf === "1w" ? "1S" : tf);
   let min = LS.get("djMin", true), off = LS.get("djOff", false), cache = { key: "", r: null };
   const ansOf = (tf) => { const a = S.an[k2(S.sel, tf)]; return a ? Object.assign({}, S.an[k2(S.sel, "1h")] ? { "1h": S.an[k2(S.sel, "1h")] } : {}, { [tf]: a }) : null; };
   // doji más reciente en la temporalidad de ejecución (pendiente de confirmar o ya confirmado/fallido)
   function compute() {
-    const p = P(), tf = p.exec_tf, ans = ansOf(tf); if (!ans) return null;
+    const p = P(), tf = ETF(), ans = ansOf(tf); if (!ans) return null;
     const a = ans[tf], key = `${S.sel}|${tf}|${a.n}|${a.d.closeTime[a.n - 1]}|${JSON.stringify(p)}`;
     if (cache.key === key) return cache.r;
     const pick = (i) => { const c = ["LONG", "SHORT"].filter((d) => (d === "LONG" ? p.allow_long : p.allow_short)).map((d) => SSP.dojiEval(ans, a, i, d, p)).filter(Boolean);
@@ -6018,12 +6022,12 @@ window.DOJI_LAB = {"generated": "2026-11-17T19:38:30.315Z", "data": "BTCUSDT per
   const panel = document.createElement("div"); panel.className = "t5p-panel dj-panel"; if (wrap) wrap.appendChild(panel);
   function renderPanel() {
     panel.hidden = off; if (off) return;
-    const x = compute(), p = P();
-    if (!x || !x.cur) { panel.innerHTML = `<h5><span>Doji · ${esc(S.sel.replace("USDT", ""))} ${p.exec_tf}</span><span><button data-off title="Ocultar el panel">✕</button></span></h5><div class="faint">Sin doji en las últimas velas de ${p.exec_tf}. Los círculos del gráfico muestran los anteriores.</div>`; return; }
+    const x = compute(), p = P(), tf = ETF();
+    if (!x || !x.cur) { panel.innerHTML = `<h5><span>Doji · ${esc(S.sel.replace("USDT", ""))} ${TL(tf)}</span><span><button data-off title="Ocultar el panel">✕</button></span></h5><div class="faint">Sin doji en las últimas velas de ${TL(tf)}. Los círculos del gráfico muestran los anteriores.</div>`; return; }
     const c = x.cur, up = c.dir === "LONG";
     const st = c.ok ? `<span class="${up ? "buy" : "sell"}">${up ? "COMPRA" : "VENTA"} confirmada</span>` : c.conf === null ? `<span class="gold">esperando confirmación</span>` : "no confirmado";
     const sh = { D1: "Doji", D2: "Agotam.", D3: "Zona", D4: "Volumen", D5: "RSI", D6: "SQZ", D7: "Rompe" };
-    panel.innerHTML = `<h5><span>Doji ${KL[c.kind]} · ${esc(S.sel.replace("USDT", ""))} ${p.exec_tf} · ${up ? "compra" : "venta"}</span><span><button data-min title="${min ? "Ver el detalle" : "Ver solo los pasos"}">${min ? "＋" : "－"}</button><button data-off title="Ocultar el panel">✕</button></span></h5>` +
+    panel.innerHTML = `<h5><span>Doji ${KL[c.kind]} · ${esc(S.sel.replace("USDT", ""))} ${TL(tf)} · ${up ? "compra" : "venta"}</span><span><button data-min title="${min ? "Ver el detalle" : "Ver solo los pasos"}">${min ? "＋" : "－"}</button><button data-off title="Ocultar el panel">✕</button></span></h5>` +
       `<ol>${c.steps.map((q) => `<li class="${q.ok ? "ok" : "no"}" title="${esc(q.text)}">${q.ok ? "✓" : q.ok === false ? "✗" : "…"} <span class="lg">${SSP.DOJI_LABELS[q.id].replace(/ \(.*$/, "")}${q.req === false ? " (opc.)" : ""}</span><span class="sh">${sh[q.id]}</span>${!min ? `<br><span class="muted">${esc(q.text)}</span>` : ""}</li>`).join("")}</ol>` +
       `<div class="stg">${st}</div>` + (c.ok && c.lv ? `<div class="faint h1l">Entrada ${fp(c.lv.entry)} · SL ${fp(c.lv.stop)} · TP ${fp(c.lv.tp)}</div>` : "");
   }
@@ -6045,7 +6049,7 @@ window.DOJI_LAB = {"generated": "2026-11-17T19:38:30.315Z", "data": "BTCUSDT per
     if (off) return;
     const a = S.an[k2(o.sym, o.tf)]; if (!a || !a.n) return;
     const ans = Object.assign({}, S.an[k2(o.sym, "1h")] ? { "1h": S.an[k2(o.sym, "1h")] } : {}, { [o.tf]: a });
-    const list = SSP.dojiHistory(ans, a, P()), cur = o.tf === P().exec_tf ? (compute() || {}).cur : null;
+    const list = SSP.dojiHistory(ans, a, P()), cur = o.tf === ETF() ? (compute() || {}).cur : null;
     const { Y, ts, H, ms } = o, vr = ts.getVisibleRange && ts.getVisibleRange(), t0 = vr ? vr.from * 1000 : 0, t1 = vr ? vr.to * 1000 : Infinity;
     g.font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10px "IBM Plex Sans", system-ui, sans-serif';
     const items = cur && !list.some((x) => x.i === cur.i) ? [...list, cur] : list;
