@@ -365,6 +365,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .mode-dj .brand::after{content:" · Doji";color:var(--gold);font-weight:600}
 .mode-t5p #djOpen,.mode-wh #djOpen{display:none!important}
 #djBtn.on{color:#0b1220;background:var(--gold)}
+#sesBtn.on{color:#0b1220;background:#9db8ff}.mode-wh .ses-seg{display:none!important}
 .one-sym #topBtn,.one-sym #clearBtn,.one-sym #search,.one-sym #results,.one-sym .pair .x,.one-sym #ivSym{display:none!important}
 .dj-panel{top:40px;bottom:auto!important}
 @media(max-width:700px){.dj-panel{top:34px}}
@@ -468,6 +469,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   <nav class="tfbar">
     <span class="seg" id="tfs" role="group" aria-label="Temporalidad"></span>
     <span class="seg dj-seg"><button id="djBtn" aria-pressed="true" title="Muestra u oculta los círculos de los dojis y el panel de pasos">Doji</button></span>
+    <span class="seg ses-seg"><button id="sesBtn" aria-pressed="true" title="Niveles de sesión: máximo y mínimo de Asia (AH/AL, 19:00–03:00 Nueva York) y de Londres (LH/LL, 03:00–08:00), vigentes hasta el cierre de Nueva York. Se ven en 1m a 1h.">Sesiones</button></span>
     <span class="seg wh-seg"><button id="whBtn" aria-pressed="false" title="Ballenas: marca en el gráfico las órdenes grandes (compra abajo en verde, venta arriba en rojo) y la prima de Coinbase en la franja inferior">Ballenas</button></span>
     <span class="seg t5p-seg" id="t5pBtns" role="group" aria-label="Estrategias T5P y T2P"><button data-t5p="T5P" title="T5P: dibuja los 5 pasos en el gráfico (1H 2 días + Fibonacci, acumulación 15m, impulso, retroceso, Fibonacci y entrada)">T5P</button><button data-t5p="T2P" title="T2P: impulso + retroceso Fibonacci + vela de entrada">T2P</button></span>
     <button id="indBtn" class="btn-ind" title="Activar, ocultar y ajustar indicadores">Indicadores <span id="indCount" class="badge">0</span></button>
@@ -2288,6 +2290,89 @@ const SSP = (() => {
     }
   }
 
+  // ------------------------------------------------------------ niveles de sesión (Asia / Londres) y estrategia 8: barrida de Londres
+  /* Horas de Nueva York (con cambio de horario): Asia 19:00–03:00 (empieza la tarde anterior), Londres 03:00–08:00, Nueva York 08:00–16:00.
+     AH/AL = máximo/mínimo de Asia; LH/LL = máximo/mínimo de Londres. Todas las fronteras caen en múltiplos de 15 min, así que basta con velas de 15m o menores. */
+  const _nyOffC = new Map();
+  function nyOffCached(ms) { const k = Math.floor(ms / 3600e3); let v = _nyOffC.get(k); if (v === undefined) { v = nyOffsetMin(k * 3600e3); if (_nyOffC.size > 20000) _nyOffC.clear(); _nyOffC.set(k, v); } return v; }
+  function nyClock(ms) { const x = ms + nyOffCached(ms) * 60000, day = Math.floor(x / 86400e3); return { day, min: Math.floor((x - day * 86400e3) / 60000), wd: new Date(day * 86400e3).getUTCDay() }; }
+  const nyToUtc = (day, min) => { const g = day * 86400e3 + min * 60000; return g - nyOffCached(g - nyOffCached(g) * 60000) * 60000; };
+  const SESS = { asia: [19 * 60, 3 * 60], london: [3 * 60, 8 * 60], ny: [8 * 60, 16 * 60] };
+  function sessionLevels(a, upto = Infinity, from = -Infinity) {     // a: TFAnalysis de 15m o menor; velas cerradas entre `from` y `upto`
+    const d = a.d, out = new Map();
+    let i0 = 0; if (from > -Infinity) { i0 = Math.max(0, a.idxAsof(from)); }
+    for (let i = i0; i < d.n; i++) {
+      if (d.closeTime[i] > upto) break;
+      const c = nyClock(d.openTime[i]), m = c.min, key = m >= SESS.asia[0] ? c.day + 1 : c.day;
+      let x = out.get(key);
+      if (!x) out.set(key, x = { day: key, AH: null, AL: null, LH: null, LL: null, asiaStart: nyToUtc(key - 1, SESS.asia[0]), asiaEnd: nyToUtc(key, SESS.asia[1]), lonEnd: nyToUtc(key, SESS.london[1]), nyEnd: nyToUtc(key, SESS.ny[1]), asiaBars: 0, lonBars: 0 });
+      if (m >= SESS.asia[0] || m < SESS.asia[1]) { x.AH = x.AH === null ? d.high[i] : Math.max(x.AH, d.high[i]); x.AL = x.AL === null ? d.low[i] : Math.min(x.AL, d.low[i]); x.asiaBars++; }
+      else if (m >= SESS.london[0] && m < SESS.london[1]) { x.LH = x.LH === null ? d.high[i] : Math.max(x.LH, d.high[i]); x.LL = x.LL === null ? d.low[i] : Math.min(x.LL, d.low[i]); x.lonBars++; }
+    }
+    return out;
+  }
+  /* Estrategia 8 (en observación): en la prueba de 8 meses de CLUSDT fue la única variante de AH/AL/LH/LL positiva en las dos mitades
+     (56 operaciones, +1,4 % del capital por operación con 10x), elegida entre 432: puede ser suerte. Reglas idénticas a la prueba:
+     vela de 15m cerrada entre 8:00 y 14:30 de Nueva York (lunes a viernes) cuya mecha supera LH (o LL) y cierra de vuelta adentro, con cuerpo en contra;
+     estructura de 1h (BOS/CHoCH) en la dirección de la operación; una por nivel y día; SL 0,4 % y TP 1,15 % desde la entrada; máximo 24 h. */
+  const DEFAULT_LSW = { enabled: true, tf: "15m", sl_pct: 0.4, tp_pct: 1.15, req_struct: true, ny_from: 8 * 60, ny_to: 14 * 60 + 30, max_hold_h: 24, leverage_ref: 10 };
+  const LSW_LABELS = { L0: "Datos completos y actualizados", L1: "Horario de Nueva York (8:00–14:30, lunes a viernes)", L2: "Barrida del nivel de Londres (mecha afuera, cierre adentro)",
+    L3: "Estructura de 1h a favor", L4: "Primera señal del día en ese nivel", L5: "Tamaño permitido por el gestor de riesgo" };
+  class LondonSweep { constructor(params) { this.name = "barrida_londres"; this.label = "Barrida de Londres (observación)"; this.p = Object.assign({}, DEFAULT_LSW, params || {}); } }
+  class LondonSweepEngine extends SignalEngine {
+    constructor(exchange, risk, strategy, autoPaper = true, book = null) { super(exchange, risk, strategy || new LondonSweep(), autoPaper, book); this.condLabels = LSW_LABELS; }
+    _stepSlot(ctx, s) {
+      if (s.state === ST.OPEN) return this._manageTrade(ctx, s);
+      const p = this.strategy.p, tf = p.tf, M = TF_MS[tf], want = s.direction, up = want === "LONG", key = up ? "LL" : "LH";
+      if (!M || ctx.t % M !== 0) return [];
+      const a = ctx.tf[tf], h1 = ctx.tf["1h"]; if (!a || !h1) return [];
+      const i = a.idxAsof(ctx.t); if (i < 2 || a.d.closeTime[i] !== ctx.t) return [];
+      const d = a.d, c = nyClock(d.openTime[i]), inNy = c.wd !== 0 && c.wd !== 6 && c.min >= p.ny_from && c.min < p.ny_to;
+      const L = sessionLevels(a, ctx.t, ctx.t - 36 * 3600e3).get(c.day), lv = L && L.lonBars >= 16 && L.asiaBars >= 16 ? L[key] : null;
+      const conds = [{ id: "L0", label: LSW_LABELS.L0, passed: ctx.dataOk, detail: ctx.dataReason },
+        { id: "L1", label: LSW_LABELS.L1, passed: inNy, detail: `${String(Math.floor(c.min / 60)).padStart(2, "0")}:${String(c.min % 60).padStart(2, "0")} en Nueva York` }];
+      s.conditions = conds;
+      if (!inNy) return [];
+      if (lv === null) { conds.push({ id: "L2", label: LSW_LABELS.L2, passed: false, detail: "Faltan velas de la sesión de Londres o de Asia de hoy" }); return []; }
+      const sw = up ? d.low[i] < lv && d.close[i] > lv && d.close[i] > d.open[i] : d.high[i] > lv && d.close[i] < lv && d.close[i] < d.open[i];
+      conds.push({ id: "L2", label: LSW_LABELS.L2, passed: sw, detail: `${key} ${fmt(lv)} · vela ${fmt(d.low[i])}–${fmt(d.high[i])}, cierre ${fmt(d.close[i])}` });
+      if (!sw) return [];
+      const j = h1.idxAsof(ctx.t), tr1 = j >= 0 && h1.structure ? h1.structure.trend[j] : 0, okS = !p.req_struct || tr1 === (up ? 1 : -1);
+      conds.push({ id: "L3", label: LSW_LABELS.L3, passed: okS, detail: tr1 === 1 ? "alcista" : tr1 === -1 ? "bajista" : "sin estructura clara" });
+      if (!okS) return [];
+      const fresh = s._lswDay !== c.day; s._lswDay = c.day;    // una por nivel y día (como en la prueba, se marca aunque no se abra)
+      conds.push({ id: "L4", label: LSW_LABELS.L4, passed: fresh, detail: fresh ? "" : "ya hubo una señal en este nivel hoy" });
+      if (!fresh || !ctx.dataOk || ctx.t < s.cooldownUntil) return [];
+      const sg = up ? 1 : -1, entry = d.close[i], stop = entry * (1 - sg * p.sl_pct / 100), tp = entry * (1 + sg * p.tp_pct / 100), day = Math.floor(ctx.t / 86400e3);
+      const plan = planPosition(want, entry, stop, tp, Object.assign({}, this.risk, { min_rr: 0 }), this.realizedToday[day] || 0, this.openPositions());
+      conds.push({ id: "L5", label: LSW_LABELS.L5, passed: plan.valid, detail: plan.valid ? `Riesgo ${this.risk.risk_pct}% · cantidad ${plan.quantity.toFixed(4)}` : plan.reasons.join("; ") });
+      if (!plan.valid) return [];
+      const [g, nn] = rrNet(want, entry, stop, tp, this.risk), cst = 2 * (this.risk.taker_fee_pct + this.risk.slippage_pct), X = p.leverage_ref;
+      s.levels = { entry, stop_loss: stop, tp1: tp, tp2: tp, tp3: tp, risk_per_unit: Math.abs(entry - stop), rr_gross: Math.round(g * 1000) / 1000, rr_net: Math.round(nn * 1000) / 1000,
+        notes: [`Barrida de ${key} ${fmt(lv)} en ${tf}; SL ${p.sl_pct}% y TP ${p.tp_pct}% desde la entrada. Con ${X}x y todo el capital como margen: +${(X * (p.tp_pct - cst)).toFixed(1)}% si llega al TP, −${(X * (p.sl_pct + cst)).toFixed(1)}% si toca el SL. Estrategia en observación: solo simulación.`] };
+      s.plan = plan; s.state = up ? ST.CONF_L : ST.CONF_S; s.signalId = uid();
+      const zone = { top: Math.max(lv, d.high[i]), bottom: Math.min(lv, d.low[i]), sources: [key] }; s.setup = { zone };
+      const signal = { id: s.signalId, symbol: s.symbol, exchange: this.exchange, strategy: this.strategy.name, strategy_label: `${this.strategy.label} (${tf})`, direction: want, created_at: ctx.t, timeframes: [tf, "1h"],
+        activation_price: entry, reference_price: up ? ctx.ask ?? null : ctx.bid ?? null, stop_loss: stop, tp1: tp, tp2: tp, tp3: tp, rr_net: s.levels.rr_net, rr_gross: s.levels.rr_gross,
+        conditions_met: conds.filter((x) => x.passed), conditions_missing: conds.filter((x) => !x.passed), zone, notes: s.levels.notes, plan, data_status: ctx.dataReason, params: Object.assign({}, p), order: "mercado" };
+      const out = [this._ev(s, ctx, "confirmada", `${s.symbol} — ${want} CONFIRMADO (${this.strategy.label}) entrada ${fmt(entry)} SL ${fmt(stop)} TP ${fmt(tp)}`, { signal })];
+      if (this.autoPaper) {
+        s.trade = { signal_id: s.signalId, direction: want, entry, stop, tp1: tp, tp2: tp, tp3: tp, quantity: plan.quantity, opened_at: ctx.t, tf, tp1_hit: false, exit_price: null, exit_time: null, exit_reason: null, result_r: null, pnl: null, fees: null };
+        s.state = ST.OPEN; out.push(this._ev(s, ctx, "operacion_abierta", `${s.symbol} — operación simulada ${want} abierta en ${fmt(entry)}`));
+      } else { s.setup = null; s.state = ST.SIN; }
+      return out;
+    }
+    _manageTrade(ctx, s) {
+      const tr = s.trade, bar = ctx.tf["1m"].row(ctx.t), p = this.strategy.p;
+      if (!bar || bar.closeTime !== ctx.t || bar.closeTime <= tr.opened_at) return [];
+      const up = tr.direction === "LONG", hitSl = up ? bar.low <= tr.stop : bar.high >= tr.stop, hitTp = up ? bar.high >= tr.tp1 : bar.low <= tr.tp1;
+      if (hitSl) return this._close(ctx, s, tr.stop, "Stop Loss" + (hitTp ? " (vela tocó SL y TP: se asume SL)" : ""));
+      if (hitTp) return this._close(ctx, s, tr.tp1, "Take Profit");
+      if (ctx.t - tr.opened_at >= p.max_hold_h * 3600e3) return this._close(ctx, s, bar.close, `Cierre por tiempo (${p.max_hold_h} h)`);
+      return [];
+    }
+  }
+
   // ------------------------------------------------------------ biblioteca de indicadores (estilo TradingView)
   /* Fórmulas estándar (las mismas que usa TradingView en sus indicadores integrados):
      RSI  = 100 − 100/(1 + RMA(subidas)/RMA(bajadas))                 (Wilder)
@@ -2534,7 +2619,7 @@ const SSP = (() => {
     DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, DEFAULT_T5P, T5P_LABELS, h1Range, t5pAsof, T5PStrategy, T5PEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, elliottHistory, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
-    DEFAULT_DOJI, dojiTf, eiaTimes, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
+    DEFAULT_DOJI, dojiTf, eiaTimes, nyClock, nyToUtc, SESS, sessionLevels, DEFAULT_LSW, LSW_LABELS, LondonSweep, LondonSweepEngine, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
   };
 })();
 if (typeof module !== "undefined") module.exports = SSP;
@@ -2579,7 +2664,8 @@ if (typeof module !== "undefined") module.exports = SSP;
   const RSI3P = Object.assign({}, SSP.DEFAULT_RSI3, LS.get("rsi3", {}));
   const SC4P = Object.assign({}, SSP.DEFAULT_SC4, LS.get("sc4", {}));
   const T5PP = Object.assign({}, SSP.DEFAULT_T5P, LS.get("t5p", {}));       // T5P y T2P comparten parámetros
-  const DOJIP = Object.assign({}, SSP.DEFAULT_DOJI, LS.get("doji", {}));    // estrategia 7: Doji en zona clave
+  const DOJIP = Object.assign({}, SSP.DEFAULT_DOJI, LS.get("doji", {}));
+  const LSWP = Object.assign({}, SSP.DEFAULT_LSW, LS.get("lsw", {}));      // estrategia 8: barrida de Londres (en observación)    // estrategia 7: Doji en zona clave
   const IND = Object.assign({}, SSP.DEFAULT_IND, LS.get("ind", {}));
   const TFS = ["1m", "3m", "5m", "15m", "1h", "4h", "1d", "1w"], ENGINE_TFS = ["1m", "3m", "5m", "15m", "1h"];
   const BYBIT_INT = { "1m": "1", "3m": "3", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D", "1w": "W" };
@@ -2608,20 +2694,22 @@ if (typeof module !== "undefined") module.exports = SSP;
   const engine4 = new SSP.Scalp3mEngine("bybit", RISK, new SSP.Scalp3m(SC4P), true, engine.book);
   const engine5 = new SSP.T5PEngine("bybit", RISK, new SSP.T5PStrategy(T5PP, "T5P"), true, engine.book);
   const engine6 = new SSP.T5PEngine("bybit", RISK, new SSP.T5PStrategy(T5PP, "T2P"), true, engine.book);
-  const engine7 = new SSP.DojiEngine("bybit", RISK, new SSP.DojiStrategy(DOJIP), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
+  const engine7 = new SSP.DojiEngine("bybit", RISK, new SSP.DojiStrategy(DOJIP), true, engine.book);
+  const engine8 = new SSP.LondonSweepEngine("bybit", RISK, new SSP.LondonSweep(LSWP), true, engine.book);   // experimental; las tres comparten pérdida diaria y nº de posiciones
   const ALL_ENGINES = [{ key: "e1", eng: engine, title: "Estrategia 1 · Continuación de tendencia", short: "Continuación de tendencia", labels: SSP.COND_LABELS },
     { key: "e2", eng: engine2, title: "Estrategia 2 · Retroceso Fibonacci", short: "Retroceso Fibonacci", labels: SSP.FIB_COND_LABELS },
     { key: "e3", eng: engine3, title: "Estrategia 3 · Retroceso RSI(2) 1h (experimental)", short: "Retroceso RSI(2) 1h · exp.", labels: SSP.RSI3_COND_LABELS },
     { key: "e4", eng: engine4, title: "Estrategia 4 · Scalping RR 3:1 en 3m", short: "Scalping RR 3:1 (3m)", labels: SSP.SC4_COND_LABELS, defOff: true },
     { key: "e5", eng: engine5, title: "Estrategia 5 · T5P (acumulación, impulso, retroceso, Fibonacci, entrada)", short: "T5P · 5 pasos", labels: SSP.T5P_LABELS, defOff: !T5M },
     { key: "e6", eng: engine6, title: "Estrategia 6 · T2P (impulso + retroceso Fibonacci + entrada)", short: "T2P · impulso + retroceso", labels: SSP.T5P_LABELS, defOff: !T5M },
-    { key: "e7", eng: engine7, title: "Estrategia 7 · Doji en zona clave + confirmación", short: "Doji en zona clave", labels: SSP.DOJI_LABELS, defOff: !DM }];
+    { key: "e7", eng: engine7, title: "Estrategia 7 · Doji en zona clave + confirmación", short: "Doji en zona clave", labels: SSP.DOJI_LABELS, defOff: !DM },
+    { key: "e8", eng: engine8, title: "Estrategia 8 · Barrida de Londres + estructura 1h (en observación)", short: "Barrida de Londres · obs.", labels: SSP.LSW_LABELS, defOff: !DM }];
   // cada pestaña trabaja solo con sus estrategias: la principal con E1–E4, la de T5P/T2P con E5 y E6
-  const chipName = (E, n) => (E.key === "e5" ? "T5P" : E.key === "e6" ? "T2P" : E.key === "e7" ? "Doji" : "E" + (n + 1));
-  const ENGINES = ALL_ENGINES.filter((E) => (WM ? [] : DM ? ["e7"] : T5M ? ["e5", "e6"] : ["e1", "e2", "e3", "e4"]).includes(E.key));
+  const chipName = (E, n) => (E.key === "e5" ? "T5P" : E.key === "e6" ? "T2P" : E.key === "e7" ? "Doji" : E.key === "e8" ? "Barrida" : "E" + (n + 1));
+  const ENGINES = ALL_ENGINES.filter((E) => (WM ? [] : DM ? ["e7", "e8"] : T5M ? ["e5", "e6"] : ["e1", "e2", "e3", "e4"]).includes(E.key));
   // activación por par: {"e4|BTCUSDT": true, ...}; sin entrada = valor por defecto (E1–E3 encendidas, E4 apagada)
   const STRAT_SYM = LS.get("stratSym", {});
-  const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled, e5: !!T5PP.enabled, e6: !!T5PP.enabled, e7: !!DOJIP.enabled })[E.key];
+  const globalOn = (E) => ({ e1: true, e2: !!FIBP.enabled, e3: !!RSI3P.enabled, e4: !!SC4P.enabled, e5: !!T5PP.enabled, e6: !!T5PP.enabled, e7: !!DOJIP.enabled, e8: !!LSWP.enabled })[E.key];
   const symOn = (E, sym) => { const v = STRAT_SYM[`${E.key}|${sym}`]; return v === undefined ? !E.defOff : !!v; };
   function setSymOn(E, sym, on) { if (on === !E.defOff) delete STRAT_SYM[`${E.key}|${sym}`]; else STRAT_SYM[`${E.key}|${sym}`] = on; LS.set("stratSym", STRAT_SYM); }
   const allSlots = (sym) => ENGINES.flatMap((E) => ["LONG", "SHORT"].map((d) => E.eng.slot(sym, d)));
@@ -3700,6 +3788,11 @@ if (typeof module !== "undefined") module.exports = SSP;
       }
       if (L) row(lt && lt.n >= few && lt.E > 0 ? "buy" : lt && lt.n >= few ? "sell" : "gold", `Prueba histórica en ${TF_LABEL(ex)} (${L.short || "BTC 2023–2026"})`, lt ? `${lt.E >= 0 ? "+" : ""}${lt.E}R por operación · ${lt.n} operaciones` : "sin probar",
         esc(lt ? lt.text : `Esta temporalidad no se probó con datos históricos (faltan velas de 1m). Las probadas: ${Object.entries(L.por_tf).map(([k, v]) => `${TF_LABEL(k)} ${v.E >= 0 ? "+" : ""}${v.E}R (${v.n})`).join(" · ")}.`) + (DOJIP.exec_tf === "auto" ? " La estrategia usa la temporalidad del gráfico; cámbiela arriba." : ""));
+      if (S.sel === "CLUSDT" && SSP.sessionLevels && S.an[k2(S.sel, "15m")]) {   // niveles de sesión de hoy y estrategia 8 en observación
+        const a15 = S.an[k2(S.sel, "15m")], c = SSP.nyClock(Date.now()), Lv = SSP.sessionLevels(a15, Infinity, Date.now() - 36 * 3600e3).get(c.min >= SSP.SESS.asia[0] ? c.day + 1 : c.day);
+        if (Lv) row("", "Niveles de sesión hoy", `AH ${fp(Lv.AH)} · AL ${fp(Lv.AL)} · LH ${fp(Lv.LH)} · LL ${fp(Lv.LL)}`, "Asia 19:00–03:00 y Londres 03:00–08:00 de Nueva York. En la prueba de 8 meses el precio rompió y rechazó estos niveles casi en partes iguales: úselos como mapa, no como señal.");
+        row("gold", "Barrida de Londres (observación)", "+0,24R por operación · 57 op.", "Mecha más allá de LH/LL entre 8:00 y 14:30 de Nueva York, cierre adentro y estructura de 1h a favor; SL 0,4 %, TP 1,15 % (con 10x: +10 % / −5,5 % del capital). En la prueba: mar–jul 0,0R (28), ago–nov +0,46R (29); compras +0,55R, ventas −0,13R. Fue la mejor de 432 variantes, así que puede ser suerte: solo simulación hasta juntar unas 50 operaciones nuevas.");
+      }
       if (!x) row("", "Doji", "—", `Esperando velas de ${ex}.`);
       else if (!x.cur) row("", `Doji en ${ex}`, "ninguno reciente", `No hay doji en las últimas velas cerradas de ${ex}.${x.last ? ` El último fue ${SSP.DOJI_KIND_LABEL[x.last.kind]} (${x.last.ok ? "confirmado" : "sin confirmar"}).` : ""}`);
       else {
@@ -4240,6 +4333,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     engine4.risk = Object.assign({}, RISK); engine4.strategy.p = Object.assign({}, SC4P);
     for (const e of [engine5, engine6]) { e.risk = Object.assign({}, RISK); e.strategy.p = Object.assign({}, T5PP); }
     engine7.risk = Object.assign({}, RISK); engine7.strategy.p = Object.assign({}, DOJIP); if (window.__dojiRefresh) window.__dojiRefresh();
+    engine8.risk = Object.assign({}, RISK);
     if (window.__t5pRefresh) window.__t5pRefresh(); refreshChart(); renderSide(); renderWatch();
     $("cfg").close(); toast("Configuración guardada", "info"); renderRiskCalc();
     if ((CFG.onlySym || "") !== (onlyBefore || "")) { CFG.onlySym = (CFG.onlySym || "").toUpperCase(); LS.set("cfg", CFG); if (!CFG.onlySym) { LS.set("watch", [S.sel]); } setTimeout(() => location.reload(), 400); }
@@ -4296,7 +4390,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP && !SEP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { ONLY, T5M, WM, DM, DOJIP, engine7, wsSub, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
+  window.__ssp = { ONLY, T5M, WM, DM, DOJIP, engine7, engine8, LSWP, wsSub, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
     bootstrap, bybit, k2, telegram, notify, addSymbol, refreshChart, renderLegend, get INTEL_SYM() { return INTEL_SYM; }, setIntelSym, keep1m, INTEL_TFS, IND, CFG, setTf: (tf) => { const b = document.querySelector(`[data-tf="${tf}"]`); if (b) b.click(); } };   // acceso para depuración
   start();
 })();
@@ -6113,6 +6207,45 @@ window.DOJI_LAB = {"short": "BTC 2023–2026", "generated": "2026-11-17T20:55:18
   }
   if (wrap) { wrap.addEventListener("mousemove", (e) => tipAt(e.clientX, e.clientY)); wrap.addEventListener("mouseleave", () => { tip.hidden = true; }); wrap.addEventListener("click", (e) => tipAt(e.clientX, e.clientY)); }
   X.dojiHits = () => hits;
+})();
+
+/* Niveles de sesión AH/AL (Asia) y LH/LL (Londres) en el gráfico, para 1m–1h. Asia 19:00–03:00 y Londres 03:00–08:00 de Nueva York;
+   la línea es punteada mientras la sesión está abierta y sólida desde que cierra hasta el final de Nueva York (16:00). */
+(() => {
+  "use strict";
+  const X = window.__ssp; if (!X || !SSP.sessionLevels) return;
+  const { S, LS, k2, fp } = X, $ = (id) => document.getElementById(id);
+  let off = LS.get("sesOff", false);
+  const btn = $("sesBtn"), paint = () => { if (btn) { btn.classList.toggle("on", !off); btn.setAttribute("aria-pressed", String(!off)); } };
+  if (btn) btn.addEventListener("click", () => { off = !off; LS.set("sesOff", off); paint(); X.chart.draw(); });
+  paint();
+  const COL = { AH: "#b48cff", AL: "#b48cff", LH: "#5aa9ff", LL: "#5aa9ff" };
+  let cache = { key: "", lv: null };
+  (window.__drawHooks = window.__drawHooks || []).push((g, o) => {
+    if (off || !["1m", "3m", "5m", "15m", "1h"].includes(o.tf)) return;
+    const src = S.an[k2(o.sym, "15m")], a = S.an[k2(o.sym, o.tf)]; if (!src || !src.n || !a || !a.n) return;
+    const key = o.sym + "|" + src.n + "|" + src.d.closeTime[src.n - 1];
+    if (cache.key !== key) cache = { key, lv: [...SSP.sessionLevels(src).values()] };
+    const { Y, ts, W, H, ms } = o, M = SSP.TF_MS[o.tf], first = a.d.openTime[0], last = a.d.openTime[a.n - 1];
+    const vr = ts.getVisibleRange && ts.getVisibleRange(), v0 = vr ? vr.from * 1000 : first, v1 = vr ? vr.to * 1000 : last;
+    const xAt = (t) => { if (t > last + M) return W + 2; const ft = Math.max(first, Math.floor(t / M) * M); const x = ts.timeToCoordinate(Math.min(ft, last) / 1000); return x === null ? null : t > last ? x + (t - last) / M * (ts.options().barSpacing || 6) : x; };
+    const now = Date.now();
+    g.font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    for (const L of cache.lv) {
+      if (L.nyEnd < v0 || L.asiaStart > v1 + M) continue;
+      for (const [k, t0, tEnd] of [["AH", L.asiaStart, L.asiaEnd], ["AL", L.asiaStart, L.asiaEnd], ["LH", L.asiaEnd, L.lonEnd], ["LL", L.asiaEnd, L.lonEnd]]) {
+        const v = L[k]; if (v === null) continue;
+        const y = Y(v); if (y === null || y < -2 || y > H + 2) continue;
+        const xa = xAt(t0), xm = xAt(Math.min(tEnd, now)), xb = xAt(L.nyEnd); if (xa === null || xb === null) continue;
+        const yy = Math.round(y) + 0.5; g.strokeStyle = COL[k]; g.lineWidth = 1;
+        g.globalAlpha = 0.45; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(Math.max(0, xa), yy); g.lineTo(Math.min(W, xm ?? xb), yy); g.stroke();
+        if (now >= tEnd && xm !== null) { g.globalAlpha = 0.9; g.setLineDash([]); g.lineWidth = 1.4; g.beginPath(); g.moveTo(Math.max(0, xm), yy); g.lineTo(Math.min(W, xb), yy); g.stroke(); }
+        g.globalAlpha = 1; g.setLineDash([]);
+        const lab = `${k} ${fp(v)}`, lx = Math.max(2, Math.min(W - g.measureText(lab).width - 4, (now >= tEnd && xm !== null ? xm : xa) + 3));
+        g.fillStyle = COL[k]; g.fillText(lab, lx, k === "AH" || k === "LH" ? yy - 3 : yy + 11);
+      }
+    }
+  });
 })();
 </script>
 <script>
