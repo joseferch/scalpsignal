@@ -365,6 +365,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .mode-dj .brand::after{content:" · Doji";color:var(--gold);font-weight:600}
 .mode-t5p #djOpen,.mode-wh #djOpen{display:none!important}
 #djBtn.on{color:#0b1220;background:var(--gold)}
+.one-sym #topBtn,.one-sym #clearBtn,.one-sym #search,.one-sym #results,.one-sym .pair .x,.one-sym #ivSym{display:none!important}
 .dj-panel{top:40px;bottom:auto!important}
 @media(max-width:700px){.dj-panel{top:34px}}
 @media(max-width:700px){.mode-dj .dj-seg{order:-1}}
@@ -632,6 +633,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   </div>
   <h4>Datos, pares y alertas</h4>
   <div class="grid2">
+    <label class="f">Par único (vacío = varios pares)<input data-k="cfg.onlySym" autocomplete="off" autocapitalize="characters"></label>
     <label class="f">Retraso máximo aceptado (s)<input data-k="cfg.maxDelayS" inputmode="numeric"></label>
     <label class="f">Velas iniciales por temporalidad<input data-k="cfg.history" inputmode="numeric"></label>
     <label class="f">Top por volumen: cantidad de pares<input data-k="cfg.topN" inputmode="numeric"></label>
@@ -2544,13 +2546,16 @@ if (typeof module !== "undefined") module.exports = SSP;
   if (T5M) { document.documentElement.classList.add("mode-t5p"); document.title = "T5P / T2P · ScalpSignal Pro"; }
   if (DM) { document.documentElement.classList.add("mode-dj"); document.title = "Doji · ScalpSignal Pro"; }
   if (WM) { document.documentElement.classList.add("mode-wh"); document.title = "Ballenas e instituciones · ScalpSignal Pro"; }
-  const CFG = Object.assign({ rest: "https://api.bybit.com", ws: "wss://stream.bybit.com/v5/public/linear", history: 1000, maxDelayS: 20, tgToken: "", tgChat: "", topN: 40, minTurnoverM: 50, adxKey: 23 }, LS.get("cfg", {}));
+  const CFG = Object.assign({ rest: "https://api.bybit.com", ws: "wss://stream.bybit.com/v5/public/linear", history: 1000, maxDelayS: 20, tgToken: "", tgChat: "", topN: 40, minTurnoverM: 50, adxKey: 23, onlySym: "CLUSDT" }, LS.get("cfg", {}));
+  // Par único: la app analiza y opera solo este par en todas sus pantallas (vacío en ⚙ = volver a varios pares)
+  const ONLY = typeof CFG.onlySym === "string" && /^[A-Z0-9]{2,20}USDT$/.test(CFG.onlySym.trim().toUpperCase()) ? CFG.onlySym.trim().toUpperCase() : "";
+  if (ONLY) document.documentElement.classList.add("one-sym");
   // Lista inicial = top por volumen de Bybit. La marca "topDone" se guarda SOLO cuando la carga termina,
   // así una carga interrumpida (cerrar la app a medias) se reintenta en la próxima apertura.
   const OLD_DEFAULT = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"];
   if (LS.get("ver", 0) < 4) { if (CFG.topN === 20) CFG.topN = 40; LS.set("cfg", CFG); LS.set("ver", 4); }
   const savedWatch = LS.get("watch", null);
-  const AUTO_TOP = !LS.get("topDone", false) && (!savedWatch || savedWatch.length <= OLD_DEFAULT.length);
+  const AUTO_TOP = !ONLY && !LS.get("topDone", false) && (!savedWatch || savedWatch.length <= OLD_DEFAULT.length);
   const RISK = Object.assign({}, SSP.DEFAULT_RISK, LS.get("risk", {}));
   const TC = Object.assign({}, SSP.DEFAULT_TC, LS.get("tc", {}));
   const FIBP = Object.assign({}, SSP.DEFAULT_FIB, LS.get("fib", {}));
@@ -2571,8 +2576,8 @@ if (typeof module !== "undefined") module.exports = SSP;
   };
 
   const S = {
-    symbols: LS.get("watch", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"]),
-    sel: LS.get("sel", WM ? "BTCUSDT" : "UNIUSDT"), tf: LS.get("tf", DM ? "1h" : "5m"), tz: LS.get("tz", "America/Costa_Rica"),
+    symbols: ONLY ? [ONLY] : LS.get("watch", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "UNIUSDT"]),
+    sel: ONLY || LS.get("sel", WM ? "BTCUSDT" : "UNIUSDT"), tf: LS.get("tf", DM ? "1h" : "5m"), tz: LS.get("tz", "America/Costa_Rica"),
     show: Object.assign(DM ? { bb: false, vwap: false, ob: true, vrvp: false, fib: false, dmi: false, sqz: true, ew: true, sess: false, smc: false }
       : SEP ? { bb: false, vwap: false, ob: false, vrvp: false, fib: false, dmi: false, sqz: false, ew: false, sess: false, smc: false }
       : { bb: true, vwap: true, ob: true, vrvp: true, fib: true, dmi: true, sqz: true, ew: true, sess: true, smc: false }, LS.get("show", {})), sound: LS.get("sound", true),
@@ -2690,7 +2695,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   // 3m y 4h se suscriben únicamente para el par seleccionado.
   const EXTRA_TFS = TFS.filter((tf) => !ENGINE_TFS.includes(tf));
   // par del analizador profesional (BTCUSDT por defecto; se puede cambiar a cualquier par de Bybit)
-  let INTEL_SYM = (() => { const v = LS.get("intelSym", "BTCUSDT"); return typeof v === "string" && /^[A-Z0-9]{2,20}USDT$/.test(v) ? v : "BTCUSDT"; })();
+  let INTEL_SYM = ONLY || (() => { const v = LS.get("intelSym", "BTCUSDT"); return typeof v === "string" && /^[A-Z0-9]{2,20}USDT$/.test(v) ? v : "BTCUSDT"; })();
   const INTEL_TFS = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"];   // series que mantiene el analizador
   // suscripciones adicionales pedidas por otros módulos (p. ej. publicTrade.BTCUSDT para las órdenes grandes)
   const WS_EXTRA = new Set();
@@ -3815,6 +3820,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   $("watch").addEventListener("keydown", (e) => { const b = e.target.closest("[data-sym]"); if (b && e.key === "Enter") selectSymbol(b.dataset.sym); });
   function selectSymbol(s) { S.sel = s; LS.set("sel", s); switchExtraSubs(s); lastChartKey = ""; refreshChart(); renderWatch(); renderHist(); }
   async function addSymbol(s) {
+    if (ONLY && s !== ONLY) { toast(`La app está fijada en ${ONLY}. Para usar otros pares, borre «Par único» en ⚙.`, "info"); return; }
     if (S.symbols.includes(s)) { selectSymbol(s); return; }
     toast(`Cargando historial de ${s}…`, "info");
     await bootstrap(s);
@@ -4194,6 +4200,7 @@ if (typeof module !== "undefined") module.exports = SSP;
   $("cfgBtn").onclick = () => { $("cfg").querySelectorAll("[data-k]").forEach((i) => { const v = getK(i.dataset.k); i.value = typeof v === "boolean" ? (v ? 1 : 0) : v; }); $("cfg").showModal(); };
   $("cfgClose").onclick = () => $("cfg").close();
   $("cfgSave").onclick = () => {
+    const onlyBefore = CFG.onlySym;
     $("cfg").querySelectorAll("[data-k]").forEach((i) => {
       const [g, f] = i.dataset.k.split("."), obj = ({ risk: RISK, tc: TC, cfg: CFG, fib: FIBP, rsi3: RSI3P, sc4: SC4P, t5p: T5PP, doji: DOJIP })[g], old = obj[f];
       if (typeof old === "boolean") obj[f] = i.value === "1" || i.value.toLowerCase() === "true";
@@ -4212,6 +4219,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     engine7.risk = Object.assign({}, RISK); engine7.strategy.p = Object.assign({}, DOJIP); if (window.__dojiRefresh) window.__dojiRefresh();
     if (window.__t5pRefresh) window.__t5pRefresh(); refreshChart(); renderSide(); renderWatch();
     $("cfg").close(); toast("Configuración guardada", "info"); renderRiskCalc();
+    if ((CFG.onlySym || "") !== (onlyBefore || "")) { CFG.onlySym = (CFG.onlySym || "").toUpperCase(); LS.set("cfg", CFG); if (!CFG.onlySym) { LS.set("watch", [S.sel]); } setTimeout(() => location.reload(), 400); }
   };
   $("tgTest").onclick = async () => {
     $("cfgSave").click();
@@ -4265,7 +4273,7 @@ if (typeof module !== "undefined") module.exports = SSP;
     if (AUTO_TOP && !SEP) addTopVolume();
     setInterval(renderWatch, 10000);
   }
-  window.__ssp = { T5M, WM, DM, DOJIP, engine7, wsSub, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
+  window.__ssp = { ONLY, T5M, WM, DM, DOJIP, engine7, wsSub, S, engine, engine2, engine3, engine4, engine5, engine6, T5PP, STRAT_SYM, onKline, handleEvent, setConn, chart, CUST, LS, RISK, toast, esc, fp, pct, fmtTime, selectSymbol, beep,
     bootstrap, bybit, k2, telegram, notify, addSymbol, refreshChart, renderLegend, get INTEL_SYM() { return INTEL_SYM; }, setIntelSym, keep1m, INTEL_TFS, IND, CFG, setTf: (tf) => { const b = document.querySelector(`[data-tf="${tf}"]`); if (b) b.click(); } };   // acceso para depuración
   start();
 })();
@@ -5986,7 +5994,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   setInterval(() => { if (document.hidden || shown === ver) return; shown = ver; renderRead(); }, 1000);
   setInterval(bump, 10000);   // relojes y ventanas de tiempo
   window.__whaleMarket = () => {};
-  chainConnect();
+  if (!X.ONLY || X.ONLY === "BTCUSDT") chainConnect(); else W.chain.status = "solo para BTC (la app está fijada en " + X.ONLY + ")";
 })();
 
 
