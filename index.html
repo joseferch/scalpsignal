@@ -2222,6 +2222,23 @@ const SSP = (() => {
     _dojiHist.set(a, { key, list });
     return list;
   }
+  // Reporte semanal de inventarios de petróleo de la EIA: miércoles 10:30 en Nueva York (con feriado en EE. UU. pasa a jueves;
+  // eso no se calcula aquí). Devuelve los próximos `n` en milisegundos UTC, desde `from` (incluye uno ya pasado si se pide).
+  function nyOffsetMin(ms) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+    return (Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute) - Math.floor(ms / 60000) * 60000) / 60000;
+  }
+  function eiaTimes(from, n = 3, back = 0) {
+    const out = [], d0 = new Date(from - back);
+    for (let k = -1; out.length < n && k < 60; k++) {
+      const day = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() + k));
+      if (day.getUTCDay() !== 3) continue;
+      let t = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 10, 30);
+      t -= nyOffsetMin(t) * 60000;   // 10:30 hora de Nueva York → UTC
+      if (t >= from - back) out.push(t);
+    }
+    return out;
+  }
   const dojiTf = (p, ctx) => (p.exec_tf === "auto" || !TF_MS[p.exec_tf] ? (ctx && ctx.chartTf && TF_MS[ctx.chartTf] ? ctx.chartTf : "1h") : p.exec_tf);
   class DojiStrategy { constructor(params) { this.name = "doji_zona_clave"; this.label = "Doji en zona clave"; this.p = Object.assign({}, DEFAULT_DOJI, params || {}); } }
   class DojiEngine extends SignalEngine {
@@ -2517,7 +2534,7 @@ const SSP = (() => {
     DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, DEFAULT_T5P, T5P_LABELS, h1Range, t5pAsof, T5PStrategy, T5PEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, elliottHistory, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
-    DEFAULT_DOJI, dojiTf, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
+    DEFAULT_DOJI, dojiTf, eiaTimes, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
   };
 })();
 if (typeof module !== "undefined") module.exports = SSP;
@@ -3674,8 +3691,14 @@ if (typeof module !== "undefined") module.exports = SSP;
       agree && t1 !== "lateral" ? `Las tres temporalidades coinciden: contexto ${t1} claro.` : t1 === "lateral" ? "La tendencia principal (1H) está lateral: los rompimientos fallan más a menudo." : "Las temporalidades no coinciden: más riesgo de señales falsas.");
     if (DM) {    // pestaña Doji: el doji más reciente y cada condición; debajo siguen SQZMOM, ADX, VWAP y Elliott
       const x = window.__ssp.dojiCompute ? window.__ssp.dojiCompute() : null, ex = SSP.dojiTf(DOJIP, { chartTf: S.tf });
-      const L = window.DOJI_LAB, lt = L && L.por_tf && L.por_tf[ex];
-      if (L) row(lt && lt.n >= 30 && lt.E > 0 ? "buy" : lt && lt.n >= 30 ? "sell" : "gold", `Prueba histórica en ${TF_LABEL(ex)} (BTC 2023–2026)`, lt ? `${lt.E >= 0 ? "+" : ""}${lt.E}R por operación · ${lt.n} operaciones` : "sin probar",
+      const L = (window.DOJI_LABS && window.DOJI_LABS[S.sel]) || window.DOJI_LAB, lt = L && L.por_tf && L.por_tf[ex], few = S.sel === "CLUSDT" ? 20 : 30;
+      if (S.sel === "CLUSDT" && SSP.eiaTimes) {   // reporte EIA: mueve el petróleo con fuerza; la vela de 1h que lo contiene puede verse como doji sin serlo
+        const now = Date.now(), e = SSP.eiaTimes(now, 1, 90 * 60e3)[0], dm = Math.round((e - now) / 60e3);
+        const when = new Date(e).toLocaleString("es-CR", { timeZone: "America/Costa_Rica", weekday: "long", hour: "2-digit", minute: "2-digit" });
+        if (dm <= 60 && dm >= -60) row("sell", "Reporte EIA de inventarios", dm >= 0 ? `en ${dm} min` : `hace ${-dm} min`, `El reporte semanal de crudo de EE. UU. (${when}, Costa Rica) mueve CLUSDT con mechas largas. No abra entradas nuevas desde 30 min antes hasta 30 min después, y desconfíe de un doji en la vela de esa hora. Si hay feriado en EE. UU. se publica otro día.`);
+        else row("", "Próximo reporte EIA", when, "Inventarios semanales de crudo de EE. UU. (miércoles 10:30 Nueva York). Evite entradas nuevas 30 min antes y después. Si hay feriado en EE. UU. se publica otro día.");
+      }
+      if (L) row(lt && lt.n >= few && lt.E > 0 ? "buy" : lt && lt.n >= few ? "sell" : "gold", `Prueba histórica en ${TF_LABEL(ex)} (${L.short || "BTC 2023–2026"})`, lt ? `${lt.E >= 0 ? "+" : ""}${lt.E}R por operación · ${lt.n} operaciones` : "sin probar",
         esc(lt ? lt.text : `Esta temporalidad no se probó con datos históricos (faltan velas de 1m). Las probadas: ${Object.entries(L.por_tf).map(([k, v]) => `${TF_LABEL(k)} ${v.E >= 0 ? "+" : ""}${v.E}R (${v.n})`).join(" · ")}.`) + (DOJIP.exec_tf === "auto" ? " La estrategia usa la temporalidad del gráfico; cámbiela arriba." : ""));
       if (!x) row("", "Doji", "—", `Esperando velas de ${ex}.`);
       else if (!x.cur) row("", `Doji en ${ex}`, "ninguno reciente", `No hay doji en las últimas velas cerradas de ${ex}.${x.last ? ` El último fue ${SSP.DOJI_KIND_LABEL[x.last.kind]} (${x.last.ok ? "confirmado" : "sin confirmar"}).` : ""}`);
@@ -4891,7 +4914,10 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   if (X.T5M || X.WM || X.DM) return;   // las pestañas de T5P/T2P, ballenas y Doji no llevan el analizador
   const { S, LS, toast, esc, beep, bootstrap, bybit, k2, telegram, notify, INTEL_TFS } = X;
   let SYM = X.INTEL_SYM;                                   // par analizado (se elige en el encabezado del analizador)
-  const coin = () => SYM.replace(/USDT$/, "");             // BTC, ETH, SOL…
+  const coin = () => SYM.replace(/USDT$/, "");
+  // CLUSDT (petróleo WTI): el reporte semanal de inventarios de la EIA tiene horario fijo y se agrega solo; los demás eventos los registra el usuario
+  const EIA_SRC = "horario fijo de la EIA: miércoles 10:30 Nueva York (si hay feriado en EE. UU. se publica otro día: verifíquelo)";
+  const macroAll = (t) => SYM !== "CLUSDT" || !SSP.eiaTimes ? I.macro : [...I.macro, ...SSP.eiaTimes(t, 2, 3 * 3600e3).map((tt) => ({ id: "eia" + tt, name: "Inventarios de crudo EIA (EE. UU.)", time: tt, impact: "alto", source: EIA_SRC, auto: true }))];             // BTC, ETH, SOL…
   const symOf = (x) => x.symbol || "BTCUSDT";              // registros viejos (antes de admitir otros pares) eran de BTC
   const $ = (id) => document.getElementById(id);
   const TF = SSP.TF_MS, fp = BTCI.fmtP, isNum = (x) => typeof x === "number" && Number.isFinite(x);
@@ -4976,7 +5002,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     const dq = BTCI.dataQuality(series, ticker, S.conn.state === "conectado", now, P, X.CFG.maxDelayS, SYM);
     const ledger = BTCI.ledgerStats(I.trades, t);
     let r;
-    try { r = BTCI.evaluate({ symbol: SYM, ans, t, dq, ticker, ledger, macro: I.macro, instr: I.instr }, P, R, M); I.err = null; }
+    try { r = BTCI.evaluate({ symbol: SYM, ans, t, dq, ticker, ledger, macro: macroAll(t), instr: I.instr }, P, R, M); I.err = null; }
     catch (e) { I.err = "Error del motor: " + e.message; console.error(e); render(); return; }
     I.r = r; I.dq = dq; I.ledger = ledger; I.lastRun = now; I.q = q;
     // ---- señal nueva → simulación (paper trading). Nunca se envían órdenes reales.
@@ -5031,7 +5057,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
     for (const s of r.setups) { if (!s.invalid && /esperando/.test(s.stage)) nowObs.add(s.id); else if (s.invalid && prevObs.has(s.id)) alert(`inv|${s.id}`, "Setup invalidado", "baja", `${s.dir} patrón ${s.pattern} invalidado: ${s.invalid}.`); }
     I.prev.obs = nowObs;
     // eventos macro próximos y riesgo diario
-    for (const e of I.macro) if (e.time > t && e.time - t <= 60 * 60e3) alert(`mac|${e.id}`, "Evento macro próximo", e.impact === "alto" ? "alta" : "media", `${e.name} a las ${hm(e.time)} (Costa Rica). ${e.impact === "alto" ? `Bloqueo de nuevas entradas desde ${M.before_min} min antes hasta ${M.after_min} min después.` : ""}`);
+    for (const e of macroAll(t)) if (e.time > t && e.time - t <= 60 * 60e3) alert(`mac|${e.id}`, "Evento macro próximo", e.impact === "alto" ? "alta" : "media", `${e.name} a las ${hm(e.time)} (Costa Rica). ${e.impact === "alto" ? `Bloqueo de nuevas entradas desde ${M.before_min} min antes hasta ${M.after_min} min después.` : ""}`);
     if (ledger.realizedTodayPct <= -R.max_daily_loss_pct) alert(`dl|${Math.floor(t / 86400e3)}`, "Riesgo diario excedido", "alta", `Pérdida simulada del día ${ledger.realizedTodayPct.toFixed(2)} %: sin nuevas señales hasta el próximo día UTC.`);
   }
   // gestión de las operaciones simuladas con cada vela de 1m cerrada de su par (de cualquier par, no solo el que se ve)
@@ -5147,7 +5173,7 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
   }
   function riesgoHtml() {
     const L = I.ledger, f = (k, lab, step = "any") => `<label>${lab}<input data-rk="${k}" type="number" step="${step}" value="${R[k]}"></label>`;
-    const ev = I.macro.slice().sort((a, b) => a.time - b.time);
+    const ev = macroAll(Date.now()).slice().sort((a, b) => a.time - b.time);
     return `<div class="ivg"><div class="ivc"><h3>Gestión del riesgo</h3><div class="ivform">${f("account_capital", "Capital (USDT)")}${f("risk_pct", "Riesgo por operación (%)")}${f("max_daily_loss_pct", "Pérdida diaria máxima (%)")}` +
       `${f("max_trades_day", "Máx. operaciones por día", 1)}${f("max_consec_losses", "Suspender tras N pérdidas seguidas", 1)}${f("min_rr", "R/B neto mínimo")}${f("max_leverage", "Apalancamiento máximo (≤ 5x)")}${f("taker_fee_pct", "Comisión taker (%)")}${f("slippage_pct", "Deslizamiento estimado (%)")}</div>` +
       `<p><button id="ivSaveRisk" class="primary">Guardar</button> <span class="faint" id="ivRiskMsg"></span></p>` +
@@ -5155,10 +5181,10 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
       `<div class="ivc"><h3>Estado de hoy (simulación)</h3><table class="ivt"><tbody><tr><td>Operaciones hoy</td><td><b>${L.tradesToday}</b> de ${R.max_trades_day}</td></tr><tr><td>Resultado del día</td><td><b class="${L.realizedTodayPct >= 0 ? "buy" : "sell"}">${pctS(L.realizedTodayPct)}</b> (límite −${R.max_daily_loss_pct} %)</td></tr>` +
       `<tr><td>Pérdidas seguidas</td><td><b>${L.consecLosses}</b> (suspensión a las ${R.max_consec_losses})</td></tr><tr><td>Posiciones abiertas</td><td><b>${L.openPositions}</b></td></tr><tr><td>Instrumento</td><td>${I.instr ? `${SYM} · tick ${I.instr.tick} · paso ${I.instr.qtyStep} ${coin()} · mínimo ${I.instr.minQty} ${coin()} · apalancamiento del exchange hasta ${I.instr.maxLev}x` : esc(I.instrErr || "cargando…")}</td></tr></tbody></table>` +
       `<p class="faint">Profundidad del libro y funding todavía no se usan para ajustar el tamaño (fase 4).</p></div></div>` +
-      `<div class="ivc"><h3>Eventos macroeconómicos</h3><div class="warnbox">No hay un calendario económico verificado conectado: la app no inventa eventos. Registre aquí los que conozca (CPI, PPI, NFP, decisiones de la Fed…). Los de impacto alto bloquean nuevas entradas desde <b>${M.before_min} min</b> antes hasta <b>${M.after_min} min</b> después.</div>` +
+      `<div class="ivc"><h3>Eventos macroeconómicos</h3><div class="warnbox">No hay un calendario económico verificado conectado: la app no inventa eventos. Registre aquí los que conozca (CPI, PPI, NFP, decisiones de la Fed…).${SYM === "CLUSDT" ? " Para CLUSDT el reporte semanal de inventarios de la EIA se agrega solo (miércoles 10:30 Nueva York)." : ""} Los de impacto alto bloquean nuevas entradas desde <b>${M.before_min} min</b> antes hasta <b>${M.after_min} min</b> después.</div>` +
       `<div class="ivform" style="margin-top:8px"><label>Evento<input id="mxName" placeholder="CPI de EE. UU."></label><label>Fecha y hora (Costa Rica)<input id="mxTime" type="datetime-local"></label><label>Impacto<select id="mxImp"><option value="alto">alto</option><option value="medio">medio</option><option value="bajo">bajo</option></select></label>` +
       `<label>Bloqueo antes (min)<input id="mxB" type="number" value="${M.before_min}"></label><label>Bloqueo después (min)<input id="mxA" type="number" value="${M.after_min}"></label></div><p><button id="mxAdd" class="primary">Agregar evento</button></p>` +
-      `<table class="ivt"><thead><tr><th>Evento</th><th>Fecha y hora (CR)</th><th>Impacto</th><th>Estado</th><th></th></tr></thead><tbody>${ev.map((e) => { const blk = I.r.macro.block.some((b) => b.id === e.id); return `<tr><td><b>${esc(e.name)}</b></td><td>${crT(e.time)}</td><td>${e.impact}</td><td>${blk ? '<span class="pill con">bloqueo activo</span>' : e.time < Date.now() ? "pasado" : "pendiente"} · fuente: registrado por usted</td><td><button class="mini" data-mxdel="${e.id}">Quitar</button></td></tr>`; }).join("") || '<tr><td colspan="5" class="faint">Sin eventos registrados.</td></tr>'}</tbody></table></div>`;
+      `<table class="ivt"><thead><tr><th>Evento</th><th>Fecha y hora (CR)</th><th>Impacto</th><th>Estado</th><th></th></tr></thead><tbody>${ev.map((e) => { const blk = I.r.macro.block.some((b) => b.id === e.id); return `<tr><td><b>${esc(e.name)}</b></td><td>${crT(e.time)}</td><td>${e.impact}</td><td>${blk ? '<span class="pill con">bloqueo activo</span>' : e.time < Date.now() ? "pasado" : "pendiente"} · fuente: ${e.auto ? esc(e.source) : "registrado por usted"}</td><td>${e.auto ? '<span class="faint">automático</span>' : `<button class="mini" data-mxdel="${e.id}">Quitar</button>`}</td></tr>`; }).join("") || '<tr><td colspan="5" class="faint">Sin eventos registrados.</td></tr>'}</tbody></table></div>`;
   }
   function statsOf(T) {
     const c = T.filter((x) => x.exit_time); if (!c.length) return null;
@@ -6000,7 +6026,8 @@ window.BTCI_LAB = [{"engine": "btci-1.0", "generated": "2026-11-05T21:13:41.767Z
 
 
 /* Resultado real de la prueba histórica de la estrategia Doji (lab/backtest_doji.js). */
-window.DOJI_LAB = {"generated": "2026-11-17T20:55:18.297Z", "data": "BTCUSDT perpetuo (Binance Futures, data.binance.vision) 2023-01 a 2026-10", "costs": "taker 0,055 % + deslizamiento 0,02 % por lado; salidas con velas de 5m; si una vela toca SL y TP cuenta SL", "por_tf": {"1h": {"n": 92, "E": -0.058, "t": -0.49, "oos": -0.291, "text": "92 operaciones, -0.058R por operación después de costos (t = -0.49): sin ventaja demostrada. 2023–2024: 0.165R · 2025–2026: -0.291R."}, "4h": {"n": 21, "E": 0.302, "t": 1.17, "oos": 0.296, "text": "Solo 21 operaciones en casi 4 años (+0.302R por operación): muy pocas para saber si funciona. 2023–2024: 0.308R · 2025–2026: 0.296R."}, "1d": {"n": 3, "E": -0.665, "t": -1.99, "oos": -1, "text": "Solo 3 operaciones en casi 4 años (-0.665R por operación): muy pocas para saber si funciona. 2023–2024: -0.498R · 2025–2026: -1R."}, "15m": {"n": 383, "E": -0.25, "t": -5.35, "oos": -0.307, "text": "383 operaciones, -0.25R por operación después de costos (t = -5.35): pierde con claridad; la comisión pesa demasiado en velas tan cortas. 2023–2024: -0.197R · 2025–2026: -0.307R."}, "5m": {"n": 1226, "E": -0.378, "t": -16.97, "oos": -0.346, "text": "1226 operaciones, -0.378R por operación después de costos (t = -16.97): pierde con claridad; la comisión pesa demasiado en velas tan cortas. 2023–2024: -0.405R · 2025–2026: -0.346R."}}, "verdict": "Antes de costos el doji confirmado da casi cero en BTC; en 5m y 15m la comisión lo vuelve claramente perdedor. 4h fue positiva pero con solo 21 operaciones. Úsela como simulación o filtro, no para dinero real."};
+window.DOJI_LABS = { CLUSDT: {"generated": "2026-11-25T05:50:24.939Z", "short": "CLUSDT mar–nov 2026", "data": "CLUSDT perpetuo de Bybit (operaciones públicas de public.bybit.com), 24 mar – 24 nov 2026", "costs": "taker 0,055 % + deslizamiento 0,02 % por lado; salidas con velas de 5m; si una vela toca SL y TP cuenta SL", "por_tf": {"15m": {"n": 65, "E": -0.098, "t": -0.75, "oos": -0.192, "text": "65 operaciones, -0.10R por operación después de costos (t = -0.75): sin ventaja. Mar–jul: +0.01R (30) · ago–nov: -0.19R (35)."}, "1h": {"n": 23, "E": 0.552, "t": 2.18, "oos": 0.469, "text": "23 operaciones, +0.55R por operación después de costos (t = 2.18), 65.2 % ganadoras: la mejor de todas las estrategias probadas en CLUSDT y positiva en ambas mitades, pero con pocas operaciones. Mar–jul: +0.66R (10) · ago–nov: +0.47R (13)."}, "4h": {"n": 3, "E": -0.247, "t": -0.33, "oos": -1, "text": "Solo 3 operaciones en 8 meses (-0.25R por operación): muy pocas para saber si funciona. Mar–jul: +1.26R (1) · ago–nov: -1.00R (2)."}}, "verdict": "En CLUSDT el doji de 1h fue la única estrategia de la app con resultado positivo (23 operaciones, +0,55R, positiva en las dos mitades y con todas las variantes de parámetros probadas). Es una muestra chica: úsela en simulación hasta juntar más operaciones."} };
+window.DOJI_LAB = {"short": "BTC 2023–2026", "generated": "2026-11-17T20:55:18.297Z", "data": "BTCUSDT perpetuo (Binance Futures, data.binance.vision) 2023-01 a 2026-10", "costs": "taker 0,055 % + deslizamiento 0,02 % por lado; salidas con velas de 5m; si una vela toca SL y TP cuenta SL", "por_tf": {"1h": {"n": 92, "E": -0.058, "t": -0.49, "oos": -0.291, "text": "92 operaciones, -0.058R por operación después de costos (t = -0.49): sin ventaja demostrada. 2023–2024: 0.165R · 2025–2026: -0.291R."}, "4h": {"n": 21, "E": 0.302, "t": 1.17, "oos": 0.296, "text": "Solo 21 operaciones en casi 4 años (+0.302R por operación): muy pocas para saber si funciona. 2023–2024: 0.308R · 2025–2026: 0.296R."}, "1d": {"n": 3, "E": -0.665, "t": -1.99, "oos": -1, "text": "Solo 3 operaciones en casi 4 años (-0.665R por operación): muy pocas para saber si funciona. 2023–2024: -0.498R · 2025–2026: -1R."}, "15m": {"n": 383, "E": -0.25, "t": -5.35, "oos": -0.307, "text": "383 operaciones, -0.25R por operación después de costos (t = -5.35): pierde con claridad; la comisión pesa demasiado en velas tan cortas. 2023–2024: -0.197R · 2025–2026: -0.307R."}, "5m": {"n": 1226, "E": -0.378, "t": -16.97, "oos": -0.346, "text": "1226 operaciones, -0.378R por operación después de costos (t = -16.97): pierde con claridad; la comisión pesa demasiado en velas tan cortas. 2023–2024: -0.405R · 2025–2026: -0.346R."}}, "verdict": "Antes de costos el doji confirmado da casi cero en BTC; en 5m y 15m la comisión lo vuelve claramente perdedor. 4h fue positiva pero con solo 21 operaciones. Úsela como simulación o filtro, no para dinero real."};
 
 /* Estrategia Doji (pestaña ?doji): círculos en cada doji del gráfico, panel con los pasos del doji más reciente y
    detalle al pasar el mouse. En la pestaña principal solo conecta el botón "Doji ↗". */
