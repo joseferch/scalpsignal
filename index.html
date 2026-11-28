@@ -366,6 +366,13 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
 .mode-t5p #djOpen,.mode-wh #djOpen{display:none!important}
 #djBtn.on{color:#0b1220;background:var(--gold)}
 #sesBtn.on{color:#0b1220;background:#9db8ff}.mode-wh .ses-seg{display:none!important}
+.mode-wh .gex-seg{display:none!important}#gexBtn.on{color:#0b1220;background:var(--buy)}
+.gex-dlg{max-width:620px}.gex-dlg .gx-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.gex-dlg .gx-row label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+.gex-dlg input{background:var(--night);color:var(--ink);border:1px solid var(--rule2);border-radius:var(--r-sm);padding:7px 8px;font:inherit;min-width:0}
+.gex-dlg table{width:100%;border-collapse:collapse;font-size:12.5px}.gex-dlg th,.gex-dlg td{padding:5px 6px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}.gex-dlg th{color:var(--ink3);font-weight:600}
+.gex-dlg .gx-list{max-height:34vh;overflow:auto;margin-top:6px}.gex-dlg .gx-note{font-size:12px;color:var(--ink3);margin:6px 0 0}.gex-dlg .gx-ft{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.gx-r{color:var(--buy)}.gx-b{color:var(--sell)}.gx-p{color:var(--ink3)}
+@media(max-width:560px){.gex-dlg .gx-row{grid-template-columns:1fr 1fr}}
 .one-sym #topBtn,.one-sym #clearBtn,.one-sym #search,.one-sym #results,.one-sym .pair .x,.one-sym #ivSym{display:none!important}
 .dj-panel{top:40px;bottom:auto!important}
 @media(max-width:700px){.dj-panel{top:34px}}
@@ -470,6 +477,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
     <span class="seg" id="tfs" role="group" aria-label="Temporalidad"></span>
     <span class="seg dj-seg"><button id="djBtn" aria-pressed="true" title="Muestra u oculta los círculos de los dojis y el panel de pasos">Doji</button></span>
     <span class="seg ses-seg"><button id="sesBtn" aria-pressed="true" title="Niveles de sesión: máximo y mínimo de Asia (AH/AL, 19:00–03:00 Nueva York) y de Londres (LH/LL, 03:00–08:00), vigentes hasta el cierre de Nueva York. Se ven en 1m a 1h.">Sesiones</button></span>
+    <span class="seg gex-seg"><button id="gexBtn" title="Niveles de opciones (Put Wall, Call Wall, Gamma Flip): anótelos cada día, se dibujan en el gráfico y la app mide cómo reacciona el precio">Opciones</button></span>
     <span class="seg wh-seg"><button id="whBtn" aria-pressed="false" title="Ballenas: marca en el gráfico las órdenes grandes (compra abajo en verde, venta arriba en rojo) y la prima de Coinbase en la franja inferior">Ballenas</button></span>
     <span class="seg t5p-seg" id="t5pBtns" role="group" aria-label="Estrategias T5P y T2P"><button data-t5p="T5P" title="T5P: dibuja los 5 pasos en el gráfico (1H 2 días + Fibonacci, acumulación 15m, impulso, retroceso, Fibonacci y entrada)">T5P</button><button data-t5p="T2P" title="T2P: impulso + retroceso Fibonacci + vela de entrada">T2P</button></span>
     <button id="indBtn" class="btn-ind" title="Activar, ocultar y ajustar indicadores">Indicadores <span id="indCount" class="badge">0</span></button>
@@ -652,6 +660,7 @@ dialog h4{margin:16px 0 8px;font-size:13.5px;color:var(--ink)}
   </div>
 </dialog>
 <dialog id="tdlg" class="tdlg"></dialog>
+<dialog id="gexDlg" class="tdlg gex-dlg"></dialog>
 <div id="toasts" aria-live="polite"></div>
 
 <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
@@ -2373,6 +2382,44 @@ const SSP = (() => {
     }
   }
 
+  // ------------------------------------------------------------ niveles de opciones anotados por el usuario (Put Wall, Call Wall, Gamma Flip)
+  /* Cada anotación vale para el día de operación del CME: desde las 18:00 de Nueva York del día anterior hasta las 17:00 del día anotado.
+     Reacción en el primer toque (velas cerradas): se mira qué llega primero dentro de 8 h, que el precio se aleje `pct` % hacia el lado de donde venía (rechazo)
+     o que lo atraviese `pct` % (ruptura). Nada se inventa: sin velas suficientes el resultado queda "pendiente". */
+  const GEX_KEYS = { pw: "Put Wall", cw: "Call Wall", gf: "Gamma Flip" };
+  const ymdToDay = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400e3 : null; };
+  function gexWindow(ymd) { const d = ymdToDay(ymd); return d === null ? null : { start: nyToUtc(d - 1, 18 * 60), end: nyToUtc(d, 17 * 60) }; }
+  function levelReactions(a, entries, opts = {}) {
+    const pct = (opts.pct ?? 0.5) / 100, horizon = (opts.horizon_h ?? 8) * 3600e3, d = a.d, n = d.n, lastClose = n ? d.closeTime[n - 1] : 0, out = [];
+    for (const e of entries) {
+      const w = gexWindow(e.day); if (!w) continue;
+      const row = { day: e.day, start: w.start, end: w.end, levels: {}, range: null };
+      if (!n || d.openTime[0] > w.start || w.start > lastClose) { row.missing = !n || d.openTime[0] > w.start; if (!row.missing) for (const k of Object.keys(GEX_KEYS)) if (e[k] > 0) row.levels[k] = { lv: e[k], res: "en curso", t: null, side: 0 }; out.push(row); continue; }
+      const i0 = Math.max(1, a.idxAsof(w.start) + 1);
+      for (const k of Object.keys(GEX_KEYS)) {
+        const lv = e[k]; if (!(lv > 0)) continue;
+        let r = { lv, res: lastClose < w.end ? "en curso" : "no tocó", t: null, side: 0 };
+        for (let i = i0; i < n && d.closeTime[i] <= w.end; i++) {
+          if (!(d.low[i] <= lv && d.high[i] >= lv)) continue;
+          const side = d.close[i - 1] >= lv ? 1 : -1; r = { lv, res: "pendiente", t: d.closeTime[i], side };
+          for (let j = i + 1; j < n && d.openTime[j] < d.closeTime[i] + horizon; j++) {
+            const back = side === 1 ? d.high[j] >= lv * (1 + pct) : d.low[j] <= lv * (1 - pct), thru = side === 1 ? d.low[j] <= lv * (1 - pct) : d.high[j] >= lv * (1 + pct);
+            if (back && thru) { r.res = "sin definir"; break; } if (back) { r.res = "rechazo"; break; } if (thru) { r.res = "ruptura"; break; }
+          }
+          if (r.res === "pendiente" && lastClose >= d.closeTime[i] + horizon) r.res = "sin definir";
+          break;
+        }
+        row.levels[k] = r;
+      }
+      if (e.pw > 0 && e.cw > 0 && e.cw > e.pw) {      // ¿el día completo quedó entre Put Wall y Call Wall?
+        let hi = -Infinity, lo = Infinity, cnt = 0; for (let i = i0; i < n && d.closeTime[i] <= w.end; i++) { hi = Math.max(hi, d.high[i]); lo = Math.min(lo, d.low[i]); cnt++; }
+        row.range = cnt === 0 ? null : { hi, lo, inside: hi <= e.cw && lo >= e.pw, done: lastClose >= w.end };
+      }
+      out.push(row);
+    }
+    return out;
+  }
+
   // ------------------------------------------------------------ biblioteca de indicadores (estilo TradingView)
   /* Fórmulas estándar (las mismas que usa TradingView en sus indicadores integrados):
      RSI  = 100 − 100/(1 + RMA(subidas)/RMA(bajadas))                 (Wilder)
@@ -2619,7 +2666,7 @@ const SSP = (() => {
     DEFAULT_RSI3, RSI3_COND_LABELS, Rsi2Pullback, Rsi2Engine, DEFAULT_SC4, SC4_COND_LABELS, Scalp3m, Scalp3mEngine, DEFAULT_T5P, T5P_LABELS, h1Range, t5pAsof, T5PStrategy, T5PEngine, TF_MS, floorTime, wma, vwma, hma, maOf, MA_OPTS, ANCHOR_OPTS, vwapAnchored, srcOf, rsi, supertrend, psar, CUSTOM_DEFS, customCalc, SRC_OPTS, SESSIONS, sessionWindows, sessionsAt, zonedToUtc, sma, stdev, rma, ema, trueRange, atr, linreg, toFrame, resample, bollinger, squeeze, sessionVwap,
     dmi, zigzagAsof, elliottAsof, elliottHistory, analyzeStructure, obStatusAt, autoFib, fibSetup, FIB_RETR, FIB_EXT, DEFAULT_FIB, MARKET_LABEL, FibRetracement, FibEngine, FIB_COND_LABELS, classifyTrend, volumeProfile, TFAnalysis, DEFAULT_IND, DEFAULT_RISK, DEFAULT_TC,
     costPerUnit, rrNet, planPosition, COND_LABELS, TrendContinuation, SignalEngine, ST, SQZ_LABEL,
-    DEFAULT_DOJI, dojiTf, eiaTimes, nyClock, nyToUtc, SESS, sessionLevels, DEFAULT_LSW, LSW_LABELS, LondonSweep, LondonSweepEngine, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
+    DEFAULT_DOJI, dojiTf, eiaTimes, nyClock, nyToUtc, SESS, sessionLevels, DEFAULT_LSW, LSW_LABELS, LondonSweep, LondonSweepEngine, GEX_KEYS, gexWindow, levelReactions, DOJI_LABELS, DOJI_KIND_LABEL, dojiShape, dojiZones, dojiEval, dojiHistory, DojiStrategy, DojiEngine,
   };
 })();
 if (typeof module !== "undefined") module.exports = SSP;
@@ -6243,6 +6290,124 @@ window.DOJI_LAB = {"short": "BTC 2023–2026", "generated": "2026-11-17T20:55:18
         g.globalAlpha = 1; g.setLineDash([]);
         const lab = `${k} ${fp(v)}`, lx = Math.max(2, Math.min(W - g.measureText(lab).width - 4, (now >= tEnd && xm !== null ? xm : xa) + 3));
         g.fillStyle = COL[k]; g.fillText(lab, lx, k === "AH" || k === "LH" ? yy - 3 : yy + 11);
+      }
+    }
+  });
+})();
+
+/* Niveles de opciones anotados por el usuario: Put Wall, Call Wall y Gamma Flip del día (de su proveedor; precio del futuro WTI del mes más próximo, al que sigue CLUSDT).
+   Se guardan en este navegador (compartidos entre pestañas), se dibujan en el gráfico y se mide la reacción del precio en cada uno con velas reales de 15m. */
+(() => {
+  "use strict";
+  const X = window.__ssp; if (!X || !SSP.levelReactions) return;
+  const { S, k2, fp, esc, toast } = X, $ = (id) => document.getElementById(id), KEY = "ssp:gexLevels", OFFK = "ssp:gexOff";
+  const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || "{}"); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; } };
+  const save = (v) => { try { localStorage.setItem(KEY, JSON.stringify(v)); return true; } catch (e) { toast("No se pudo guardar en este navegador"); return false; } };
+  let off = (() => { try { return localStorage.getItem(OFFK) === "1"; } catch (e) { return false; } })();
+  const COL = { pw: "#2fd3a0", cw: "#ff6170", gf: "#f0c75e" }, SH = { pw: "PW", cw: "CW", gf: "GF" };
+  const todayNy = () => { const c = SSP.nyClock(Date.now()); let dd = c.min >= 18 * 60 ? c.day + 1 : c.day; const wd = new Date(dd * 86400e3).getUTCDay(); if (wd === 6) dd += 2; else if (wd === 0) dd += 1; return new Date(dd * 86400e3).toISOString().slice(0, 10); };   // el CME no abre sábado; la sesión del domingo 18:00 es la del lunes
+  const entries = () => Object.entries(load()).map(([day, v]) => Object.assign({ day }, v)).sort((a, b) => (a.day < b.day ? 1 : -1));
+  const a15 = () => S.an[k2(S.sel, "15m")];
+  // la app carga ~10 días de velas de 15m: los resultados definitivos se guardan con la anotación para no perderlos cuando esas velas salen del historial
+  const FINAL = new Set(["rechazo", "ruptura", "sin definir", "no tocó"]);
+  const reactions = () => {
+    const a = a15(), E = entries(); if (!a) return [];
+    const R = SSP.levelReactions(a, E), all = load(); let dirty = false;
+    for (const r of R) {
+      const st = all[r.day]; if (!st) continue; st.res = st.res || {};
+      for (const k in SSP.GEX_KEYS) { const x = r.levels[k], old = st.res[k];
+        if (x && FINAL.has(x.res) && (!old || old.res !== x.res || old.lv !== x.lv)) { st.res[k] = { lv: x.lv, res: x.res, t: x.t, side: x.side }; dirty = true; }
+        else if ((!x || r.missing) && old && old.lv === st[k]) r.levels[k] = old; }
+      if (r.range && r.range.done && !(st.rng && st.rng.pw === st.pw && st.rng.cw === st.cw)) { st.rng = { inside: r.range.inside, done: true, pw: st.pw, cw: st.cw }; dirty = true; }
+      else if (!r.range && st.rng && st.rng.pw === st.pw && st.rng.cw === st.cw) r.range = st.rng;
+    }
+    if (dirty) save(all);
+    return R;
+  };
+  const btn = $("gexBtn"), dlg = $("gexDlg");
+  const paint = () => { if (btn) { const has = entries().length > 0; btn.classList.toggle("on", has && !off); btn.setAttribute("aria-pressed", String(has && !off)); } };
+  const resCls = (r) => (r === "rechazo" ? "gx-r" : r === "ruptura" ? "gx-b" : "gx-p");
+  function stats(R) {
+    const t = {}; for (const k in SSP.GEX_KEYS) t[k] = { toques: 0, rechazo: 0, ruptura: 0, otros: 0 };
+    let rd = 0, ri = 0;
+    for (const r of R) { for (const k in r.levels) { const x = r.levels[k]; if (x.t === null) continue; t[k].toques++; if (x.res === "rechazo") t[k].rechazo++; else if (x.res === "ruptura") t[k].ruptura++; else t[k].otros++; }
+      if (r.range && r.range.done) { rd++; if (r.range.inside) ri++; } }
+    return { t, rd, ri };
+  }
+  function render(msg) {
+    const E = entries(), R = reactions(), byDay = new Map(R.map((r) => [r.day, r])), st = stats(R), d0 = todayNy(), cur = load()[d0] || {}, px = S.sel && S.an[k2(S.sel, "1m")] ? S.an[k2(S.sel, "1m")].d.close.at(-1) : null;
+    const pc = (a, b) => (b ? Math.round(a / b * 100) + " %" : "—");
+    const rowsS = Object.keys(SSP.GEX_KEYS).map((k) => { const x = st.t[k], dec = x.rechazo + x.ruptura;
+      return `<tr><td style="color:${COL[k]}">${SSP.GEX_KEYS[k]}</td><td>${x.toques}</td><td class="gx-r">${x.rechazo} (${pc(x.rechazo, dec)})</td><td class="gx-b">${x.ruptura} (${pc(x.ruptura, dec)})</td><td class="gx-p">${x.otros}</td></tr>`; }).join("");
+    const rowsD = E.map((e) => { const r = byDay.get(e.day) || { levels: {} };
+      const cell = (k) => { if (!(e[k] > 0)) return "—"; const x = r.levels[k]; return `${fp(e[k])}<br><span class="${resCls(x && x.res)}">${x ? x.res : "sin velas de 15m de ese día"}</span>`; };
+      const rg = r.range ? (r.range.done ? (r.range.inside ? '<span class="gx-r">sí</span>' : '<span class="gx-b">no</span>') : '<span class="gx-p">en curso</span>') : "—";
+      return `<tr><td>${e.day}${e.src ? `<br><span class="gx-p">${esc(e.src)}</span>` : ""}</td><td>${cell("pw")}</td><td>${cell("cw")}</td><td>${cell("gf")}</td><td>${rg}</td><td><button class="mini" data-gxdel="${e.day}" aria-label="Borrar ${e.day}">Borrar</button></td></tr>`; }).join("");
+    dlg.innerHTML = `<h2>Niveles de opciones · ${esc(S.sel || "")}</h2>
+      <div class="dlg-body">
+        <p>Anote cada día el Put Wall, Call Wall y Gamma Flip de su proveedor, <b>en precio del futuro WTI del mes más próximo</b> (el que sigue CLUSDT; no use niveles de USO, que tiene otro precio). Cada anotación vale desde las 18:00 de Nueva York del día anterior hasta las 17:00 del día anotado.${px ? ` Precio actual de CLUSDT: <b>${fp(px)}</b>.` : ""}</p>
+        <div class="gx-row">
+          <label>Día de operación<input id="gxDay" type="date" value="${d0}"></label>
+          <label>Put Wall<input id="gxPw" type="number" step="0.01" inputmode="decimal" value="${cur.pw ?? ""}" placeholder="ej. 60.00"></label>
+          <label>Call Wall<input id="gxCw" type="number" step="0.01" inputmode="decimal" value="${cur.cw ?? ""}" placeholder="ej. 70.00"></label>
+          <label>Gamma Flip<input id="gxGf" type="number" step="0.01" inputmode="decimal" value="${cur.gf ?? ""}" placeholder="ej. 65.00"></label>
+        </div>
+        <label class="f">Fuente (opcional)<input id="gxSrc" type="text" maxlength="60" value="${esc(cur.src || "")}" placeholder="ej. proveedor y vencimientos usados"></label>
+        <p class="dlg-err sell" id="gxErr" ${msg ? "" : "hidden"}>${msg ? esc(msg) : ""}</p>
+        <div class="gx-ft"><button id="gxSave" class="primary">Guardar día</button></div>
+        <h4>Cómo reacciona el precio (primer toque de cada día, velas de 15m)</h4>
+        <table><thead><tr><th>Nivel</th><th>Toques</th><th>Rechazó</th><th>Rompió</th><th>Otros</th></tr></thead><tbody>${rowsS}</tbody></table>
+        <p class="gx-note">Rechazo: tras tocarlo, el precio se aleja 0,5 % hacia el lado de donde venía antes de atravesarlo 0,5 % (ventana de 8 h). Días que quedaron completos entre Put Wall y Call Wall: ${st.ri} de ${st.rd}. Para comparar: los niveles de sesión de Asia y Londres rechazaron 40–49 % de las veces. Con menos de 30 toques por nivel el resultado todavía no dice nada.</p>
+        <div class="gx-list"><table><thead><tr><th>Día</th><th>Put Wall</th><th>Call Wall</th><th>Gamma Flip</th><th>Entre PW y CW</th><th></th></tr></thead><tbody>${rowsD || '<tr><td colspan="6" class="gx-p">Todavía no hay días anotados.</td></tr>'}</tbody></table></div>
+      </div>
+      <div class="gx-ft"><button id="gxVis">${off ? "Mostrar en el gráfico" : "Ocultar del gráfico"}</button><button id="gxCsv" ${E.length ? "" : "disabled"}>Exportar CSV</button><button id="gxClose">Cerrar</button></div>`;
+  }
+  function onSave() {
+    const day = $("gxDay").value, num = (id) => { const v = $(id).value.trim(); return v === "" ? null : Number(v); }, pw = num("gxPw"), cw = num("gxCw"), gf = num("gxGf"), src = $("gxSrc").value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return render("Elija un día válido.");
+    if ([pw, cw, gf].every((v) => v === null)) return render("Anote al menos un nivel.");
+    if ([pw, cw, gf].some((v) => v !== null && !(v > 0 && Number.isFinite(v)))) return render("Los niveles deben ser números positivos.");
+    if (pw !== null && cw !== null && pw >= cw) return render("El Put Wall suele estar por debajo del Call Wall: revise los valores.");
+    const px = S.an[k2(S.sel, "1m")] ? S.an[k2(S.sel, "1m")].d.close.at(-1) : null;
+    if (px && [pw, cw, gf].some((v) => v !== null && Math.abs(v / px - 1) > 0.3)) return render(`Algún nivel está a más de 30 % del precio actual (${fp(px)}). ¿Es precio del WTI y no de USO?`);
+    const all = load(); all[day] = Object.assign({}, pw !== null ? { pw } : {}, cw !== null ? { cw } : {}, gf !== null ? { gf } : {}, src ? { src } : {}, { saved: Date.now() });
+    if (save(all)) { toast(`Niveles del ${day} guardados`); render(); paint(); X.chart.draw(); }
+  }
+  function csv() {
+    const R = new Map(reactions().map((r) => [r.day, r])), q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["dia", "put_wall", "reaccion_pw", "call_wall", "reaccion_cw", "gamma_flip", "reaccion_gf", "dia_entre_pw_y_cw", "fuente"].join(",")];
+    for (const e of entries()) { const r = R.get(e.day) || { levels: {} }, rr = (k) => (r.levels[k] ? r.levels[k].res : "");
+      lines.push([e.day, e.pw ?? "", rr("pw"), e.cw ?? "", rr("cw"), e.gf ?? "", rr("gf"), r.range ? (r.range.done ? (r.range.inside ? "si" : "no") : "en curso") : "", q(e.src)].join(",")); }
+    const b = new Blob([lines.join("\n")], { type: "text/csv" }), u = URL.createObjectURL(b), l = document.createElement("a"); l.href = u; l.download = `niveles-opciones-${S.sel}.csv`; l.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+  }
+  if (btn && dlg) {
+    btn.addEventListener("click", () => { render(); dlg.showModal(); });
+    dlg.addEventListener("click", (e) => {
+      if (e.target.closest("#gxSave")) onSave();
+      else if (e.target.closest("#gxClose")) dlg.close();
+      else if (e.target.closest("#gxCsv")) csv();
+      else if (e.target.closest("#gxVis")) { off = !off; try { localStorage.setItem(OFFK, off ? "1" : "0"); } catch (er) {} render(); paint(); X.chart.draw(); }
+      else { const del = e.target.closest("[data-gxdel]"); if (del) { const all = load(); delete all[del.dataset.gxdel]; save(all); render(); paint(); X.chart.draw(); } }
+    });
+    dlg.addEventListener("input", (e) => { if (e.target.id === "gxDay") { const v = load()[e.target.value] || {}; $("gxPw").value = v.pw ?? ""; $("gxCw").value = v.cw ?? ""; $("gxGf").value = v.gf ?? ""; $("gxSrc").value = v.src || ""; } });
+    window.addEventListener("storage", (e) => { if (e.key === KEY) { paint(); X.chart.draw(); } });
+  }
+  paint();
+  (window.__drawHooks = window.__drawHooks || []).push((g, o) => {
+    if (off || ["1d", "1w"].includes(o.tf)) return;
+    const E = entries(); if (!E.length) return;
+    const a = S.an[k2(o.sym, o.tf)]; if (!a || !a.n) return;
+    const { Y, ts, W, H, ms } = o, M = SSP.TF_MS[o.tf], first = a.d.openTime[0], last = a.d.openTime[a.n - 1];
+    const xAt = (t) => { if (t < first) return 0; if (t > last + M) return W + 2; const x = ts.timeToCoordinate(Math.min(Math.floor(t / M) * M, last) / 1000); return x === null ? null : x; };
+    g.font = ms ? '600 9px "IBM Plex Sans", system-ui, sans-serif' : '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    for (const e of E) {
+      const w = SSP.gexWindow(e.day); if (!w || w.end < first) continue;
+      const xa = xAt(Math.min(w.start, last)), xb = xAt(w.end); if (xa === null || xb === null || xb < 0 || xa > W) continue;   // día próximo: se ve desde la última vela
+      for (const k of ["pw", "gf", "cw"]) {
+        const v = e[k]; if (!(v > 0)) continue; const y = Y(v); if (y === null || y < -2 || y > H + 2) continue;
+        const yy = Math.round(y) + 0.5; g.strokeStyle = COL[k]; g.lineWidth = k === "gf" ? 1.2 : 1.6; g.setLineDash(k === "gf" ? [6, 4] : []); g.globalAlpha = 0.9;
+        g.beginPath(); g.moveTo(Math.max(0, xa), yy); g.lineTo(Math.min(W, xb), yy); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+        const lab = `${SH[k]} ${fp(v)}`; g.fillStyle = COL[k]; g.fillText(lab, Math.max(2, Math.min(W - g.measureText(lab).width - 4, Math.max(0, xa) + 3)), yy - 3);
       }
     }
   });
